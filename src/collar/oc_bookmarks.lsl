@@ -86,7 +86,7 @@ Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer i
 }
 
 DoMenu(key keyID, integer iAuth) {
-    string sPrompt = "\n[Bookmarks]\t"+g_sAppVersion;
+    string sPrompt = "\n[Bookmarks]\t"+g_sAppVersion + ", " + (string) llGetFreeMemory() + " bytes free.";
     list lMyButtons = PLUGIN_BUTTONS + g_lDestinations + g_lVolatile_Destinations;
     Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "bookmarks");
 }
@@ -116,11 +116,13 @@ UserCommand(integer iNum, string sStr, key kID) {
     // So commands can accept a value
     if (sStr == "reset") {
         // it is a request for a reset
-        if(iNum == CMD_WEARER || iNum == CMD_OWNER)
+//        if(iNum == CMD_WEARER || iNum == CMD_OWNER)
+        if(iNum == CMD_OWNER)
             //only owner and wearer may reset
             llResetScript();
     } else if (sStr == "rm bookmarks") {
-        if (kID!=g_kWearer && iNum!=CMD_OWNER) llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to uninstall bookmarks",kID);
+//        if (kID!=g_kWearer && iNum!=CMD_OWNER) llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to uninstall bookmarks",kID);
+        if (iNum!=CMD_OWNER) llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to uninstall bookmarks",kID);
         else Dialog(kID,"\nDo you really want to uninstall the "+g_sSubMenu+" App?", ["Yes","No","Cancel"], [], 0, iNum,"rmbookmarks");
     } else if(sStr == PLUGIN_CHAT_CMD || llToLower(sStr) == "menu " + PLUGIN_CHAT_CMD_ALT || llToLower(sStr) == PLUGIN_CHAT_CMD_ALT) {
         // an authorized user requested the plugin menu by typing the menus chat command
@@ -488,11 +490,14 @@ default {
                 } else if(sMessage == UPMENU) {
                     llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
                 } else if (sMenuType == "rmbookmarks") {
+/*
                     if (sMessage == "Yes") {
                         llMessageLinked(LINK_SET, MENUNAME_REMOVE , g_sParentMenu + "|" + g_sSubMenu, "");
                         llMessageLinked(LINK_SET, NOTIFY, "1"+g_sSubMenu+" App has been removed.", kAv);
                         if (llGetInventoryType(llGetScriptName()) == INVENTORY_SCRIPT) llRemoveInventory(llGetScriptName());
                     } else llMessageLinked(LINK_SET, NOTIFY, "0"+g_sSubMenu+" App remains installed.", kAv);
+*/
+                    llMessageLinked(LINK_SET, NOTIFY, "0"+g_sSubMenu+" App remains installed.", kAv);
                 } else if(~llListFindList(PLUGIN_BUTTONS, [sMessage])) {
                     if(sMessage == "SAVE")
                         UserCommand(iAuth, PLUGIN_CHAT_CMD + " save", kAv);

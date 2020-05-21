@@ -84,8 +84,27 @@ Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPa
     else g_lMenuIDs += [kID, kMenuID, sName];
 }
 
+// KBar Mod
+
+string BuildTitle(string sFront, string sBack) {
+    if (sFront == "") return sBack;
+    else return sFront + "\n" + sBack;
+}
+
+string  g_sText = "";
+string  g_sSlaveName = "";
+string  g_sKbarTitle = "";
+
+// KBar Mod end
+
 Menu(key kID, integer iAuth) {
-    string sPrompt = "\n[Titler]";
+// KBar Mod
+//    string sPrompt = "\n[Titler]";
+    string sPrompt = "\n[Titler]\tKBar Ranch Version\n\n\tCurrent Title: " + g_sTitle ;
+        sPrompt +="\n\tName: " + g_sSlaveName + "KBar Title: " + g_sKbarTitle ;
+        sPrompt += "\n\tAvailable memory " + (string) llGetFreeMemory();
+// KBar Mod end
+
     list lButtons = ["UP","DOWN", "Set Title", "Color", Checkbox(g_iShow, "Show")];
     Dialog(kID, sPrompt, lButtons, [UPMENU], 0, iAuth, "Menu~Titler");
 }
@@ -231,12 +250,17 @@ default
     timer(){
         // calculate offset
         if(g_iShow){
+            g_sText = "";
+            g_sText = BuildTitle(g_sText, g_sSlaveName);
+            g_sText = BuildTitle(g_sText, g_sKbarTitle);
+            g_sText = BuildTitle(g_sText, g_sTitle);                 
+
             string offsets = "";
             integer i=0;
             for(i=0;i<g_iOffset;i++){
                 offsets+=" \n";
             }
-            llSetLinkPrimitiveParams(g_iTextPrim, [PRIM_TEXT, g_sTitle+offsets, g_vColor, 1]);
+            llSetLinkPrimitiveParams(g_iTextPrim, [PRIM_TEXT, g_sText+offsets, g_vColor, 1]);
         }else llSetLinkPrimitiveParams(g_iTextPrim, [PRIM_TEXT, "", ZERO_VECTOR, 0]);
         llSetTimerEvent(0);
     }
@@ -349,7 +373,14 @@ default
                     g_iLocked=llList2Integer(lSettings,2);
                 } else if(llList2String(lSettings,1) == "checkboxes"){
                     g_lCheckboxes = llCSV2List(llList2String(lSettings,2));
+// KBar Mod
+                } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
+                    g_sSlaveName = llList2String(lSettings,2); 
+                } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
+                    g_sKbarTitle = llList2String(lSettings,2); 
+// KBar Mod end
                 }
+
             } else if(llList2String(lSettings,0) == "titler"){
                 integer curPrim=g_iTextPrim;
                 ScanFloatText();
@@ -396,8 +427,18 @@ default
         } else if(iNum == LM_SETTING_DELETE){
             // This is recieved back from settings when a setting is deleted
             list lSettings = llParseString2List(sStr, ["_"],[]);
-            if(llList2String(lSettings,0)=="global")
-                if(llList2String(lSettings,1) == "locked") g_iLocked=FALSE;
+            if(llList2String(lSettings,0)=="global") {
+                if(llList2String(lSettings,1) == "locked") { 
+                    g_iLocked=FALSE;
+// KBar Mod
+                } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
+                    g_sSlaveName = ""; 
+                } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
+                    g_sKbarTitle = ""; 
+                }
+            }
+// KBar Mod end
+
         } else if(iNum == LINK_CMD_DEBUG){
             // send data
             if(sStr == "ver"){

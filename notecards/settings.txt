@@ -1,0 +1,10 @@
+GLOBAL=checkboxes~+,-~locked~0~DeviceName~Test Slave Collar~channel~1,TRUE
+INTERN=news~0
+AUTH=norun~1
+#x-global_locked = (integer)sValue;
+#x-global_checkboxes g_lCheckboxes = llCSV2List(sValue);
+#x-intern_news g_iNews = (integer)sValue;
+#x-auth_owner = 
+#x-auth_norun = 
+
+# leash mod is "unleash self" - deferred

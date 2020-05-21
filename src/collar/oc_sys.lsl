@@ -1,3 +1,6 @@
+
+//K-Bar Version 7.4a
+
 // This file is part of OpenCollar.
 // Copyright (c) 2008 - 2017 Nandana Singh, Garvin Twine, Cleo Collins,  
 // Satomi Ahn, Joy Stipe, Wendy Starfall, littlemousy, Romka Swallowtail, 
@@ -18,11 +21,45 @@ integer g_iLatestVersion=TRUE;
 float g_fBuildVersion = 1.0;
 
 key g_kWearer;
+// KBar Mod -------------------------------------------------------------------------------------
+key     KBAROWNER = ""; // will be used later for spy
+integer g_iKBarOptions=0;
+integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
+integer g_iKBarDebug=0;
+key     g_kKBarDebug = NULL_KEY;
+string  g_sKBarVersion="";
+string  g_sKBarTarget="";
+key     g_kVersionReader;
+integer LINK_KB_VERS_REQ = -75301;
+integer LINK_KB_VERS_RESP = -75302;
+integer KB_KBSYNC_KICKSTART = -34717;
+//string  KB_VERSION = g_sCollarVersion;
+//string  KB_DEVSTAGE = g_sDevStage;
+list    KB_SCRIPT_STATUS = [];
+
+key     KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
+
+DebugOutput(key kID, list ITEMS) {
+    if (g_kKBarDebug == NULL_KEY) return;
+    integer i=0;
+    integer end=llGetListLength(ITEMS);
+    string final;
+    for(i=0;i<end;i++) {
+        final+=llList2String(ITEMS,i)+" ";
+    llRegionSayTo(kID, 0, llGetScriptName() +final);
+    }
+}
+
+DBLM(integer iDest, integer iOrig, string sMsg, key kOrig) {
+    llMessageLinked(iDest, iOrig, sMsg, kOrig);
+    DebugOutput(g_kKBarDebug, ["link_message"] + [iDest, iOrig, sMsg, kOrig]);
+}
+
 // Entries for the .settings relay
 // Relay will read .settings from root prim and send to oc_settings for storage.
 key g_kSettingsReader;
 integer g_iSettingsReader; 
-//key g_kExistingSettings; // To prevent excess linked messages if the settings notecard is not modified, or load is not requested, cache the settings UUID
+key g_kExistingSettings; // To prevent excess linked messages if the settings notecard is not modified, or load is not requested, cache the settings UUID
 // End .settings relay
 
 list g_lMenuIDs;//3-strided list of avatars given menus, their dialog ids, and the name of the menu they were given
@@ -128,15 +165,18 @@ integer g_iAnimsMenu=FALSE;
 integer g_iRlvMenu=FALSE;
 integer g_iLooks;
 
-integer g_iUpdateChan = -7483213;
+// KBar Mod -------------------------------------------------------------------------------------
+//integer g_iUpdateChan = -7483213;
+integer g_iUpdateChan = -7483312;
+// End KBar Mod ---------------------------------------------------------------------------------
 integer g_iUpdateHandle;
 key g_kUpdaterOrb;
 integer g_iUpdateFromMenu;
 
-key github_version_request;
+//key github_version_request;
 string g_sOtherDist;
-//key news_request;
-//string g_sLastNewsTime = "0";
+key news_request;
+string g_sLastNewsTime = "0";
 
 string g_sWeb = "https://raw.githubusercontent.com/OpenCollarTeam/OpenCollar/master/web/";
 
@@ -223,21 +263,40 @@ UpdateConfirmMenu() {
     Dialog(g_kWearer, "\nINSTALLATION REQUEST PENDING:\n\nAn update or app installer is requesting permission to continue. Installation progress can be observed above the installer box and it will also tell you when it's done.\n\nShall we continue and start with the installation?", ["Yes","No"], ["Cancel"], 0, CMD_WEARER, "UpdateConfirmMenu");
 }
 
+// KBar Mod
+AuthorizeMenu(key kID, integer iNum) {
+    Dialog(kID,"Enter collar version to authorize (e.g.:7.9x); blank to deauthorize", [], [], 0, iNum,"AuthorizeMenu");
+}
+// End KBar Mod
+
 HelpMenu(key kID, integer iAuth) {
     string sPrompt="\nOpenCollar Version: "+g_sCollarVersion+g_sDevStage;
     sPrompt+="\n\nPrefix: %PREFIX%\nChannel: %CHANNEL%\nSafeword: "+g_sSafeWord;
-    sPrompt+="\n\nDocumentation: https://opencollar.cc/";
-    if(!g_iLatestVersion) sPrompt+="\n\n[Update available!]";
+    sPrompt+="\n\nDocumentation: https://github.com/OpenCollarTeam/OpenCollar/wiki";
+    sPrompt+="\nKBar Collar Version: "+g_sKBarVersion;
+    if (g_sKBarTarget != "" && g_sKBarTarget != g_sKBarVersion) sPrompt += "; Target: " + g_sKBarTarget;
+    sPrompt+="\n\nPrefix: %PREFIX%\nChannel: %CHANNEL%\nSafeword: "+g_sSafeWord;
     //Debug("max memory used: "+(string)llGetSPMaxMemory());
     list lUtility = [UPMENU];
-    list lStaticButtons=[GIVECARD,CONTACT,LICENSE,"Update"];
+    list lStaticButtons=["Apps"];
+    if (g_iAnimsMenu) lStaticButtons+="Animations";
+    else lStaticButtons+="-";
+    lStaticButtons+="-";
+    lStaticButtons+=["Leash"];
+    if (g_iRlvMenu) lStaticButtons+=["RLV","Authorize","Status"];
+    else lStaticButtons+="-";
+    lStaticButtons+=["Access","Settings","Help/About"];
+
+    if (g_sKBarTarget!="") lStaticButtons+=["PullOrb","Update"];
+
     Dialog(kID, sPrompt, lStaticButtons, lUtility, 0, iAuth, "Help/About");
 }
 
 MainMenu(key kID, integer iAuth) {
-    string sPrompt = "\nOpenCollar\t\t"+g_sCollarVersion;
-    sPrompt += "\n\n[secondlife:///app/group/45d71cc1-17fc-8ee4-8799-7164ee264811/about Join the official OpenCollar group to become part of our community.]";
-    if(!g_iLatestVersion) sPrompt+="\n\nUPDATE AVAILABLE: A new version has been released. You can obtain an updater from the OpenCollar group.";
+//    string sPrompt = "\nOpenCollar\t\t"+g_sCollarVersion;
+    string sPrompt = "\nKBar Collar Version: "+g_sKBarVersion + ", " + (string) llGetFreeMemory() + " bytes free";
+//    sPrompt += "\n\n[secondlife:///app/group/45d71cc1-17fc-8ee4-8799-7164ee264811/about Join the official OpenCollar group to become part of our community.]";
+    sPrompt += "\nBased on OpenCollar but modified for KBar Ranch; for assistance, wire roan at the KBar";
     //Debug("max memory used: "+(string)llGetSPMaxMemory());
     list lStaticButtons=["Apps"];
     if (g_iAnimsMenu) lStaticButtons+="Animations";
@@ -267,7 +326,10 @@ UserCommand(integer iNum, string sStr, key kID, integer fromMenu) {
         }
     } else if (sStr == "info") {
         string sMessage = "\n\nModel: "+llGetObjectName();
-        sMessage += "\nOpenCollar Version: "+g_sCollarVersion+g_sDevStage+" ("+(string)g_fBuildVersion+")";
+// KBar Mod
+//        sMessage += "\nOpenCollar Version: "+g_sCollarVersion+g_sDevStage+" ("+(string)g_fBuildVersion+")";
+        sMessage += "\nKBar Collar Version: "+g_sKBarVersion;
+// End KBar Mod
         sMessage += "\nUser: "+llGetUsername(g_kWearer);
         sMessage += "\nPrefix: %PREFIX%\nChannel: %CHANNEL%\nSafeword: "+g_sSafeWord;
         llMessageLinked(LINK_SET,NOTIFY,"1"+sMessage,kID);
@@ -337,20 +399,50 @@ UserCommand(integer iNum, string sStr, key kID, integer fromMenu) {
         llMessageLinked(LINK_SET,NOTIFY, "0News is deprecated in this version", kID);
         if (fromMenu) HelpMenu(kID, iNum);
     } else if (sCmd == "update") {
-        if (kID == g_kWearer) {
-            g_iWillingUpdaters = 0;
-            g_kCurrentUser = kID;
-            g_iUpdateAuth = iNum;
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"Searching for nearby updater",kID);
-            g_iUpdateHandle = llListen(g_iUpdateChan, "", "", "");
-            g_iUpdateFromMenu=fromMenu;
-            llWhisper(g_iUpdateChan, "UPDATE|" + g_sCollarVersion);
-            g_iWaitUpdate = TRUE;
-            llSetTimerEvent(5.0); //set a timer to wait for responses from updaters
+// KBar Mod
+        if (kID == g_kWearer || iNum == CMD_OWNER) {
+            if (g_sKBarTarget!="") {
+                g_iWillingUpdaters = 0;
+                g_kCurrentUser = kID;
+                g_iUpdateAuth = iNum;
+                llMessageLinked(LINK_SET,NOTIFY,"0"+"Searching for nearby updater",kID);
+                g_iUpdateHandle = llListen(g_iUpdateChan, "", "", "");
+                g_iUpdateFromMenu=fromMenu;
+/*
+    Challenge the updater with the KBar collar version approved for this individual
+*/
+                llWhisper(g_iUpdateChan, "UPDATE|" + g_sKBarTarget);
+                g_iWaitUpdate = TRUE;
+                llSetTimerEvent(5.0); //set a timer to wait for responses from updaters
+            } else {
+                llMessageLinked(LINK_SET,NOTIFY,"0"+"No update level authorized",kID);
+                if (fromMenu) HelpMenu(kID, iNum);
+            }
         } else {
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"Only the wearer can update the %DEVICETYPE%.",kID);
+            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to update the %DEVICETYPE%.",kID);
             if (fromMenu) HelpMenu(kID, iNum);
         }
+    } else if (sCmd == "authorize") {
+        if (iNum == CMD_OWNER){
+            AuthorizeMenu(kID, iNum);
+        } else llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to authorize update",kID);
+    } else if (sCmd == "pullorb") {
+        if (iNum == CMD_OWNER){
+            llWhisper(g_iUpdateChan, "ORB|" + g_sKBarTarget);
+        } else llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to authorize update",kID);
+    } else if (sCmd == "status") {
+        if (iNum == CMD_OWNER) {
+            string sTemp = "";
+            integer iLen = llGetListLength(KB_SCRIPT_STATUS);
+            if (iLen == 0) sTemp = "\nNone Reported";
+            integer iIdx = 0;
+            for (iIdx = 0; iIdx < iLen; iIdx += 2) {
+                sTemp += "\n" + llList2String(KB_SCRIPT_STATUS, iIdx);
+                sTemp += " - " + llList2String(KB_SCRIPT_STATUS, iIdx + 1);
+            }
+            llMessageLinked(LINK_SET,NOTIFY,"0"+"Scripts Status:"+sTemp,kID);
+        } else llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to script status",kID);
+// End KBar Mod
     } else if (!llSubStringIndex(sStr,".- ... -.-")) {
         if (kID == g_kWearer) {
             list lTemp = llParseString2List(sStr,["|"],[]);
@@ -362,7 +454,8 @@ UserCommand(integer iNum, string sStr, key kID, integer fromMenu) {
             }
         }
     } else if (sCmd == "version") {
-        string sVersion = "\n\nOpenCollar Version: "+g_sCollarVersion+g_sDevStage+" ("+(string)g_fBuildVersion+")";
+//        string sVersion = "\n\nOpenCollar Version: "+g_sCollarVersion+g_sDevStage+" ("+(string)g_fBuildVersion+")";
+        string sVersion = "\nKBar Collar Version: "+g_sKBarVersion;
         if(!g_iLatestVersion) sVersion+="\nUPDATE AVAILABLE: A new version is available! You can find it in the OpenCollar group notices, or at any partner location. See the [https://opencollar.cc OpenCollar] Website for more information!\n";
         llMessageLinked(LINK_SET,NOTIFY,"0"+sVersion,kID);
     }/* else if (sCmd == "objectversion") {
@@ -516,7 +609,13 @@ RebuildMenu(integer iRemenu, key kLastUser, integer iLastAuth) {
 }
 
 init (){
-    github_version_request = llHTTPRequest(g_sWeb+"~version", [HTTP_METHOD, "GET", HTTP_VERBOSE_THROTTLE, FALSE], "");
+// KBar Mod -------------------------------------------------------------------------------------
+//    g_sKBarVersion=g_sCollarVersion+g_sDevStage;
+    if(llGetInventoryType(".name") == INVENTORY_NOTECARD) {
+        g_kVersionReader = llGetNotecardLine(".name", 0);
+    }
+//    github_version_request = llHTTPRequest(g_sWeb+"~version", [HTTP_METHOD, "GET", HTTP_VERBOSE_THROTTLE, FALSE], "");
+// End KBar Mod ---------------------------------------------------------------------------------
     g_iWaitRebuild = TRUE;
     PermsCheck();
     llSetTimerEvent(1.0);
@@ -612,6 +711,11 @@ default {
                     else if (sMessage == LICENSE) UserCommand(iAuth,"license",kAv, TRUE);
                     else if (sMessage == CONTACT) UserCommand(iAuth,"contact",kAv, TRUE);
                     else if (sMessage == "Update") UserCommand(iAuth,"update",kAv,TRUE);
+// KBar Mod
+                    else if (sMessage == "PullOrb") UserCommand(iAuth,"pullorb",kAv,TRUE);
+                    else if (sMessage == "Authorize") UserCommand(iAuth,"authorize",kAv,TRUE);
+                    else if (sMessage == "Status") UserCommand(iAuth,"status",kAv,TRUE);
+// End of KBar Mod
                 } else if (sMenu == "UpdateConfirmMenu"){
                     if (sMessage=="Yes") StartUpdate();
                     else {
@@ -642,6 +746,14 @@ default {
                         return;
                     }
                     SettingsMenu(kAv,iAuth);
+// KBar Mod
+                } else if(sMenu == "AuthorizeMenu") {
+                    if(sMessage != " ")
+                        g_sKBarTarget=sMessage;
+                    else
+                        g_sKBarTarget="";
+                    HelpMenu(kAv, iAuth);
+// End KBar Mod
                 }
             }
         } else if (iNum >= CMD_OWNER && iNum <= CMD_EVERYONE) UserCommand(iNum, sStr, kID, FALSE); 
@@ -664,6 +776,8 @@ default {
                 if (sValue=="default") g_sUnlockSound=g_sDefaultUnlockSound;
                 else if ((key)sValue!=NULL_KEY || llGetInventoryType(sValue)==INVENTORY_SOUND) g_sUnlockSound=sValue;
             } else if (sToken == g_sGlobalToken+"safeword") g_sSafeWord = sValue;
+           else if (llToLower(sToken) == g_sGlobalToken+"allowedversion") g_sKBarTarget = sValue;
+
             else if (sToken == "intern_dist") g_sOtherDist = sValue;
             else if (sStr == "settings=sent") {
             } else if(sToken == "capture_isActive"){
@@ -701,13 +815,14 @@ default {
     on_rez(integer iParam) {
         g_iHide=!(integer)llGetAlpha(ALL_SIDES) ; //check alpha
         llSleep(7.0);
-        llMessageLinked(LINK_SET, REBOOT, "reboot", ""); // not all scripts reboot properly on relog
+        init();
     }
 
     changed(integer iChange) {
         if ((iChange & CHANGED_INVENTORY) && !llGetStartParameter()) {
             g_iWaitRebuild = TRUE;
             PermsCheck();
+
             llSetTimerEvent(1.0);
             /*if(llGetInventoryType(".settings") == INVENTORY_NOTECARD){
                 if(llGetInventoryKey(".settings") != g_kExistingSettings){
@@ -745,6 +860,17 @@ default {
                 llMessageLinked(LINK_SET, LM_SETTING_RELAY_CONTENT, sData, (string)g_iSettingsReader);
                 g_kSettingsReader=llGetNotecardLine(".settings", g_iSettingsReader);
             }
+        	if (kID==g_kVersionReader) {
+            	g_sKBarVersion="xxxx";
+// TestCollar - Updater 7.2g&AppInstall
+            	if (sData != EOF) {
+                    integer i = llSubStringIndex(sData,"Updater ");
+                    integer j = llSubStringIndex(sData,"&");
+                    if (i >= 0)
+                        if (j < 0) g_sKBarVersion = llStringTrim(llGetSubString(sData,i+8,-1),STRING_TRIM);
+                        else g_sKBarVersion = llStringTrim(llGetSubString(sData,i+8,j-1),STRING_TRIM);
+                }
+            }
         }
     }
 
@@ -764,9 +890,9 @@ default {
         if (status == 200) { // be silent on failures.
             if (id == g_kWebLookup){
                 llMessageLinked(LINK_SET,NOTIFY,"0"+body,g_kCurrentUser);
-            } else if (id == github_version_request) {  // strip the newline off the end of the text
-                if (compareVersions(llStringTrim(body, STRING_TRIM),g_sCollarVersion)) g_iLatestVersion=FALSE;
-                else g_iLatestVersion=TRUE;
+//            } else if (id == github_version_request) {  // strip the newline off the end of the text
+//                if (compareVersions(llStringTrim(body, STRING_TRIM),g_sCollarVersion)) g_iLatestVersion=FALSE;
+//                else g_iLatestVersion=TRUE;
             } 
         }
     }

@@ -136,8 +136,8 @@ AuthMenu(key kAv, integer iAuth) {
         llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS% while capture is active",kAv);
         return;
     }
-    string sPrompt = "\n[Access & Authorization]";
-    list lButtons = ["+ Owner", "+ Trust", "+ Block", "− Owner", "− Trust", "− Block"];
+    string sPrompt = "\n[Access & Authorization], " + (string) llGetFreeMemory() + " bytes free";
+    list lButtons = ["+ Trust", "+ Block", "− Trust", "− Block"];
 
     lButtons += Checkbox(bool((g_kGroup!="")), "Group");
     lButtons += Checkbox(g_iOpenAccess, "Public");
@@ -148,8 +148,8 @@ AuthMenu(key kAv, integer iAuth) {
 
 RemPersonMenu(key kID, string sToken, integer iAuth) {
     list lPeople;
-    if (sToken=="owner") lPeople=g_lOwner;
-    else if (sToken=="tempowner") lPeople=g_lTempOwner;
+//    if (sToken=="owner") lPeople=g_lOwner;
+    if (sToken=="tempowner") lPeople=g_lTempOwner;
     else if (sToken=="trust") lPeople=g_lTrust;
     else if (sToken=="block") lPeople=g_lBlock;
     else return;
@@ -174,8 +174,8 @@ RemovePerson(string sPersonID, string sToken, key kCmdr, integer iPromoted) {
     list lPeople;
     
 
-    if (sToken=="owner") lPeople=g_lOwner;
-    else if (sToken=="tempowner") lPeople=g_lTempOwner;
+//    if (sToken=="owner") lPeople=g_lOwner;
+    if (sToken=="tempowner") lPeople=g_lTempOwner;
     else if (sToken=="trust") lPeople=g_lTrust;
     else if (sToken=="block") lPeople=g_lBlock;
     else return;
@@ -235,11 +235,11 @@ RemovePerson(string sPersonID, string sToken, key kCmdr, integer iPromoted) {
             llMessageLinked(LINK_SET, LM_SETTING_DELETE, g_sSettingToken + sToken, "");
         llMessageLinked(LINK_SET, LM_SETTING_RESPONSE, g_sSettingToken + sToken + "=" + llDumpList2String(lPeople, ","), "");
         //store temp list*/
-        if (sToken=="owner") {
-            g_lOwner = lPeople;
-            if (llGetListLength(g_lOwner)) SayOwners();
-        }
-        else if (sToken=="tempowner") g_lTempOwner = lPeople;
+//        if (sToken=="owner") {
+//            g_lOwner = lPeople;
+//            if (llGetListLength(g_lOwner)) SayOwners();
+//        }
+        if (sToken=="tempowner") g_lTempOwner = lPeople;
         else if (sToken=="trust") g_lTrust = lPeople;
         else if (sToken=="block") g_lBlock = lPeople;
     } else
@@ -267,9 +267,10 @@ AddUniquePerson(string sPersonID, string sToken, key kID) {
             );
             return;
         }
-        if (sToken=="owner") {
-            lPeople=g_lOwner;
-        } else if (sToken=="trust") {
+//        if (sToken=="owner") {
+//            lPeople=g_lOwner;
+//        } else if (sToken=="trust") {
+        if (sToken=="trust") {
             lPeople=g_lTrust;
             if (~llListFindList(g_lOwner,[sPersonID])) {
                 llMessageLinked(LINK_SET,NOTIFY,"0"+"\n\nOops!\n\n"+NameURI(sPersonID)+" is already Owner! You should really trust them.\n",kID);
@@ -301,15 +302,17 @@ AddUniquePerson(string sPersonID, string sToken, key kID) {
             return;
         }
         if (sPersonID != g_sWearerID) llMessageLinked(LINK_SET,NOTIFY,"0"+"Building relationship...",g_sWearerID);
-        if (sToken == "owner") {
-            if (~llListFindList(g_lTrust,[sPersonID])) RemovePerson(sPersonID, "trust", kID, TRUE);
-            if (~llListFindList(g_lBlock,[sPersonID])) RemovePerson(sPersonID, "block", kID, TRUE);
-            llPlaySound(g_sDrop,1.0);
-        } else if (sToken == "trust") {
+//        if (sToken == "owner") {
+//            if (~llListFindList(g_lTrust,[sPersonID])) RemovePerson(sPersonID, "trust", kID, TRUE);
+//            if (~llListFindList(g_lBlock,[sPersonID])) RemovePerson(sPersonID, "block", kID, TRUE);
+//            llPlaySound(g_sDrop,1.0);
+//        } else if (sToken == "trust") {
+        if (sToken == "trust") {
             if (~llListFindList(g_lBlock,[sPersonID])) RemovePerson(sPersonID, "block", kID, TRUE);
             if (sPersonID != g_sWearerID) llMessageLinked(LINK_SET,NOTIFY,"0"+"Looks like "+NameURI(sPersonID)+" is someone you can trust!",g_sWearerID);
             llPlaySound(g_sDrop,1.0);
         }
+/*
         if (sToken == "owner") {
             if (sPersonID == g_sWearerID) {
                 if (kID == g_sWearerID)
@@ -319,6 +322,7 @@ AddUniquePerson(string sPersonID, string sToken, key kID) {
             } else
                 llMessageLinked(LINK_SET,NOTIFY,"0"+"\n\n%WEARERNAME% belongs to you now.\n\nSee [https://github.com/OpenCollarTeam/OpenCollar/wiki/Access here] what that means!\n",sPersonID);
         }
+*/
         if (sToken == "trust"){
             if(sPersonID == g_sWearerID){
                 if(kID == g_sWearerID)
@@ -330,16 +334,19 @@ AddUniquePerson(string sPersonID, string sToken, key kID) {
         }
         llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sSettingToken + sToken + "=" + llDumpList2String(lPeople, ","), "");
         llMessageLinked(LINK_SET, LM_SETTING_RESPONSE, g_sSettingToken + sToken + "=" + llDumpList2String(lPeople, ","), "");
+/*
         if (sToken=="owner") {
             g_lOwner = lPeople;
             if (llGetListLength(g_lOwner)>1 || sPersonID != g_sWearerID) SayOwners();
         }
         else if (sToken=="trust") g_lTrust = lPeople;
+*/
+        if (sToken=="trust") g_lTrust = lPeople;
         else if (sToken=="tempowner") g_lTempOwner = lPeople;
         else if (sToken=="block") g_lBlock = lPeople;
     }
 }
-
+/*
 SayOwners() {  // Give a "you are owned by" message, nicely formatted.
     integer iCount = llGetListLength(g_lOwner);
     if (iCount) {
@@ -374,7 +381,7 @@ SayOwners() {  // Give a "you are owned by" message, nicely formatted.
  //       Debug("Lists Loaded!");
     }
 }
-
+*/
 integer in_range(key kID) {
     if (g_iLimitRange) {
         if (llVecDist(llGetPos(), llList2Vector(llGetObjectDetails(kID, [OBJECT_POS]), 0)) > 20) //if the distance between my position and their position  > 20
@@ -489,7 +496,8 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
     } else if (sCommand == "owner" && iRemenu==FALSE) { //request for access menu from chat
         AuthMenu(kID, iNum);
     } else if (sCommand == "add") { //add a person to a list
-        if (!~llListFindList(["owner","trust","block"],[sAction])) return; //not a valid command
+//        if (!~llListFindList(["owner","trust","block"],[sAction])) return; //not a valid command
+        if (!~llListFindList(["trust","block"],[sAction])) return; //not a valid command
         string sTmpID = llList2String(lParams,2); //get full name
         if (iNum!=CMD_OWNER) {
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to adding new person",kID);
@@ -506,7 +514,8 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
                 Dialog(kID, "\nChoose who to add to the "+sAction+" list:\n",[sTmpID],[">Wearer<",UPMENU],0,iNum,"AddAvi"+sAction, TRUE);
         }
     } else if (sCommand == "remove" || sCommand == "rm") { //remove person from a list
-        if (!~llListFindList(["owner","trust","block"],[sAction])) return; //not a valid command
+//        if (!~llListFindList(["owner","trust","block"],[sAction])) return; //not a valid command
+        if (!~llListFindList(["trust","block"],[sAction])) return; //not a valid command
         string sTmpID = llList2String(lParams,2); //get full name
         //llSay(0, "lParams 2: "+llList2String(lParams,2)+"; lParams 3: "+llList2String(lParams,3));
         if (iNum != CMD_OWNER) {
@@ -717,11 +726,11 @@ default {
                 else if (sToken == "norun") g_iRunawayDisable = (integer)sValue;
                 else if (sToken == "trust") g_lTrust = llParseString2List(sValue, [","], [""]);
                 else if (sToken == "block") g_lBlock = llParseString2List(sValue, [","], [""]);
-            } else if (llToLower(sStr) == "settings=sent") {
-                if (llGetListLength(g_lOwner) && g_iFirstRun) {
-                    SayOwners();
-                    g_iFirstRun = FALSE;
-                }
+//            } else if (llToLower(sStr) == "settings=sent") {
+//                if (llGetListLength(g_lOwner) && g_iFirstRun) {
+//                    SayOwners();
+//                    g_iFirstRun = FALSE;
+//                }
             } else if(llGetSubString(sToken,0,i)=="capture_"){
                 if(llGetSubString(sToken,i+1,-1)=="status"){
                     integer Flag = (integer)sValue;
@@ -767,10 +776,10 @@ default {
                         llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
                     else {
                         list lTranslation=[
-                            "+ Owner","add owner",
+//                            "+ Owner","add owner",
                             "+ Trust","add trust",
                             "+ Block","add block",
-                            "− Owner","rm owner",
+//                            "− Owner","rm owner",
                             "− Trust","rm trust",
                             "− Block","rm block",
                             Checkbox(FALSE,"Group"),"group on",
@@ -786,7 +795,8 @@ default {
                         //Debug("Sending UserCommand "+sMessage);
                         UserCommand(iAuth, sMessage, kAv, TRUE);
                     }
-                } else if (sMenu == "removeowner" || sMenu == "removetrust" || sMenu == "removeblock" ) {
+//                } else if (sMenu == "removeowner" || sMenu == "removetrust" || sMenu == "removeblock" ) {
+                } else if (sMenu == "removetrust" || sMenu == "removeblock" ) {
                     string sCmd = "rm "+llGetSubString(sMenu,6,-1)+" ";
                     if (sMessage == UPMENU)
                         AuthMenu(kAv, iAuth);
