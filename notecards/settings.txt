@@ -1,6 +1,13 @@
-GLOBAL=checkboxes~+,-~locked~0~DeviceName~Test Slave Collar~channel~1,TRUE
+GLOBAL=checkboxes~+,-~locked~0~DeviceName~Test Slave Collar~channel~1,TRUE~slavename~Test Name~kbartitle~Test Title
 INTERN=news~0
-AUTH=norun~1
+AUTH=norun~1~owner~55881677-d943-4b9d-90ef-fef3ea58962c
+TITLER=show~1~offset~8~plain~1~color~<1.00000, 1.00000, 1.00000>~title~Title XYX
+
+#GLOBAL=checkboxes~+,-~DeviceName~Test Slave Collar 75a~channel~1,TRUE~slavename~Test #Name~kbartitle~Test Title
+#INTERN=news~0
+#AUTH=norun~1
+
+
 #x-global_locked = (integer)sValue;
 #x-global_checkboxes g_lCheckboxes = llCSV2List(sValue);
 #x-intern_news g_iNews = (integer)sValue;
@@ -8,3 +15,12 @@ AUTH=norun~1
 #x-auth_norun = 
 
 # leash mod is "unleash self" - deferred
+# auth
+# bookmarks
+# sys
+# titler
+
+# AUTH=norun~1
+# GLOBAL=checkboxes~+,-~DeviceName~Test Slave Collar 75a~channel~1,TRUE~slavename~Test 
+# Name~kbartitle~Test Title
+# TITLER=show~1~offset~8~plain~1~color~<1.00000, 1.00000, 1.00000>~title~Title XYX

@@ -1,3 +1,6 @@
+
+//K-Bar Version 20191220 1015 synced with 7.4 beta 5
+
 // This file is part of OpenCollar.
 // Copyright (c) 2011 - 2016 Nandana Singh, Satomi Ahn, DrakeSystem,    
 // Wendy Starfall, littlemousy, Romka Swallowtail, Garvin Twine et al.   
@@ -23,12 +26,19 @@
 
 
 key g_kNameID;
-integer g_initChannel = -7483213;
+// KBar Mod -------------------------------------------------------------------------------------
+integer g_initChannelOld = -7483213;
+integer g_initChannel = -7483312;
+// End KBar Mod ---------------------------------------------------------------------------------
 integer g_iLegacyChannel = -7483214;
 //integer g_initChannel = -7483220; channel for AO SIX
 //integer g_initChannel = -7483210; channel for Remote HUD SIX
 integer g_iSecureChannel;
 string g_sBuildVersion;
+// KBar Mod --------------------------------------------------
+string g_sKBarVersion;
+string g_sRequestedVersion;
+// End of KBar Mod -------------------------------------------
 
 
 // store the script pin here when we get it from the collar.
@@ -178,6 +188,57 @@ PermsCheck() {
         }
 }
 
+// KBar mod ---------------------------------------------------------------                    
+
+HandleUpdateMessage(integer iChannel, string sName, key kID, string sMsg) {
+    if (iChannel == g_initChannelOld)
+        llOwnerSay("oc_installer_sys: collar requesting update on old init channel");
+    else if (iChannel == g_initChannel)
+        llOwnerSay("oc_installer_sys: collar requesting update on new init channel");
+        
+    // everything heard on the init channel is stuff that has to
+    // comply with the existing update kickoff protocol.  New stuff
+    // will be heard on the random secure channel instead.    
+    list lParts = llParseString2List(sMsg, ["|"], []);
+    string sCmd = llList2String(lParts, 0);
+    string sParam = llList2String(lParts, 1);
+    if (sCmd == "UPDATE") { // someone just clicked the upgrade button on their collar.
+    // KBar mod ---------------------------------------------------------------
+        if (iChannel == g_initChannel) {
+            g_sRequestedVersion = sParam;
+            if (g_sKBarVersion == g_sRequestedVersion) {
+                if (g_iDone) {
+                    g_iDone = FALSE;
+                    //llSetTimerEvent(30.0);
+                }
+                HandleUpdateExecute(iChannel);
+            } else {
+                llOwnerSay("you requested version " + g_sRequestedVersion + "; this updater is version " + g_sKBarVersion);
+            }
+        } else {
+            llOwnerSay("proceeding with update using old protocol and converting collar");
+            HandleUpdateExecute(iChannel);
+        }
+    } else if (sCmd == "ready") { // person clicked "Yes I want to update" on the collar menu.
+                                  // the script pin will be in the param
+        g_iPin = (integer)sParam;
+        g_kCollarKey = kID;
+        g_iSecureChannel = (integer)llFrand(-2000000000) - 1;
+        llListen(g_iSecureChannel, "", g_kCollarKey, "");
+        llRemoteLoadScriptPin(g_kCollarKey, g_sShim, g_iPin, TRUE, g_iSecureChannel);
+    }
+}
+
+HandleUpdateExecute(integer iChannel) {
+    if (g_iDone) {
+        g_iDone = FALSE;
+        //llSetTimerEvent(30.0);
+    }
+    llPlaySound("d023339f-9a9d-75cf-4232-93957c6f620c",1.0);
+    llWhisper(iChannel,"-.. ---|"+g_sBuildVersion); //tell collar we are here and to send the pin
+}
+// End of KBar mod ---------------------------------------------------------
+
 default {
     state_entry() {
        // llPreloadSound("6b4092ce-5e5a-ff2e-42e0-3d4c1a069b2f");
@@ -190,6 +251,7 @@ default {
         g_sObjectName = llGetObjectName();
         llListen(g_initChannel, "", "", "");
         llListen(g_iLegacyChannel, "", "", "");
+        llListen(g_initChannelOld, "", "", "");
         // set all scripts except self to not running
         // also build list of all bundles
         integer i = llGetInventoryNumber(INVENTORY_ALL);
@@ -215,6 +277,8 @@ default {
             g_kInfoID = llGetNotecardLine(g_sInfoCard,0);
     }
 
+// KBar Mod --------------------------------------------------
+/*
     touch_start(integer iNumber) {
         if (llDetectedKey(0) != llGetOwner()) return;
         if (g_iDone) {
@@ -223,6 +287,8 @@ default {
         }
         InitiateInstallation();
     }
+*/
+// End of KBar Mod -------------------------------------------
 
     listen(integer iChannel, string sName, key kID, string sMsg) {
 
@@ -238,31 +304,12 @@ default {
                 llGiveInventory(kID, "leashpoint");
                 llRemoteLoadScriptPin(kID, "oc_transform_shim", iPin, TRUE, 1);
             }
-                    
+// KBar mod ---------------------------------------------------------------                    
+        } else if (iChannel == g_initChannelOld) {
+            HandleUpdateMessage(iChannel, sName, kID, sMsg);
         } else if (iChannel == g_initChannel) {
-            // everything heard on the init channel is stuff that has to
-            // comply with the existing update kickoff protocol.  New stuff
-            // will be heard on the random secure channel instead.
-            list lParts = llParseString2List(sMsg, ["|"], []);
-            string sCmd = llList2String(lParts, 0);
-            string sParam = llList2String(lParts, 1);
-            if (sCmd == "UPDATE") {
-                // someone just clicked the upgrade button on their collar.
-                if (g_iDone) {
-                    g_iDone = FALSE;
-                    //llSetTimerEvent(30.0);
-                }
-                llPlaySound("d023339f-9a9d-75cf-4232-93957c6f620c",1.0);
-                llWhisper(g_initChannel,"-.. ---|"+g_sBuildVersion); //tell collar we are here and to send the pin
-            } else if (sCmd == "ready") {
-                // person clicked "Yes I want to update" on the collar menu.
-                // the script pin will be in the param
-                g_iPin = (integer)sParam;
-                g_kCollarKey = kID;
-                g_iSecureChannel = (integer)llFrand(-2000000000) - 1;
-                llListen(g_iSecureChannel, "", g_kCollarKey, "");
-                llRemoteLoadScriptPin(g_kCollarKey, g_sShim, g_iPin, TRUE, g_iSecureChannel);
-            }
+            HandleUpdateMessage(iChannel, sName, kID, sMsg);
+// End of KBar mod ---------------------------------------------------------
         } else if (iChannel == g_iSecureChannel) {
             if (sMsg == "reallyready") {
                 Particles(kID);
@@ -284,14 +331,19 @@ default {
                 string sMyName = llList2String(llParseString2List(llGetObjectName(), [" - "], []), 1);
                 llRegionSayTo(g_kCollarKey, g_iSecureChannel, "DONE|" + sMyName);
                 llSetText("DONE!\n \n████████100%████████", <0,1,0>, 1.0);
-                llSetTimerEvent(0);
-                llParticleSystem([]);
-                llSensorRemove();
+		llSetTimerEvent(0);
+		llParticleSystem([]);
+		llSensorRemove();
+
                 g_iDone = TRUE;
                 llMessageLinked(LINK_SET,INSTALLATION_DONE,"","");
+// KBar mod ---------------------------------------------------------------
+/*
                 llSleep(1);
                 llLoadURL(llGetOwner(),"\nVisit our website for manual pages and release notes!\n",g_sInfoURL);
                 Say(g_sInfoText);
+*/
+// End of KBar mod --------------------------------------------------------
                 llSetTimerEvent(15.0);
             }
         }
@@ -309,8 +361,9 @@ default {
     }
     no_sensor()
     {
-        Particles(g_kParticleTarget);
+	Particles(g_kParticleTarget);
     }
+
     changed(integer iChange) {
     // Resetting on inventory change ensures that the bundle list is
     // kept current, and that the .name card is re-read if it changes.
@@ -319,14 +372,17 @@ default {
 
     dataserver(key kID, string sData) {
         if (kID == g_kNameID) {
-            // make sure that object name matches this card.
+            // make sure that object name matches this card. - "OpenCollar - Updater n.mx&AppInstall"; n.mx e.g.: 7.1a
             integer index = llSubStringIndex(sData,"&");
             g_sBuildVersion = llStringTrim(llGetSubString(sData,index+1,-1),STRING_TRIM);
             if ((float)g_sBuildVersion == 0.0 && g_sBuildVersion != "AppInstall") {
-                llOwnerSay("Invalid .name notecard, please fix!");
+                llOwnerSay("Invalid .name notecard, build version is " + g_sBuildVersion + ", please fix!");
                 return;
             }
             sData = llStringTrim(llGetSubString(sData,0, index-1),STRING_TRIM);
+            integer i = llSubStringIndex(sData,"Updater ");
+            if (i < 0) { g_sKBarVersion="xxxx"; llOwnerSay("Invalid .name notecard, KBar version is " + g_sKBarVersion + ", please fix!"); return; }
+            g_sKBarVersion = llStringTrim(llGetSubString(sData,i+8,-1),STRING_TRIM);
             list lNameParts = llParseString2List(sData, [" - "], []);
             g_sObjectName = sData;
             llSetObjectName(sData);
@@ -345,3 +401,5 @@ default {
 
     }
 }
+
+// oc_installer_sys

@@ -1,4 +1,7 @@
 /*
+
+K-Bar Version 7.5a
+
 This file is a part of OpenCollar.
 Copyright 2020
 
@@ -16,7 +19,7 @@ https://github.com/OpenCollarTeam/OpenCollar
 
 string g_sParentMenu = "Apps";
 string g_sSubMenu = "Titler";
-string g_sVersion = "7.4"; // leave unmodified if not changed at all after release, otherwise change to next version number
+string g_sVersion = "7.5a"; // leave unmodified if not changed at all after release, otherwise change to next version number
 
 DebugOutput(key kID, list ITEMS){
     integer i=0;
@@ -420,6 +423,10 @@ default
                     llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_show="+(string)g_iShow, "");
                 } else if(llList2String(lSettings,1) == "plain"){
                     g_iNoB64 = TRUE;
+// KBar Mod
+//                llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
+// KBar Mod end
+
                     llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
                 }
                 Titler();

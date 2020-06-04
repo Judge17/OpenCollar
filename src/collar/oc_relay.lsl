@@ -1,17 +1,13 @@
 /*
 This file is a part of OpenCollar.
 Copyright ©2020
-
 : Contributors :
-
 Aria (Tashia Redrose)
     *May 2020       -       Created new Integrated relay
     
 et al.
-
 Licensed under the GPLv2. See LICENSE for full details.
 https://github.com/OpenCollarTeam/OpenCollar
-
 */
 
 string g_sParentMenu = "RLV";

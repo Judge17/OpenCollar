@@ -1,9 +1,12 @@
+
+//K-Bar Version 7.5a
+
 // This file is part of OpenCollar.
 // Copyright (c) 2008 - 2017 Nandana Singh, Garvin Twine, Cleo Collins,  
 // Satomi Ahn, Master Starship, Sei Lisa, Joy Stipe, Wendy Starfall,    
 // Medea Destiny, littlemousy, Romka Swallowtail, Sumi Perl et al.     
 // Licensed under the GPLv2. See LICENSE for full details. 
-string g_sScriptVersion = "7.4";
+string g_sScriptVersion = "7.5a";
 integer LINK_CMD_DEBUG=1999;
 DebugOutput(key kID, list ITEMS){
     integer i=0;

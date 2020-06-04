@@ -35,6 +35,18 @@ integer g_iListener;
 float g_iItemCounter;
 float g_iTotalItems;
 
+key         KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
+
+DebugOutput(key kID, list ITEMS){
+    integer i=0;
+    integer end=llGetListLength(ITEMS);
+    string final;
+    for(i=0;i<end;i++){
+        final+=llList2String(ITEMS,i)+" ";
+    }
+    llRegionSayTo(kID, 0, llGetScriptName() +final);
+
+}
 
 StatusBar(float fCount) {
     fCount = 100*(fCount/g_iTotalItems);
@@ -129,6 +141,9 @@ default
             string sType = llList2String(lParts, 0);
             string sItemName = llList2String(lParts, 1);
             string sCmd = llList2String(lParts, 2);
+
+            DebugOutput(KURT_KEY, lParts);
+
             if (sCmd == "SKIP" || sCmd == "OK") {
                 // move on to the next item by reading the next notecard line
                 g_iLine++;
@@ -156,3 +171,4 @@ default
         if (iChange & CHANGED_INVENTORY) llResetScript();
     }
 }
+// KBar Version oc_installer_bundles
