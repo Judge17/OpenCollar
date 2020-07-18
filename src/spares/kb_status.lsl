@@ -28,15 +28,15 @@ string g_sParentMenu = "Apps";
 string g_sSubMenu = "KBStatus";
 integer g_iRunawayDisable=0;
 integer g_iSWActive = 1;
-/*
-integer g_iKBarOptions=0;
-integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
-integer g_iLockStatus=1; // disallow status changes
+
+//integer g_iKBarOptions=0;
+//integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
+//integer g_iLockStatus=1; // disallow status changes
 integer g_iLogLevel = 0; // minimal logging
-integer g_iLeashedRank = 0;
-key     g_kLeashedTo   = NULL_KEY;
+//integer g_iLeashedRank = 0;
+//key     g_kLeashedTo   = NULL_KEY;
 //string  g_sWearerName;
-*/
+
 string  g_sSlaveMessage = "";
 /*
 integer KB_KBSYNC_KICKSTART        = -34717;
@@ -138,7 +138,7 @@ Dialog(string sID, string sPrompt, list lChoices, list lUtilityButtons, integer 
         g_lMenuIDs += [sID, kMenuID, sName];
     }
 }
-
+/*
 SetKBarOptions(integer iNew, integer iSave) {
     if (g_iKBarOptions == iNew) return;
     g_iKBarOptions = iNew;
@@ -148,7 +148,7 @@ SetKBarOptions(integer iNew, integer iSave) {
         if (iSave) DeleteAndResend(g_sGlobalToken + "kbar");
     }
 }
-
+*/
 SetSWActive(integer iNew, integer iSave) {
     if (g_iSWActive == iNew) return;
     g_iSWActive = iNew;
@@ -158,21 +158,21 @@ SetSWActive(integer iNew, integer iSave) {
         if (iSave) DeleteAndResend(g_sGlobalToken + "swactive");
     }
 }
-
+/*
 SetGirlStatus(integer iNew, integer iSave) {
     if ((iNew != 0) && (iNew != 1) && (iNew != 2)) return;
     if (g_iGirlStatus == iNew) return;
     g_iGirlStatus = iNew;
     if (iSave) SaveAndResend(g_sGlobalToken + "kbarstat", (string) g_iGirlStatus);
 }
-
+*/
 SetLogLevel(integer iNew, integer iSave) {
     if ((iNew < 0) || (iNew > 9)) return;
     if (g_iLogLevel == iNew) return;
     g_iLogLevel = iNew;
     if (iSave) SaveAndResend(g_sGlobalToken + "loglevel", (string) g_iLogLevel);
 }
-
+/*
 SetLockStatus(integer iNew, integer iSave) {
     if ((iNew != 0) && (iNew != 1)) return;
     if (g_iLockStatus == iNew) return;
@@ -194,7 +194,7 @@ SendLockMessages(string sValue) {
         }
     }
 }
-
+*/
 string TranslateButtons(string sInput) {
     list lTranslation=[
         "KBar ☑", "kbar on",
@@ -224,14 +224,15 @@ HandleSettings(string sStr) {
     integer i = llSubStringIndex(sToken, "_");
     if (llToLower(llGetSubString(sToken, 0, i)) == llToLower(g_sGlobalToken)) { // if "major_" = "global_"
         sToken = llGetSubString(sToken, i + 1, -1);
-        if (sToken == "kbar") SetKBarOptions((integer) sValue, FALSE);
-        else if (sToken == "slavemsg") g_sSlaveMessage = sValue;
-        else if (sToken == "kbarstat") SetGirlStatus((integer) sValue, FALSE);
+//        if (sToken == "kbar") SetKBarOptions((integer) sValue, FALSE);
+        if (sToken == "slavemsg") g_sSlaveMessage = sValue;
+//        else if (sToken == "kbarstat") SetGirlStatus((integer) sValue, FALSE);
         else if (sToken == "loglevel") SetLogLevel((integer) sValue, FALSE);
         else if (sToken == "swactive") SetSWActive((integer) sValue, FALSE);
-        else if (sToken == "kbarstatlock") {
-            SetLockStatus((integer) sValue, FALSE);
-        } else if(sToken == "checkboxes"){
+//        else if (sToken == "kbarstatlock") {
+//            SetLockStatus((integer) sValue, FALSE);
+//        }
+        else if(sToken == "checkboxes"){
             g_lCheckboxes = llCSV2List(sValue);
         }
     } else if(llGetSubString(sToken,0,i)=="capture_") { // if "major_" = "capture_"
@@ -240,18 +241,18 @@ HandleSettings(string sStr) {
         }
     } else if(llGetSubString(sToken,0,i)=="kbstatus_") { // if "major_" = "kbstatus_"
         if(llGetSubString(sToken,i+1,-1)=="settings") { // if "minor" == "settings"
-            if (llToLower(sValue) == "sent") {
-                SendLockMessages(sValue);
-            }
+//            if (llToLower(sValue) == "sent") {
+//                SendLockMessages(sValue);
+//            }
         }
-    } else if(llGetSubString(sToken,0,i)=="leash_") {
-        if(llGetSubString(sToken,i+1,-1)=="leashedto") {
-            list lLeashed = llParseString2List(sValue, [","], []);
-            if (llList2Integer(lLeashed, 2) > 0) {
-                g_kLeashedTo = llList2Key(lLeashed, 0); 
-                g_iLeashedRank = llList2Integer(lLeashed, 1);
-            }
-        }
+//    } else if(llGetSubString(sToken,0,i)=="leash_") {
+//        if(llGetSubString(sToken,i+1,-1)=="leashedto") {
+//            list lLeashed = llParseString2List(sValue, [","], []);
+//            if (llList2Integer(lLeashed, 2) > 0) {
+//                g_kLeashedTo = llList2Key(lLeashed, 0); 
+//                g_iLeashedRank = llList2Integer(lLeashed, 1);
+//            }
+//        }
     }
 }
 
@@ -292,9 +293,9 @@ StatMenu(key kAv, integer iAuth) {
     string sPrompt = "\n[KBar Status " + KB_VERSION + KB_DEVSTAGE + "]; " + (string) llGetFreeMemory() + " bytes free";
     if (g_iSWActive) sPrompt += "\nSafeword enabled"; else sPrompt += "\nSafeword disabled";
 
-    list lButtons = ["KickStart"];
-    if ((kAv == KURT_KEY) || (kAv == SILKIE_KEY)) lButtons += ["Diagnose", "LogLevel"];
-    
+    list lButtons = []; // ["KickStart"];
+    if (iAuth == CMD_OWNER) lButtons += ["Diagnose", "LogLevel"];
+/*    
     if (!g_iKBarOptions && (kAv == (key) g_sWearerID)) lButtons += ["KBar ☑"];    //set KBar Options
 
     if (g_iKBarOptions && (kAv == KURT_KEY)) lButtons += ["KBar ☐"];    //unset KBar Options
@@ -307,9 +308,11 @@ StatMenu(key kAv, integer iAuth) {
             else if (g_iGirlStatus == 2) lButtons += ["guest", "protect"];
         }
     }
-    if (kAv == KURT_KEY) {
-        if (g_iSWActive) lButtons += ["Safeword ☐"];    //disable safeword
-        else lButtons += ["Safeword ☑"];    //enable safeword
+*/
+    if (iAuth == CMD_OWNER) {
+        lButtons += [Checkbox(g_iSWActive, "Safeword")];
+//        if (g_iSWActive) lButtons += ["Safeword ☐"];    //disable safeword
+//        else lButtons += ["Safeword ☑"];    //enable safeword
     }
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat",FALSE);
 }
@@ -318,7 +321,7 @@ HandleMenus(string sStr, key kID) {
     integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
     if (~iMenuIndex) {
         list lMenuParams = llParseString2List(sStr, ["|"], []);
-        key kAv = (key)llList2String(lMenuParams, 0);
+        key kAv = (key)llList2String(lMenuParams, 0)
             string sMessage = llList2String(lMenuParams, 1);
             // integer iPage = (integer)llList2String(lMenuParams, 2);
             integer iAuth = (integer)llList2String(lMenuParams, 3);
@@ -333,16 +336,16 @@ HandleMenus(string sStr, key kID) {
                     string sCmd = TranslateButtons(sMessage);
                     UserCommand(iAuth, sCmd, kAv, TRUE);
                 }
-            } else if (sMenu == "Confirm") {
-                if (sMessage == "Confirm") {
-                    SetLockStatus(FALSE, TRUE);
-                    llMessageLinked(LINK_SET,NOTIFY,"1"+"The Judge can change your status.",kAv);
-                    StatMenu(kAv, iAuth);
-                } else {
-                    SetLockStatus(TRUE, TRUE);
-                    llMessageLinked(LINK_SET,NOTIFY,"1"+"Your status may not be changed.",kID);
-                    StatMenu(kAv, iAuth);
-                }
+//            } else if (sMenu == "Confirm") {
+//                if (sMessage == "Confirm") {
+//                    SetLockStatus(FALSE, TRUE);
+//                    llMessageLinked(LINK_SET,NOTIFY,"1"+"The Judge can change your status.",kAv);
+//                    StatMenu(kAv, iAuth);
+//                } else {
+//                    SetLockStatus(TRUE, TRUE);
+//                    llMessageLinked(LINK_SET,NOTIFY,"1"+"Your status may not be changed.",kID);
+//                    StatMenu(kAv, iAuth);
+//                }
             } else if (sMenu == "LogLevel") {
                 SetLogLevel((integer) sMessage, TRUE);
                 llMessageLinked(LINK_SET,NOTIFY,"1"+"Log level is now " + (string) g_iLogLevel + ".",kID);
@@ -363,6 +366,7 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
             return;
         }
         StatMenu(kID, iNum);
+/*
     } else if (sCommand == "kbar") {
         if ((kID==KURT_KEY && sAction == "off") || (kID==g_sWearerID && sAction == "on")) {
             if (sAction == "on") {
@@ -374,7 +378,7 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
                 llMessageLinked(LINK_SET,NOTIFY,"1"+"The %DEVICETYPE% is not using K-Bar options.",kID);
             }
         } else llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to K-Bar options",kID);
-        if (iRemenu) StatMenu(kID, iNum);;
+        if (iRemenu) StatMenu(kID, iNum);
     } else if (sCommand == "kbarstat") {
         if (kID==KURT_KEY && g_iKBarOptions && ~g_iLockStatus) {
             SetGirlStatus((integer) sAction, TRUE);
@@ -393,12 +397,13 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
             }
         } else llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to change K-Bar status lock",kID);
         if (iRemenu) StatMenu(kID, iNum);
-    } else if (sCommand == "kickstart") {
-        if (kID == (key) g_sWearerID)
-            llMessageLinked(LINK_SET,KB_KBSYNC_KICKSTART,"",kID);
-        else
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to kickstart K-Bar functions",kID);
-        if (iRemenu) StatMenu(kID, iNum);
+*/
+//    } else if (sCommand == "kickstart") {
+//        if (kID == (key) g_sWearerID)
+//            llMessageLinked(LINK_SET,KB_KBSYNC_KICKSTART,"",kID);
+//        else
+//            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to kickstart K-Bar functions",kID);
+//        if (iRemenu) StatMenu(kID, iNum);
     } else if (sCommand == "safeword") {
         if (kID == KURT_KEY) {
            if (sAction == "on") {
