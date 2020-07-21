@@ -3,6 +3,8 @@
 // Copyright (c) 2019 lillith xue      
 // Licensed under the GPLv2.  See LICENSE for full details.
 
+//    llRegionSay(API_CHANNEL, llList2Json(JSON_OBJECT, ["addon_name", "OpenCollar", "iNum", iNum, "sMsg", sStr, "kID", kID]));
+
 integer g_iChan_ocCmd;                      // OpenCollar CMD Channel
 integer g_iChan_ocCmd_Offset = 0xCC0CC;     // OpenCollar CMD Channel Offset
 
@@ -582,6 +584,7 @@ default
     }
     
     listen(integer iChan, string sName, key kID, string sMsg) {
+        llOwnerSay("oc_Attachment listen received " + (string) iChan + "; " + sName + "; " + (string) kID + "; " + sMsg + ";.");
         if (iChan == g_iChan_Lockguard) {
             list lLGCmd = llParseString2List(llToLower(sMsg), [" "],[]);
             if (llList2String(lLGCmd,0) == "lockguard") {
