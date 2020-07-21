@@ -3,16 +3,15 @@
 
 string g_sScriptVersion = "7.5a";
 
-DebugOutput(key kID, list ITEMS){
-    if (g_iDebugOn) {
-        integer i=0;
-        integer end=llGetListLength(ITEMS);
-        string final;
-        for(i=0;i<end;i++){
-            final+=llList2String(ITEMS,i)+" ";
-        }
-        llInstantMessage(kID, llGetScriptName() +final);
+DebugOutput(list ITEMS){
+    integer i=0;
+    integer end=llGetListLength(ITEMS);
+    string final;
+    for(i=0;i<end;i++){
+        final+=llList2String(ITEMS,i)+" ";
     }
+//	llInstantMessage(kID, llGetScriptName() +final);
+    llOwnerSay(llGetScriptName() + " " + final);
 }
 integer g_iDebugOn = FALSE;
 
@@ -28,6 +27,7 @@ string g_sParentMenu = "Apps";
 string g_sSubMenu = "KBStatus";
 integer g_iRunawayDisable=0;
 integer g_iSWActive = 1;
+integer KB_HAIL_CHANNEL			   	= -317783;
 
 //integer g_iKBarOptions=0;
 //integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
@@ -106,10 +106,7 @@ integer g_iCaptureIsActive=FALSE; // If this flag is set, then auth will deny ac
 
 list g_lMenuIDs;
 integer g_iMenuStride = 3;
-//key g_kConfirmOwnSelfOffDialogID;
-//integer g_iGrantRemoval;
-//key REQUEST_KEY;
-//integer g_iFirstRun;
+integer g_iListenHandle = 0;
 
 string g_sSettingToken = "auth_";
 string g_sGlobalToken = "global_";
@@ -220,7 +217,7 @@ HandleSettings(string sStr) {
     //Debug("Got setting response: "+sStr);
     list lParams = llParseString2List(sStr, ["="], []); // now [0] = "major_minor" and [1] = "value"
     string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-    string sValue = llList2String(lParams, 1); // not sValue = "value"
+    string sValue = llList2String(lParams, 1); // now sValue = "value"
     integer i = llSubStringIndex(sToken, "_");
     if (llToLower(llGetSubString(sToken, 0, i)) == llToLower(g_sGlobalToken)) { // if "major_" = "global_"
         sToken = llGetSubString(sToken, i + 1, -1);
@@ -239,16 +236,17 @@ HandleSettings(string sStr) {
         if(llGetSubString(sToken,i+1,-1)=="isActive") {
             g_iCaptureIsActive=TRUE;
         }
-    } else if(llGetSubString(sToken,0,i)=="kbstatus_") { // if "major_" = "kbstatus_"
-        if(llGetSubString(sToken,i+1,-1)=="settings") { // if "minor" == "settings"
+//    } else if(llGetSubString(sToken,0,i)=="kbstatus_") { // if "major_" = "kbstatus_"
+//        if(llGetSubString(sToken,i+1,-1)=="settings") { // if "minor" == "settings"
 //            if (llToLower(sValue) == "sent") {
-//                SendLockMessages(sValue);
+//                if (g_iDebugOn) DebugOutput(["HandleSettings pinging", KB_HAIL_CHANNEL]);
+//                llRegionSay(KB_HAIL_CHANNEL, "ping");
 //            }
-        }
+//        }
 //    } else if(llGetSubString(sToken,0,i)=="leash_") {
 //        if(llGetSubString(sToken,i+1,-1)=="leashedto") {
 //            list lLeashed = llParseString2List(sValue, [","], []);
-//            if (llList2Integer(lLeashed, 2) > 0) {
+//            if (llList2Integer(lLeashed, 2) > 0) {å
 //                g_kLeashedTo = llList2Key(lLeashed, 0); 
 //                g_iLeashedRank = llList2Integer(lLeashed, 1);
 //            }
@@ -321,21 +319,21 @@ HandleMenus(string sStr, key kID) {
     integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
     if (~iMenuIndex) {
         list lMenuParams = llParseString2List(sStr, ["|"], []);
-        key kAv = (key)llList2String(lMenuParams, 0)
-            string sMessage = llList2String(lMenuParams, 1);
-            // integer iPage = (integer)llList2String(lMenuParams, 2);
-            integer iAuth = (integer)llList2String(lMenuParams, 3);
-            string sMenu=llList2String(g_lMenuIDs, iMenuIndex + 1);
-            g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-            //Debug(sMessage);
-            if (sMenu == "Stat") {
+        key kAv = (key)llList2String(lMenuParams, 0);
+        string sMessage = llList2String(lMenuParams, 1);
+        // integer iPage = (integer)llList2String(lMenuParams, 2);
+        integer iAuth = (integer)llList2String(lMenuParams, 3);
+        string sMenu=llList2String(g_lMenuIDs, iMenuIndex + 1);
+        g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
+        //Debug(sMessage);
+        if (sMenu == "Stat") {
 //llOwnerSay("link_message " + sMessage);
-                if (sMessage == UPMENU)
-                    llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
-                else {
-                    string sCmd = TranslateButtons(sMessage);
-                    UserCommand(iAuth, sCmd, kAv, TRUE);
-                }
+            if (sMessage == UPMENU)
+                llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
+            else {
+                string sCmd = TranslateButtons(sMessage);
+                UserCommand(iAuth, sCmd, kAv, TRUE);
+            }
 //            } else if (sMenu == "Confirm") {
 //                if (sMessage == "Confirm") {
 //                    SetLockStatus(FALSE, TRUE);
@@ -346,12 +344,12 @@ HandleMenus(string sStr, key kID) {
 //                    llMessageLinked(LINK_SET,NOTIFY,"1"+"Your status may not be changed.",kID);
 //                    StatMenu(kAv, iAuth);
 //                }
-            } else if (sMenu == "LogLevel") {
-                SetLogLevel((integer) sMessage, TRUE);
-                llMessageLinked(LINK_SET,NOTIFY,"1"+"Log level is now " + (string) g_iLogLevel + ".",kID);
-                StatMenu(kAv, iAuth);
-            }
-       }
+        } else if (sMenu == "LogLevel") {
+            SetLogLevel((integer) sMessage, TRUE);
+            llMessageLinked(LINK_SET,NOTIFY,"1"+"Log level is now " + (string) g_iLogLevel + ".",kID);
+            StatMenu(kAv, iAuth);
+        }
+    }
 }
 
 UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum: auth value, sStr: user command, kID: avatar id
@@ -445,12 +443,7 @@ default {
 
     state_entry() {
         if (llGetStartParameter()==825) llSetRemoteScriptAccessPin(0);
-//        else g_iFirstRun = TRUE;
-      /*  if (g_iProfiled){
-            llScriptProfiler(1);
-           // Debug("profiling restarted");
-        }*/
-        //llSetMemoryLimit(65536);
+        g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
         g_sWearerID = llGetOwner();
         llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
@@ -462,7 +455,12 @@ default {
         }
         else if (iNum >= CMD_OWNER && iNum <= CMD_EVERYONE) UserCommand(iNum, sStr, kID, FALSE);
         else if (iNum == LM_SETTING_RESPONSE) {
-            HandleSettings(sStr);
+            if (sStr == "settings=sent") {
+                if (g_iDebugOn) DebugOutput(["link_message pinging", KB_HAIL_CHANNEL]);
+                llRegionSay(KB_HAIL_CHANNEL, "ping");
+            } else {
+                HandleSettings(sStr);
+            }
         } else if( iNum == LM_SETTING_DELETE) {
             list lParams = llParseString2List(sStr, ["_"],[]);
             string sToken = llList2String(lParams,0);
@@ -470,30 +468,6 @@ default {
             if(sToken=="capture") {
                 if(sVariable=="isActive")g_iCaptureIsActive=FALSE;
             }
-            
-/*
-else if (iNum == LM_SETTING_DELETE) {
-    if ((sToken == "leashedto") || (sToken == "leash_leashedto")) {
-        g_kLeashedTo = NULL_KEY; 
-        g_iLeashedRank = 0; 
-        checkstatus();
-    }
-}
-else if (iNum == KB_NOTICE_LEASHED) {
-    list lLeashed = llParseString2List(sStr, [","], []);
-    g_kLeashedTo = llList2Key(lLeashed, 0); 
-    g_iLeashedRank = llList2Integer(lLeashed, 1); 
-    checkstatus();
-}
-else if (iNum == KB_NOTICE_UNLEASHED) {
-    g_kLeashedTo = NULL_KEY; 
-    g_iLeashedRank = 0; 
-    checkstatus();
-}
-*/            
-            
-            
-            
         } else if (iNum == DIALOG_RESPONSE) {
             HandleMenus(sStr, kID);
         } else if (iNum == DIALOG_TIMEOUT) {
@@ -518,6 +492,12 @@ else if (iNum == KB_NOTICE_UNLEASHED) {
 //               DebugOutput(kID, [" DISABLE RUNAWAY:", g_iRunawayDisable]);
 //               DebugOutput(kID, [" GROUP:", g_iGroupEnabled]);
         }
+    }
+
+    listen(integer iChannel, string sName, key kId, string sMessage) {
+        llOwnerSay("heard "+ sName + " " + (string) kId);
+        llOwnerSay((string) llGetOwnerKey(kId));
+        llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
     }
     
     changed(integer iChange) {

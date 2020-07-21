@@ -7,6 +7,9 @@
 
 
 // Central storage for settings of other plugins in the device.
+
+//    llRegionSay(API_CHANNEL, llList2Json(JSON_OBJECT, ["addon_name", "OpenCollar", "iNum", iNum, "sMsg", sStr, "kID", kID]));
+
 string g_sScriptVersion= "7.4";
 string g_sCard = ".settings";
 string g_sSplitLine; // to parse lines that were split due to lsl constraints
@@ -48,6 +51,8 @@ integer LM_SETTING_DELETE = 2003;
 integer LM_SETTING_EMPTY = 2004;
 integer LM_SETTING_RELAY_CONTENT = 2100;
 integer LM_SETTING_RELAY_LOAD = 2101; // used on 'Load' and on initial boot to read the .settings from root prim if applicable.
+integer LM_SETTING_REQUEST_EXTENSION = 2200;
+integer LM_SETTING_RESPONSE_EXTENSION = 2201;
 
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
@@ -484,6 +489,20 @@ default {
                 g_iCheckNews = FALSE;
                 llSetTimerEvent(2.0);
             } else llMessageLinked(LINK_SET, LM_SETTING_EMPTY, sStr, "");
+        }
+        else if (iNum == LM_SETTING_REQUEST_EXTENSION) {
+             //check the cache for the token
+            list lRequests = llCSV2List(sStr);
+            string sResponse = "";
+            integer iIndex = 0;
+            integer iLimit = llGetListLength(lRequests);
+            if (iIndex < iLimit) sResponse = llJsonSetValue(sResponse, ["source"], llList2String(lRequests, 0));
+            for (iIndex = 1; iIndex < iLimit; ++iIndex) {
+                if (SettingExists(llList2String(lRequests, iIndex))) {
+                    sResponse = llJsonSetValue(sResponse, [llList2String(lRequests, iIndex)], GetSetting(llList2String(lRequests, iIndex)));
+                }
+            }
+            llMessageLinked(LINK_SET, LM_SETTING_RESPONSE_EXTENSION, sResponse, "");
         }
         else if (iNum == LM_SETTING_DELETE){
             //llMessageLinked(LINK_SET, LM_SETTING_DELETE,sStr,"");
