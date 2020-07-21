@@ -426,8 +426,6 @@ default
 // KBar Mod
 //                llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
 // KBar Mod end
-
-                    llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
                 }
                 Titler();
             }

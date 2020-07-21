@@ -1,7 +1,8 @@
 GLOBAL=checkboxes~+,-~locked~0~DeviceName~Test Slave Collar~channel~1,TRUE~slavename~Test Name~kbartitle~Test Title
 INTERN=news~0
-AUTH=norun~1~owner~55881677-d943-4b9d-90ef-fef3ea58962c
+AUTH=norun~1~owner~XXXXX
 TITLER=show~1~offset~8~plain~1~color~<1.00000, 1.00000, 1.00000>~title~Title XYX
+RELAY=mode~2~wearer~0~helpless~1
 
 #GLOBAL=checkboxes~+,-~DeviceName~Test Slave Collar 75a~channel~1,TRUE~slavename~Test #Name~kbartitle~Test Title
 #INTERN=news~0
