@@ -4,7 +4,9 @@
 // Romka Swallowtail, lillith xue, Sumi Perl et al.  
 // Licensed under the GPLv2.  See LICENSE for full details. 
 
-string g_sScriptVersion="7.4";
+// KBar Version
+
+string g_sScriptVersion="7.5a";
 integer LINK_CMD_DEBUG=1999;
 DebugOutput(key kID, list ITEMS){
     integer i=0;
@@ -90,6 +92,18 @@ string g_sPOSE_ANIM = "turn_180";
 
 integer g_iTouchNotify = FALSE;  // for Touch Notify
 integer g_iHighlander = TRUE;
+/*
+---------------KBar Modification ----------------------------------------
+| 
+
+*/
+
+integer g_iSWActive = TRUE;
+
+/*
+---------------KBar Modification End-------------------------------------
+*/
+
 //integer g_iVerify;
 /*integer g_iProfiled;
 Debug(string sStr) {
@@ -400,13 +414,27 @@ default {
             // Allow for Firestorm style "(( SAFEWORD ))" by trimming.
             if (llGetSubString(sw, 0, 1) == "((" && llGetSubString(sw, -2, -1) == "))") sw = llStringTrim(llGetSubString(sw, 2, -3), STRING_TRIM);
             if (llSubStringIndex(llToLower(sw), llToLower(g_sPrefix))==0) sw = llGetSubString(sw, llStringLength(g_sPrefix), -1);
+.
+/*
+---------------KBar Modification ----------------------------------------
+| 
+
+*/
             if (sw == g_sSafeWord) {
-                llMessageLinked(LINK_SET, CMD_SAFEWORD, "", "");
-                llRegionSayTo(g_kWearer,g_iInterfaceChannel,"%53%41%46%45%57%4F%52%44");
-                llMessageLinked(LINK_SET,NOTIFY,"0"+"You used the safeword, your owners have been notified.",g_kWearer);
-                llMessageLinked(LINK_SET,NOTIFY_OWNERS,"\n\n%WEARERNAME% had to use the safeword. Please check on %WEARERNAME%'s well-being in case further care is required.\n","");
-                return;
+                if (g_iSWActive) {
+                    llMessageLinked(LINK_SET, CMD_SAFEWORD, "", "");
+                    llRegionSayTo(g_kWearer,g_iInterfaceChannel,"%53%41%46%45%57%4F%52%44");
+                    llMessageLinked(LINK_SET,NOTIFY,"0"+"You used the safeword, your owners have been notified.",g_kWearer);
+                    llMessageLinked(LINK_SET,NOTIFY_OWNERS,"\n\n%WEARERNAME% had to use the safeword. Please check on %WEARERNAME%'s well-being in case further care is required.\n","");
+                    return;
+                } else {
+                    llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to safeword",kID);
+                }
             }
+/*
+---------------KBar Modification End-------------------------------------
+*/
+
         }
         //added for attachment auth (garvin)
         if (iChan == g_iInterfaceChannel) {
@@ -456,6 +484,18 @@ default {
                     g_sWearerName = "["+NameURI(g_kWearer)+" " + sValue + "]";
             } else if (sToken == "intern_Highlander") g_iHighlander = (integer)sValue;
             else if (sToken == g_sGlobalToken+"safeword") g_sSafeWord = sValue;
+/*
+---------------KBar Modification ----------------------------------------
+| 
+
+*/
+
+            else if (sToken == g_sGlobalToken+"swactive") g_iSWActive = (integer) sValue;
+
+/*
+---------------KBar Modification End-------------------------------------
+*/
+
             else if (sToken == g_sGlobalToken+"channel") {
                 g_iPrivateListenChan = (integer)sValue;
                 if (llGetSubString(sValue, llStringLength(sValue) - 5 , -1) == "FALSE") g_iPublicListenChan = FALSE;
@@ -539,3 +579,4 @@ state inUpdate{
         if(iNum == REBOOT)llResetScript();
     }
 }
+// KBar oc_com
