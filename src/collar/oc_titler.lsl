@@ -413,7 +413,7 @@ default
                 } else if(llList2String(lSettings,1) == "on"){
                     // this was definitely a upgrade. Re-request!
                     g_iWasUpgraded=TRUE;
-                    llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
+//                    llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
                     
                     llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_auth", "");
                     llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_on", "");

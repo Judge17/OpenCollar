@@ -1,5 +1,5 @@
 
-//K-Bar Version 2019 0821 1030
+//K-Bar Version 2020 0722 1330
 
 string g_sDevStage = "a";
 string 	g_sScriptVersion = "7.5";
@@ -11,7 +11,7 @@ string 	g_sSplitLine; // to parse lines that were split due to lsl constraints
 integer 	g_iLineNr = 0;
 key 	g_kLineID;
 string 	g_sTargetName = "";
-integer 	g_bDebugOn = TRUE;
+integer 	g_bDebugOn = FALSE;
 
 string g_sVersion = "";
 string g_sDelimiter = "\\";
@@ -150,7 +150,7 @@ SendValues() {
 	string sEndFlag = "kbhostaction=done";
 	g_sMsgPackage = "kbhostline=" + (string) iLineCount;
 	for (iDx = 0; iDx < iLimit; iDx += 2) {
-		string sWork = llList2String(g_lMsgPackage, iDx) + "=" + llList2String(g_lMsgPackage, iDx);
+		string sWork = llList2String(g_lMsgPackage, iDx) + "=" + llList2String(g_lMsgPackage, iDx+1);
 		integer iCalcLength = llStringLength(g_sMsgPackage) + llStringLength("%%") + llStringLength(sWork);
 		iCalcLength += llStringLength("%%");
 		iCalcLength += llStringLength(sEndFlag);

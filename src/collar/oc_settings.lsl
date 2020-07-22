@@ -353,12 +353,17 @@ SearchIndicators(){
     
 }
 Indicator(integer iMode){
-    if(INDICATOR_THIS==-1)return;
-    if(iMode){
-        llSetLinkPrimitiveParamsFast(INDICATOR_THIS,[PRIM_FULLBRIGHT,ALL_SIDES,TRUE,PRIM_BUMP_SHINY,ALL_SIDES,PRIM_SHINY_NONE,PRIM_BUMP_NONE,PRIM_GLOW,ALL_SIDES,0.4]);
-        llSetTimerEvent(1);
-    }else
-        llSetLinkPrimitiveParamsFast(INDICATOR_THIS,[PRIM_FULLBRIGHT,ALL_SIDES,FALSE,PRIM_BUMP_SHINY,ALL_SIDES,PRIM_SHINY_HIGH,PRIM_BUMP_NONE,PRIM_GLOW,ALL_SIDES,0.0]);
+//
+//    KBar Mod
+//    if(INDICATOR_THIS==-1)return;
+//    if(iMode){
+//        llSetLinkPrimitiveParamsFast(INDICATOR_THIS,[PRIM_FULLBRIGHT,ALL_SIDES,TRUE,PRIM_BUMP_SHINY,ALL_SIDES,PRIM_SHINY_NONE,PRIM_BUMP_NONE,PRIM_GLOW,ALL_SIDES,0.4]);
+//        llSetTimerEvent(1);
+//    }else
+//        llSetLinkPrimitiveParamsFast(INDICATOR_THIS,[PRIM_FULLBRIGHT,ALL_SIDES,FALSE,PRIM_BUMP_SHINY,ALL_SIDES,PRIM_SHINY_HIGH,PRIM_BUMP_NONE,PRIM_GLOW,ALL_SIDES,0.0]);
+//
+//    End of KBar Mod
+//
 }
 
 default {
@@ -411,7 +416,7 @@ default {
             llSetTimerEvent(10.0);
             //llSleep(0.5); // brief wait for others to reset
             //llMessageLinked(LINK_SET,LINK_UPDATE,"LINK_SET","");
-            SendValues();
+//            SendValues();
         } else llResetScript();
     }
 
@@ -423,7 +428,7 @@ default {
             } else {
                 g_iLineNr = 0;
                 LoadSetting(sData,g_iLineNr);
-                llSetTimerEvent(1.0);
+//                llSetTimerEvent(1.0);
                 SendValues();
             }
         }

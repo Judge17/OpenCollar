@@ -28,6 +28,8 @@ string g_sSubMenu = "KBStatus";
 integer g_iRunawayDisable=0;
 integer g_iSWActive = 1;
 integer KB_HAIL_CHANNEL			   	= -317783;
+integer g_bPrepareToSend = FALSE;
+list g_lSettings = [];
 
 //integer g_iKBarOptions=0;
 //integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
@@ -456,8 +458,9 @@ default {
         else if (iNum >= CMD_OWNER && iNum <= CMD_EVERYONE) UserCommand(iNum, sStr, kID, FALSE);
         else if (iNum == LM_SETTING_RESPONSE) {
             if (sStr == "settings=sent") {
-                if (g_iDebugOn) DebugOutput(["link_message pinging", KB_HAIL_CHANNEL]);
-                llRegionSay(KB_HAIL_CHANNEL, "ping");
+                g_bPrepareToSend = TRUE;
+                llSetTimerEvent(0.0);
+                llSetTimerEvent(5.0);
             } else {
                 HandleSettings(sStr);
             }
@@ -495,9 +498,24 @@ default {
     }
 
     listen(integer iChannel, string sName, key kId, string sMessage) {
-        llOwnerSay("heard "+ sName + " " + (string) kId);
-        llOwnerSay((string) llGetOwnerKey(kId));
-        llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
+        DebugOutput(["listen heard", sName, (string) kId, sMessage]);
+//        llOwnerSay("heard "+ sName + " " + (string) kId);
+//        llOwnerSay((string) llGetOwnerKey(kId));
+//        llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
+        list lSettings = llParseString2List(sMessage, ["%%"], [""]);
+        DebugOutput(lSettings);
+        g_lSettings += lSettings;
+        while (llGetListLength(g_lSettings) > 0) {
+            string sCurrent = llList2String(g_lSettings, 0);
+            list lCurrent = llParseString2List(sCurrent, ["="], [""]);
+            if (llList2String(lCurrent, 0) == "kbhostline") g_lSettings = llDeleteSubList(g_lSettings, 0, 0);
+            else if (llList2String(lCurrent, 0) == "kbhostaction") g_lSettings = llDeleteSubList(g_lSettings, 0, 0);
+            else { 
+                llMessageLinked(LINK_SET, LM_SETTING_RESPONSE, sCurrent, "");
+                DebugOutput(["sent", LINK_SET, LM_SETTING_RESPONSE, sCurrent]);
+                g_lSettings = llDeleteSubList(g_lSettings, 0, 0);
+            }
+        }
     }
     
     changed(integer iChange) {
@@ -510,6 +528,12 @@ default {
             }
         }
 */
+    }
+    timer() {
+        llSetTimerEvent(0.0);
+        g_bPrepareToSend = FALSE;
+        if (g_iDebugOn) DebugOutput(["link_message pinging", KB_HAIL_CHANNEL]);
+        llRegionSay(KB_HAIL_CHANNEL, "ping");        
     }
 }
 
