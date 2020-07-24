@@ -343,6 +343,13 @@ DeleteAndResend(string sToken) {
     llMessageLinked(LINK_SET, LM_SETTING_DELETE, sToken,"");
 }
 
+//
+//    FindMajorMinor (major_minor being searched)
+//
+//    Step through the settings sent by kb_settings_host to see if the input major_minor pair is there
+//        If it is, return its index; if it's not, return -1
+//
+
 integer FindMajorMinor(string sInput) {
     integer iHostIdx = 0;
     integer iHostLen = llGetListLength(g_lHostSettings);
@@ -448,7 +455,7 @@ default {
             list lParams = llParseString2List(sWork, ["="], []); // now [0] = "major_minor" and [1] = "value"
             string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
             string sValue = llList2String(lParams, 1); // now sValue = "value"
-            integer iHostPtr = FindMajorMinor(sToken);  // see if this major_minor entry already exists
+            integer iHostPtr = FindMajorMinor(sToken);  // see if this collar major_minor entry already exists in the host set
             if (iHostPtr > 0) {  // if it does, see if its value is different
                 string sCandidate = llList2String(g_lHostSettings, iHostPtr); // extract the host setting string
                 lParams = llParseString2List(sCandidate, ["="], []); // split it into candidate pieces
@@ -464,6 +471,20 @@ default {
                 lOutputSettings += [sWork]; // if there's no matching entry, just move the entry to the output list
             }
             ++iCollarIdx;
+        }
+        
+        integer iHostIdx = 0;
+        integer iHostLen = llGetListLength(g_lHostSettings);
+        while (iHostIdx < iHostLen) {
+            string sHostSetting = llList2String(g_lHostSettings, iHostIdx);
+            list lParams = llParseString2List(sHostSetting, ["="], []); // now [0] = "major_minor" and [1] = "value"
+            string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
+            if (sToken != "kbhostline" && sToken != "kbhostaction") {
+                integer iExists = llListFindList(lOutputSettings, [sHostSetting]);
+                if (g_bDebugOn) DebugOutput(["final check", sHostSetting, iExists]);
+                if (iExists < 0) lOutputSettings += [sHostSetting];
+            }
+            ++iHostIdx;
         }
 
         if (g_bDebugOn) DebugOutput(["settings ready for output"]);
