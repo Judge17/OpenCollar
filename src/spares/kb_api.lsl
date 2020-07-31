@@ -12,21 +12,8 @@ et al.
 Licensed under the GPLv2. See LICENSE for full details.
 https://github.com/OpenCollarTeam/OpenCollar
 */
-/*
-list g_lOwner;
-list g_lTrust;
-list g_lBlock;
+string g_sVersionId = "20200720 2300";
 
-integer g_iMode;
-string g_sSafeword;
-integer g_iSafewordDisable=FALSE;
-integer ACTION_ADD = 1;
-integer ACTION_REM = 2;
-integer ACTION_SCANNER = 4;
-integer ACTION_OWNER = 8;
-integer ACTION_TRUST = 16;
-integer ACTION_BLOCK = 32;
-*/
 integer API_CHANNEL = 0x60b97b5e;
 
 //integer    g_bAuthModsAreLive = FALSE;
@@ -156,14 +143,21 @@ HandleSettings(string sStr) {
 			list lLeashed = llParseString2List(sValue, [","], []);
 			if (g_bDebugOn) DebugOutput(lLeashed);
 			if (llGetListLength(lLeashed) > 2) {
-				g_kLeashedTo = llList2Key(lLeashed, 0); 
-				g_iLeashedRank = llList2Integer(lLeashed, 1);
-				g_iLeashedTime = llGetUnixTime();
-				AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashed", 
+				if (g_kLeashedTo == NULL_KEY) {
+					g_kLeashedTo = llList2Key(lLeashed, 0); 
+					g_iLeashedRank = llList2Integer(lLeashed, 1);
+					g_iLeashedTime = llGetUnixTime();
+					AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashed", 
 						"addon_name", "OpenCollar", 
 						"leashedto", g_kLeashedTo, 
 						"leashedrank", g_iLeashedRank, 
-						"leashedtime", g_iLeashedTime]));
+						"leashedtime", g_iLeashedTime,
+						"victim", g_kWearer]));
+				}
+//	[19:38:22] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731103} 
+//	[19:38:32] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731113} 
+//	[19:38:42] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731123} 
+//	[19:38:45] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731126} 
 			}
 		}
 	} else if (sTokenMajor == "addons") {
@@ -193,7 +187,7 @@ HandleDeletes(string sStr) {
 			g_kLeashedTo = NULL_KEY; 
 			g_iLeashedRank = 0;
 			AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed", 
-					"addon_name", "OpenCollar"]));
+					"addon_name", "OpenCollar", "victim", g_kWearer]));
 		}
 	}
 }
@@ -257,7 +251,7 @@ AddOnMessage(string sMessage) {
 	// Max of 50 LMs to send out in a 30 second period, after that ignore
 		if(llGetListLength(g_lAddons)>0) {
 			llRegionSay(API_CHANNEL, sMessage);
-			if (g_bDebugOn) DebugOutput(["AddOnMessage", sMessage]);
+			if (g_bDebugOn) DebugOutput(["AddOnMessage", sMessage, API_CHANNEL]);
 		}
 	}
 
@@ -271,7 +265,13 @@ default
 //        DoListeners();
 		// make the API Channel be per user
 		API_CHANNEL = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
+		if (g_bDebugOn) DebugOutput(["state_entry", "API_CHANNEL", API_CHANNEL]);
 		llListen(API_CHANNEL, "", "", "");
+		if (g_bDebugOn) { DebugOutput([g_sVersionId]); }
+	}
+	
+	on_rez(integer i) {
+		if (g_bDebugOn) { DebugOutput([g_sVersionId]); }		
 	}
 	
 	listen(integer c,string n,key i,string m){
@@ -286,6 +286,17 @@ default
 				// Add the addon and be done with
 //                g_lAddons += [i, llJsonGetValue(m,["addon_name"])];
 //            }
+// kb_api listen -446871756 Simulated Grabby Post 4dc18106-6d48-8ed5-3e39-7157bb1cc1a1 {"msgid":"leashinquiry","addon_name":"grabby","leashkey":"e55c511b-bcd7-4103-bc95-1ccef72ea021"} 
+				string sMsgid = llJsonGetValue(m,["msgid"]);
+				if (sMsgid == "leashinquiry") {
+					AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashed", 
+						"addon_name", "OpenCollar", 
+						"leashedto", g_kLeashedTo, 
+						"leashedrank", g_iLeashedRank, 
+						"leashedtime", g_iLeashedTime,
+						"victim", g_kWearer]));
+					return;
+				}
 				if (llListFindList(g_lAddons, [sAddon]) >= 0) {
 					integer iNum = (integer)llJsonGetValue(m,["iNum"]);
 					string sMsg = llJsonGetValue(m,["sMsg"]);
