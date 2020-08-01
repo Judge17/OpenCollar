@@ -1,7 +1,7 @@
 //TODO: random timer for unleash
 
 string g_sAddOnID = "grabby";
-string g_sVersionId = "20200731 2120";
+string g_sVersionId = "20200801 0900";
 
 integer g_iLMCounter = 0;
 integer g_iDebugCounter = 0;
@@ -57,6 +57,7 @@ integer MANAGEDSTRIDE = 4;
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
 integer CMD_OWNER = 500;
+integer CMD_TRUSTED = 501;
 
 key g_kLeashedTo = NULL_KEY;
 integer g_iLeashedRank = 0;
@@ -159,6 +160,34 @@ integer CheckVictimChannel(integer iInputChannel) {
 	return -1;
 }
 
+string xJSONstring(string JSONcluster, string sElement) {
+	string sWork = llJsonGetValue(JSONcluster, [sElement]);
+	if (sWork != JSON_INVALID && sWork != JSON_NULL) return sWork;
+	return "";
+}
+
+string xJSONkey(string JSONcluster, string sElement) {
+	string sWork = llJsonGetValue(JSONcluster, [sElement]);
+	if (g_bDebugOn) DebugOutput(["xJSONkey", JSONcluster, sElement, sWork]);
+	if (sWork != JSON_INVALID && sWork != JSON_NULL) return sWork;
+	return NULL_KEY;
+}
+
+integer xJSONint(string JSONcluster, string sElement) {
+	string sWork = llJsonGetValue(JSONcluster, [sElement]);
+	if (sWork != JSON_INVALID && sWork != JSON_NULL) return (integer) sWork;
+	return 0;
+}
+
+integer random_integer(integer min, integer max)
+{
+	return min + (integer)(llFrand(max - min + 1));
+}
+
+integer odds(integer iChance) {
+	if (random_integer(0, 100) > iChance) return FALSE;
+	return TRUE;
+}
 DecodeMessage(string sMsg) {
 /*
 AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashed", 
@@ -182,23 +211,44 @@ AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed",
 	integer iInt1 = 0;
 	integer iInt2 = 0;
 	if (sId == "leashed") {
-		string sWork = llJsonGetValue(sMsg, ["victim"]);
-		if (sWork != JSON_INVALID && sWork != JSON_NULL) kKey1 = sWork;
-		sWork = llJsonGetValue(sMsg, ["leashedto"]);
-		if (sWork != JSON_INVALID && sWork != JSON_NULL) kKey2 = sWork;
-		sWork = llJsonGetValue(sMsg, ["leashedrank"]);
-		if (sWork != JSON_INVALID && sWork != JSON_NULL) iInt1 = (integer) sWork;
-		sWork = llJsonGetValue(sMsg, ["leashedtime"]);
-		if (sWork != JSON_INVALID && sWork != JSON_NULL) iInt2 = (integer) sWork;
+//		string sWork = llJsonGetValue(sMsg, ["victim"]);
+//		if (sWork != JSON_INVALID && sWork != JSON_NULL) kKey1 = sWork;
+//		sWork = llJsonGetValue(sMsg, ["leashedto"]);
+//		if (sWork != JSON_INVALID && sWork != JSON_NULL) kKey2 = sWork;
+//		sWork = llJsonGetValue(sMsg, ["leashedrank"]);
+//		if (sWork != JSON_INVALID && sWork != JSON_NULL) iInt1 = (integer) sWork;
+//		sWork = llJsonGetValue(sMsg, ["leashedtime"]);
+//		if (sWork != JSON_INVALID && sWork != JSON_NULL) iInt2 = (integer) sWork;
+		kKey1 = xJSONkey(sMsg, "victim");
+		kKey2 = xJSONkey(sMsg, "leashedto");
+		iInt1 = xJSONint(sMsg, "leashedrank");
+		iInt2 = xJSONint(sMsg, "leashedtime");
 		integer iVictimIdx = llListFindList(g_lVictims, [kKey1]);
 		if (iVictimIdx >= 0 && kKey2 != g_kMyKey) {
-			g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx+6);
-			g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx+1);
+			g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6);
+			string sWork = llList2String(g_lVictims, iVictimIdx + 1);
+			if (sWork != "int") g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
 		}
 //		else g_lManaged = llListReplaceList(g_lManaged, [kKey1, kKey2, iInt1, iInt2], iManagedIdx, iManagedIdx+3);
 //		if (g_bDebugOn) DebugOutput(["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
 	} else if (sId == "unleashed") {
 		if (g_bDebugOn) DebugOutput(["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
+	} else if (sId == "notleashed") {
+		kKey1 = xJSONkey(sMsg, "victim");
+		iInt1 = llListFindList(g_lVictims, [kKey1]);
+		if (g_bDebugOn)	iInt2 = odds(110); else iInt2 = odds(50);
+		if (g_bDebugOn) DebugOutput(["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
+		if (iInt2) {
+			if (iInt1 >= 0) {
+				g_lVictims = llListReplaceList(g_lVictims, ["int"], iInt1 + 1, iInt1 + 1);
+				string sWork = "anchor " + (string) g_kMyKey;
+				AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "launch", 
+						"addon_name", g_sAddOnID,
+						"iNum", CMD_TRUSTED,
+						"sMsg", sWork,
+						"kID", g_kMyKey]));
+			}
+		}
 	}
 }
 
