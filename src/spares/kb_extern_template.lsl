@@ -1,7 +1,7 @@
 //TODO: random timer for unleash
 
 string g_sAddOnID = "grabby";
-string g_sVersionId = "20200801 0900";
+string g_sVersionId = "20200801 1830";
 
 integer g_iLMCounter = 0;
 integer g_iDebugCounter = 0;
@@ -12,6 +12,8 @@ key g_kMyKey = NULL_KEY;
 integer g_iLineNr = 0;
 key g_kLineID = NULL_KEY;
 list g_lTargets = [];
+
+key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
 
 //
 //	g_lTargets structure ( stride = 4):
@@ -246,7 +248,7 @@ AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed",
 						"addon_name", g_sAddOnID,
 						"iNum", CMD_TRUSTED,
 						"sMsg", sWork,
-						"kID", g_kMyKey]));
+						"kID", KURT_KEY]));
 			}
 		}
 	}

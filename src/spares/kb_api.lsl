@@ -12,7 +12,7 @@ et al.
 Licensed under the GPLv2. See LICENSE for full details.
 https://github.com/OpenCollarTeam/OpenCollar
 */
-string g_sVersionId = "20200731 1730";
+string g_sVersionId = "20200801 1830";
 
 integer API_CHANNEL = 0x60b97b5e;
 
@@ -71,15 +71,17 @@ integer g_iLeashedRank = 0;
 integer g_iLeashedTime = 0;
 
 DebugOutput(list ITEMS){
+	++g_iDebugCounter;
 	integer i=0;
 	integer end=llGetListLength(ITEMS);
 	string final;
 	for(i=0;i<end;i++){
 		final+=llList2String(ITEMS,i)+" ";
 	}
-	llOwnerSay(llGetScriptName() + " " + final);
+	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
 integer g_bDebugOn = TRUE;
+integer g_iDebugCounter = 0;
 /*
 key g_kTry;
 integer g_iCurrentAuth;
@@ -257,6 +259,25 @@ AddOnMessage(string sMessage) {
 
 }
 
+string xJSONstring(string JSONcluster, string sElement) {
+	string sWork = llJsonGetValue(JSONcluster, [sElement]);
+	if (sWork != JSON_INVALID && sWork != JSON_NULL) return sWork;
+	return "";
+}
+
+string xJSONkey(string JSONcluster, string sElement) {
+	string sWork = llJsonGetValue(JSONcluster, [sElement]);
+	if (g_bDebugOn) DebugOutput(["xJSONkey", JSONcluster, sElement, sWork]);
+	if (sWork != JSON_INVALID && sWork != JSON_NULL) return sWork;
+	return NULL_KEY;
+}
+
+integer xJSONint(string JSONcluster, string sElement) {
+	string sWork = llJsonGetValue(JSONcluster, [sElement]);
+	if (sWork != JSON_INVALID && sWork != JSON_NULL) return (integer) sWork;
+	return 0;
+}
+
 default
 {
 	state_entry(){
@@ -277,16 +298,8 @@ default
 	listen(integer c,string n,key i,string m){
 		if (g_bDebugOn) DebugOutput(["listen", c, n, i, m]);
 		if(c==API_CHANNEL) {
-			string sAddon = llJsonGetValue(m,["addon_name"]);
-			if (sAddon != JSON_INVALID && sAddon != JSON_NULL) {
-//            integer isAddonBridge = (integer)llJsonGetValue(m,["bridge"]);
-//            if(isAddonBridge && llGetOwnerKey(i) != g_kWearer)return; // flat out deny API access to bridges not owned by the wearer because they will not include a addon name, therefore can't be controlled
-			// begin to pass stuff to link messages!
-
-				// Add the addon and be done with
-//                g_lAddons += [i, llJsonGetValue(m,["addon_name"])];
-//            }
-// kb_api listen -446871756 Simulated Grabby Post 4dc18106-6d48-8ed5-3e39-7157bb1cc1a1 {"msgid":"leashinquiry","addon_name":"grabby","leashkey":"e55c511b-bcd7-4103-bc95-1ccef72ea021"} 
+			string sAddon = xJSONstring(m, "addon_name");
+			if (llListFindList(g_lAddons, [sAddon]) >= 0) {
 				string sMsgid = llJsonGetValue(m,["msgid"]);
 				if (sMsgid == "leashinquiry") {
 					if (g_kLeashedTo != NULL_KEY) {
@@ -303,14 +316,15 @@ default
 							"victim", g_kWearer]));
 						return;
 					}
-				}
-				if (llListFindList(g_lAddons, [sAddon]) >= 0) {
-					integer iNum = (integer)llJsonGetValue(m,["iNum"]);
-					string sMsg = llJsonGetValue(m,["sMsg"]);
-					key kID = llJsonGetValue(m,["kID"]);
+				} else if (sMsgid == "launch") {
+					integer iNum = xJSONint(m, "iNum");
+					string sMsg = xJSONstring(m, "sMsg");
+					key kID = xJSONkey(m,"kID");
+					if (g_bDebugOn) DebugOutput(["listen", "llMessageLinked", LINK_SET, iNum, sMsg, kID]);
+					llMessageLinked(LINK_SET, iNum, sMsg, kID);
 				}         
 			}
-		return;
+			return;
 		}
 /*
 		if(llToLower(llGetSubString(m,0,1))==g_sPrefix){
