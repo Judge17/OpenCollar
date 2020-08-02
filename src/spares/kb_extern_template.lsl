@@ -22,7 +22,7 @@ key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
 //		[2] - unique channel number
 //		[3] - listen handle
 //
-//	This list contains the keys specified in the input card, and information regarding their individual statuses
+//	This list contains the keys specified in the input card, and information regarding their individual statuses. These keys are the people to look for for potential interaction
 //
 integer TARGETSTRIDE = 4;
 
@@ -38,23 +38,9 @@ list g_lVictims = [];
 //		[5] - leashed to rank
 //		[6] - leashed to time
 //
-//	This list contains the keys from the input card that have been sensed in range, and information regarding their individual statuses
+//	This list contains the keys from the input card that have been sensed in range, and information regarding their individual statuses. Interaction is a stong possibility
 //
 integer VICTIMSTRIDE = 7;
-/*
-list g_lManaged = [];
-
-//
-//	g_lManaged structure ( stride = 4):
-//		[0] - key
-//		[1] - leashed to key
-//		[2] - leashed to rank
-//		[3] - leashed to time
-//
-//	This list contains the keys from the input card that have taken by the addon
-//
-integer MANAGEDSTRIDE = 4;
-*/
 
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
@@ -213,14 +199,13 @@ AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed",
 	integer iInt1 = 0;
 	integer iInt2 = 0;
 	if (sId == "leashed") {
-//		string sWork = llJsonGetValue(sMsg, ["victim"]);
-//		if (sWork != JSON_INVALID && sWork != JSON_NULL) kKey1 = sWork;
-//		sWork = llJsonGetValue(sMsg, ["leashedto"]);
-//		if (sWork != JSON_INVALID && sWork != JSON_NULL) kKey2 = sWork;
-//		sWork = llJsonGetValue(sMsg, ["leashedrank"]);
-//		if (sWork != JSON_INVALID && sWork != JSON_NULL) iInt1 = (integer) sWork;
-//		sWork = llJsonGetValue(sMsg, ["leashedtime"]);
-//		if (sWork != JSON_INVALID && sWork != JSON_NULL) iInt2 = (integer) sWork;
+//
+//	a "leashed" message gives details about a person's current leash status. possibilities: 
+//
+//
+//
+//
+//
 		kKey1 = xJSONkey(sMsg, "victim");
 		kKey2 = xJSONkey(sMsg, "leashedto");
 		iInt1 = xJSONint(sMsg, "leashedrank");
@@ -298,7 +283,11 @@ default
 	}
 //
 //	when the sensor fires:
-//		check each current victim; if any of them have moved out of range, remove them from the list
+//		check each current victim; if any of them have moved out of range,
+//			if their status was "int" (meaning leashed by this addon) ignore them, otherwise remove them from the list
+//			if they were leashed by this addon and are out of range, either they've logged off or been unleashed
+//			if logged off, leave them along, they'll be regrabbed when they log back in
+//			if unleashed, we'll get the unleash update and remove them there, but no penalty for removing them here first
 //		then check the people who were in range; when someone is found who is on the target list, copy that table entry to the victims list
 //		when all of the located people have been checked, then check the victims list
 //
@@ -316,10 +305,20 @@ default
 //
 		integer iVicLen = llGetListLength(g_lVictims);
 		integer iVicIdx = iVicLen - VICTIMSTRIDE;
-		while (iVicLen > 0) {
-			if (llListFindList(lPeople, [llList2Key(g_lVictims, iVicIdx)]) < 0) g_lVictims = llDeleteSubList(g_lVictims, iVicIdx, iVicIdx + VICTIMSTRIDE-1);
-			iVicLen -= VICTIMSTRIDE;
+		while (iVicIdx >= 0) {
+			if (llListFindList(lPeople, [llList2Key(g_lVictims, iVicIdx)]) < 0) {
+				string sStat = llList2String(g_lVictims, iVicIdx + 1);
+				if (sStat != "int") {
+					g_lVictims = llDeleteSubList(g_lVictims, iVicIdx, iVicIdx + VICTIMSTRIDE-1);					
+				}
+			}
+			iVicIdx -= VICTIMSTRIDE; } 
 		}
+//
+//	check each key sensor located against the target list; ignore people not there
+//	if a person is on the target list, check to see if she's already on the victim list
+//		if she isn't just add her
+//		if she is, check the status; if it's "int", leave it along
 //
 //
 //
@@ -328,13 +327,21 @@ default
 			if (g_bDebugOn) { list lTemp = ["sensor", "seeking", llDetectedKey(i), "Targets:"]; lTemp += g_lTargets; DebugOutput(lTemp); }
 			integer ji = llListFindList(g_lTargets, [llDetectedKey(i)]);
 			if (g_bDebugOn) { list lTemp = ["sensora", ji, llDetectedKey(i), "Targets:"]; lTemp += g_lTargets; DebugOutput(lTemp); }
-			if (ji >= 0) {
-				if (g_bDebugOn) { list lTemp = ["sensor1", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
-				g_lVictims += [llDetectedKey(i), "try"];  // replaces ji + 1
-				g_lVictims += [llList2Integer(g_lTargets, ji + 2)];
-				g_lVictims += [llList2Integer(g_lTargets, ji + 3)];
-				g_lVictims += [NULL_KEY, 0, 0];
-				if (g_bDebugOn) { list lTemp = ["sensor2", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+			if (ji >= 0) {  // ignore people not on the target list
+				integer ki = llListFindList(g_lVictims, [llDetectedKey(i)]);
+				if (ki >= 0) {
+					string sStat = llList2String(g_lVictims, ki + 1);
+					if (sStat != "int") {
+						g_lVictims = llListReplaceList(g_lVictims, ["try"], ki + 1, ki + 1);
+					}
+					if (g_bDebugOn) { list lTemp = ["sensor1", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+				} else {
+					g_lVictims += [llDetectedKey(i), "try"];  // replaces ji + 1
+					g_lVictims += [llList2Integer(g_lTargets, ji + 2)];
+					g_lVictims += [llList2Integer(g_lTargets, ji + 3)];
+					g_lVictims += [NULL_KEY, 0, 0];
+					if (g_bDebugOn) { list lTemp = ["sensor2", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+				}
 			}
 		}
 		if (g_bDebugOn)  { list lTemp = ["sensor3", "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
