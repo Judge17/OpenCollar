@@ -4,7 +4,7 @@
 // collar settings retains everything - need to merge in host settings and figure out how to send the difference
 // useful key: f03fba89-80e8-6d03-4071-109d85252c72
 
-string g_sScriptVersion = "7.5a";
+string g_sScriptVersion = "7.5b";
 
 DebugOutput(list ITEMS){
     integer i=0;
@@ -19,7 +19,7 @@ DebugOutput(list ITEMS){
 integer g_bDebugOn = FALSE;
 
 string  KB_VERSION = "7.5";
-string  KB_DEVSTAGE = "a";
+string  KB_DEVSTAGE = "b";
 
 string g_sWearerID;
 

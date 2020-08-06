@@ -51,7 +51,8 @@ key g_kLeashedTo = NULL_KEY;
 integer g_iLeashedRank = 0;
 integer g_iLeashedTime = 0;
 
-DebugOutput(list ITEMS){
+DebugOutput(integer iLevel, list ITEMS) {
+	if (g_iDebugLevel > iLevel) return;
 	++g_iDebugCounter;
 	integer i=0;
 	integer end=llGetListLength(ITEMS);
@@ -59,10 +60,13 @@ DebugOutput(list ITEMS){
 	for(i=0;i<end;i++){
 		final+=llList2String(ITEMS,i)+" ";
 	}
-	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+//	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
 
-integer g_bDebugOn = TRUE;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
+integer KB_DEBUG_CHANNEL		   = -617783;
 
 integer CalcChannel(key kIn) {
 	integer iChannel = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
@@ -74,7 +78,7 @@ StartSensor() {
 	float   SCAN_INTERVAL    = 60.0;
 	if (g_bDebugOn) llSensor("", NULL_KEY, AGENT, SCAN_RANGE, PI);
 	llSensorRepeat("", NULL_KEY, AGENT, SCAN_RANGE, PI, SCAN_INTERVAL);
-	if (g_bDebugOn) { list lTemp = ["Sensor started", SCAN_RANGE, SCAN_INTERVAL, "Targets:"]; lTemp += g_lTargets; DebugOutput(lTemp); }
+	if (g_bDebugOn) { list lTemp = ["Sensor started", SCAN_RANGE, SCAN_INTERVAL, "Targets:"]; lTemp += g_lTargets; DebugOutput(9, lTemp); }
 }
 
 //
@@ -86,7 +90,7 @@ StartSensor() {
 //
 
 CheckVictims() {
-	if (g_bDebugOn) { list lTemp = ["CheckVictims", "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+	if (g_bDebugOn) { list lTemp = ["CheckVictims", "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 	integer iDx = 0;
 	integer iLen = llGetListLength(g_lVictims);
 	if (iLen == 0) return;
@@ -135,7 +139,7 @@ TryVictim(integer iDx){
 }
 
 integer CheckVictimChannel(integer iInputChannel) {
-	if (g_bDebugOn) { list lTemp = ["CheckVictimChannel", iInputChannel, "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+	if (g_bDebugOn) { list lTemp = ["CheckVictimChannel", iInputChannel, "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 	integer iDx = 0;
 	integer iLen = llGetListLength(g_lVictims);
 	if (iLen == 0) return -1;
@@ -156,7 +160,7 @@ string xJSONstring(string JSONcluster, string sElement) {
 
 string xJSONkey(string JSONcluster, string sElement) {
 	string sWork = llJsonGetValue(JSONcluster, [sElement]);
-	if (g_bDebugOn) DebugOutput(["xJSONkey", JSONcluster, sElement, sWork]);
+	if (g_bDebugOn) DebugOutput(9, ["xJSONkey", JSONcluster, sElement, sWork]);
 	if (sWork != JSON_INVALID && sWork != JSON_NULL) return sWork;
 	return NULL_KEY;
 }
@@ -190,7 +194,7 @@ AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed",
 	"addon_name", "OpenCollar"]));
 
 */
-	if (g_bDebugOn) DebugOutput(["DecodeMessage entry", sMsg]);
+	if (g_bDebugOn) DebugOutput(9, ["DecodeMessage entry", sMsg]);
 	string sSource = llJsonGetValue(sMsg, ["addon_name"]);
 	if (sSource != "OpenCollar") return;
 	string sId = llJsonGetValue(sMsg, ["msgid"]);
@@ -217,14 +221,14 @@ AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed",
 			if (sWork != "int") g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
 		}
 //		else g_lManaged = llListReplaceList(g_lManaged, [kKey1, kKey2, iInt1, iInt2], iManagedIdx, iManagedIdx+3);
-//		if (g_bDebugOn) DebugOutput(["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
+//		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
 	} else if (sId == "unleashed") {
-		if (g_bDebugOn) DebugOutput(["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
+		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
 	} else if (sId == "notleashed") {
 		kKey1 = xJSONkey(sMsg, "victim");
 		iInt1 = llListFindList(g_lVictims, [kKey1]);
 		if (g_bDebugOn)	iInt2 = odds(110); else iInt2 = odds(50);
-		if (g_bDebugOn) DebugOutput(["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
+		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
 		if (iInt2) {
 			if (iInt1 >= 0) {
 				g_lVictims = llListReplaceList(g_lVictims, ["int"], iInt1 + 1, iInt1 + 1);
@@ -248,8 +252,23 @@ AddOnMessage(string sMessage) {
 	if(g_iLMCounter < 50) {
 	// Max of 50 LMs to send out in a 30 second period, after that ignore
 		llRegionSay(API_CHANNEL, sMessage);
-		if (g_bDebugOn) DebugOutput(["AddOnMessage", sMessage]);
+		if (g_bDebugOn) DebugOutput(9, ["AddOnMessage", sMessage]);
 	}
+}
+
+ParseEntry(string sInput) {
+	string sTarget = llStringTrim(sInput, STRING_TRIM);
+	list lInput = [];
+	if (sTarget != "") lInput = llParseString2List(sTarget, ["="], []); else lInput = ["", ""];
+	while (llGetListLength(lInput) < 2) lInput += [""];
+	string s1 = llList2String(lInput, 0);
+	string s2 = llList2String(lInput, 1);
+	if (s1 == "target") { 
+		g_lTargets += [llList2Key(lInput, 1), "idle"]; 
+		integer iChannel = (integer)("0x"+llGetSubString(sTarget,0,8))+0xf6eb-0xd2;
+		integer iHandle = llListen(iChannel, "", "", "");
+		g_lTargets += [iChannel, iHandle, NULL_KEY, 0, 0]; // channel, listen handle
+	} else if (s1 == "debug") { g_iDebugLevel = llList2Integer(lInput, 1); g_bDebugOn = FALSE; if (g_iDebugLevel < 10) g_bDebugOn = TRUE; }
 }
 
 //
@@ -259,7 +278,7 @@ AddOnMessage(string sMessage) {
 default
 {
 	state_entry(){
-		if (g_bDebugOn) { DebugOutput([g_sVersionId]); }
+		if (g_bDebugOn) { DebugOutput(9, [g_sVersionId]); }
 		g_kMyKey = llGetKey();
 //		g_sPrefix = llToLower(llGetSubString(llKey2Name(llGetOwner()),0,1));
 //        DoListeners();
@@ -270,6 +289,17 @@ default
 			g_kLineID = llGetNotecardLine(g_sCard, g_iLineNr);
 		}
 	}
+	
+	on_rez(integer i) {
+		g_lTargets = [];
+		g_bDebugOn = FALSE;
+		g_iDebugLevel = TRUE;
+		g_iDebugCounter = 0;
+		if (llGetInventoryKey(g_sCard)) {
+			g_iLineNr = 0;
+			g_kLineID = llGetNotecardLine(g_sCard, g_iLineNr);	
+		}
+	}
 
 //
 //	Don't bother dealing with messages sent on channels that aren't ours
@@ -277,7 +307,7 @@ default
 	
 	listen(integer c, string n, key i, string m) {
 		integer iDx = CheckVictimChannel(c);
-		if (g_bDebugOn) { DebugOutput(["listen", c, n, i, m, iDx]); }
+		if (g_bDebugOn) { DebugOutput(9, ["listen", c, n, i, m, iDx]); }
 //		if (c < 0) return;
 		DecodeMessage(m);
 	}
@@ -293,7 +323,7 @@ default
 //
 
 	sensor(integer iNum) {
-		if (g_bDebugOn) DebugOutput(["sensor", iNum]);
+		if (g_bDebugOn) DebugOutput(9, ["sensor", iNum]);
 		list lPeople = [];
 		integer i=0;
 		for(i = 0; i < iNum; i++) {
@@ -312,7 +342,7 @@ default
 					g_lVictims = llDeleteSubList(g_lVictims, iVicIdx, iVicIdx + VICTIMSTRIDE-1);					
 				}
 			}
-			iVicIdx -= VICTIMSTRIDE; } 
+			iVicIdx -= VICTIMSTRIDE;
 		}
 //
 //	check each key sensor located against the target list; ignore people not there
@@ -324,9 +354,9 @@ default
 //
 //
 		for(i = 0; i < iNum; i++) {
-			if (g_bDebugOn) { list lTemp = ["sensor", "seeking", llDetectedKey(i), "Targets:"]; lTemp += g_lTargets; DebugOutput(lTemp); }
+			if (g_bDebugOn) { list lTemp = ["sensor", "seeking", llDetectedKey(i), "Targets:"]; lTemp += g_lTargets; DebugOutput(9, lTemp); }
 			integer ji = llListFindList(g_lTargets, [llDetectedKey(i)]);
-			if (g_bDebugOn) { list lTemp = ["sensora", ji, llDetectedKey(i), "Targets:"]; lTemp += g_lTargets; DebugOutput(lTemp); }
+			if (g_bDebugOn) { list lTemp = ["sensora", ji, llDetectedKey(i), "Targets:"]; lTemp += g_lTargets; DebugOutput(9, lTemp); }
 			if (ji >= 0) {  // ignore people not on the target list
 				integer ki = llListFindList(g_lVictims, [llDetectedKey(i)]);
 				if (ki >= 0) {
@@ -334,22 +364,22 @@ default
 					if (sStat != "int") {
 						g_lVictims = llListReplaceList(g_lVictims, ["try"], ki + 1, ki + 1);
 					}
-					if (g_bDebugOn) { list lTemp = ["sensor1", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+					if (g_bDebugOn) { list lTemp = ["sensor1", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 				} else {
 					g_lVictims += [llDetectedKey(i), "try"];  // replaces ji + 1
 					g_lVictims += [llList2Integer(g_lTargets, ji + 2)];
 					g_lVictims += [llList2Integer(g_lTargets, ji + 3)];
 					g_lVictims += [NULL_KEY, 0, 0];
-					if (g_bDebugOn) { list lTemp = ["sensor2", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+					if (g_bDebugOn) { list lTemp = ["sensor2", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 				}
 			}
 		}
-		if (g_bDebugOn)  { list lTemp = ["sensor3", "Victims:"]; lTemp += g_lVictims; DebugOutput(lTemp); }
+		if (g_bDebugOn)  { list lTemp = ["sensor3", "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 		CheckVictims();
 	}
 	
 	no_sensor() {
-		if (g_bDebugOn) DebugOutput(["no sensor"]);
+		if (g_bDebugOn) DebugOutput(9, ["no sensor"]);
 		g_lVictims = [];
 	}
 
@@ -361,18 +391,10 @@ default
 //	
 	dataserver(key kID, string sData) {
 		if (kID == g_kLineID) {
-			if (g_bDebugOn) DebugOutput(["dataserver", sData, g_iLineNr]);
+			if (g_bDebugOn) DebugOutput(9, ["dataserver", sData, g_iLineNr]);
 			if (sData != EOF) {
-				string sTarget = llStringTrim(sData, STRING_TRIM);
-				if (sTarget != "") { 
-					key kTarget = (key) sTarget; 
-					g_lTargets += [kTarget]; 
-					g_lTargets += ["idle"];
-					integer iChannel = (integer)("0x"+llGetSubString(sTarget,0,8))+0xf6eb-0xd2;
-					integer iHandle = llListen(iChannel, "", "", "");
-					g_lTargets += [iChannel, iHandle, NULL_KEY, 0, 0]; // channel, listen handle
-					if (g_bDebugOn) { list lTemp = ["dataserver", "Targets:"]; lTemp += g_lTargets; DebugOutput(lTemp); }
-				}
+				ParseEntry(sData);
+				if (g_bDebugOn) { list lTemp = ["dataserver", "Targets:"]; lTemp += g_lTargets; DebugOutput(9, lTemp); }
 				g_kLineID = llGetNotecardLine(g_sCard, ++g_iLineNr);
 			} else {
 				g_iLineNr = 0;

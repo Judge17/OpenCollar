@@ -7,7 +7,7 @@
 
 
 // Central storage for settings of other plugins in the device.
-string g_sScriptVersion= "7.4";
+string g_sScriptVersion= "7.5b";
 string g_sCard = ".settings";
 string g_sSplitLine; // to parse lines that were split due to lsl constraints
 integer g_iLineNr = 0;

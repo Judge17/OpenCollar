@@ -6,7 +6,7 @@
 
 // KBar Version
 
-string g_sScriptVersion="7.5a";
+string g_sScriptVersion="7.5b";
 integer LINK_CMD_DEBUG=1999;
 DebugOutput(key kID, list ITEMS){
     integer i=0;

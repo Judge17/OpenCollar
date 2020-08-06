@@ -14,7 +14,7 @@
 //on listen, send submenu link message
 
 string g_sDevStage="";
-string g_sCollarVersion="7.5a"; // in reality: 7.4.1 but since checkversion in this and previous code does not allow for a minor rev number, this is what we have to work with
+string g_sCollarVersion="7.5b"; // in reality: 7.4.1 but since checkversion in this and previous code does not allow for a minor rev number, this is what we have to work with
 
 integer g_iCaptureIsActive=FALSE; // this is a fix for ensuring proper permissions with capture
 integer g_iLatestVersion=TRUE;
@@ -27,7 +27,7 @@ integer g_iKBarOptions=0;
 integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
 integer g_iKBarDebug=0;
 key     g_kKBarDebug = NULL_KEY;
-string  g_sKBarVersion="";
+string  g_sKBarVersion="7.5b";
 string  g_sKBarTarget="";
 key     g_kVersionReader;
 integer LINK_KB_VERS_REQ = -75301;
@@ -277,6 +277,12 @@ HelpMenu(key kID, integer iAuth) {
     if (g_sKBarTarget != "" && g_sKBarTarget != g_sKBarVersion) sPrompt += "; Target: " + g_sKBarTarget;
     sPrompt+="\n\nPrefix: %PREFIX%\nChannel: %CHANNEL%\nSafeword: "+g_sSafeWord;
     //Debug("max memory used: "+(string)llGetSPMaxMemory());
+
+    list lUtility = [UPMENU];
+    list lStaticButtons=[GIVECARD,CONTACT,LICENSE,"Update"];
+    Dialog(kID, sPrompt, lStaticButtons, lUtility, 0, iAuth, "Help/About");
+
+/*
     list lUtility = [UPMENU];
     list lStaticButtons=["Apps"];
     if (g_iAnimsMenu) lStaticButtons+="Animations";
@@ -290,6 +296,7 @@ HelpMenu(key kID, integer iAuth) {
     if (g_sKBarTarget!="") lStaticButtons+=["PullOrb","Update"];
 
     Dialog(kID, sPrompt, lStaticButtons, lUtility, 0, iAuth, "Help/About");
+*/
 }
 
 MainMenu(key kID, integer iAuth) {

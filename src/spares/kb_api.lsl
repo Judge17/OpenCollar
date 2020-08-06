@@ -12,11 +12,13 @@ et al.
 Licensed under the GPLv2. See LICENSE for full details.
 https://github.com/OpenCollarTeam/OpenCollar
 */
-string g_sVersionId = "20200801 1830";
+string g_sVersionId = "20200806 1645";
 
 integer API_CHANNEL = 0x60b97b5e;
 
-//integer    g_bAuthModsAreLive = FALSE;
+string  g_sSubMenu              = "KBAPI"; // Name of the submenu
+string  g_sParentMenu          	= "Apps"; // name of the menu, where the menu plugs in, should be usually Addons. Please do not use the mainmenu anymore
+string  PLUGIN_CHAT_CMD         = "KBAPI"; // every menu should have a chat command, so the user can easily access it by type for instance *plugin
 
 //MESSAGE MAP
 integer CMD_ZERO = 0;
@@ -30,14 +32,17 @@ integer CMD_SAFEWORD = 510;
 integer CMD_RELAY_SAFEWORD = 511;
 integer CMD_NOACCESS=599;
 
-
 integer REBOOT = -1000;
-/*
+
+integer MENUNAME_REQUEST = 3000;
+integer MENUNAME_RESPONSE = 3001;
+integer MENUNAME_REMOVE = 3003;
+
 string UPMENU = "BACK";
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
 integer DIALOG_TIMEOUT = -9002;
-*/
+
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved
 //str must be in form of "token=value"
 integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
@@ -47,21 +52,19 @@ integer LM_SETTING_EMPTY = 2004;//sent when a token has no value
 
 integer KB_ADDON_MESSAGE = -34851;
 
-/*
-Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth, string sName) {
+Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth, string sMenuType) {
 	key kMenuID = llGenerateKey();
-	llMessageLinked(LINK_SET, DIALOG, (string)kID + "|" + sPrompt + "|" + (string)iPage + "|" + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kMenuID);
-
-	integer iIndex = llListFindList(g_lMenuIDs, [kID]);
-	if (~iIndex) g_lMenuIDs = llListReplaceList(g_lMenuIDs, [kID, kMenuID, sName], iIndex, iIndex + g_iMenuStride - 1);
-	else g_lMenuIDs += [kID, kMenuID, sName];
-}
-string SLURL(key kID){
-	return "secondlife:///app/agent/"+(string)kID+"/about";
+	llMessageLinked(LINK_SET, DIALOG, (string)kRCPT + "|" + sPrompt + "|" + (string)iPage + "|" + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kMenuID);
+	integer iIndex = llListFindList(g_lMenuIDs, [kRCPT]);
+	if (~iIndex) g_lMenuIDs = llListReplaceList(g_lMenuIDs, [kRCPT, kMenuID, sMenuType], iIndex, iIndex + g_iMenuStride - 1);
+	else g_lMenuIDs += [kRCPT, kMenuID, sMenuType];
 }
 
-key g_kGroup;
-*/
+DoMenu(key keyID, integer iAuth) {
+	string sPrompt = "\n[KB Api Debug Level (less is more)] "+g_sVersionId + ", " + (string) llGetFreeMemory() + " bytes free.\nCurrent debug level: " + (string) g_iDebugLevel;
+	list lMyButtons = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+	Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "debug");
+}
 
 key g_kWearer;
 
@@ -70,7 +73,8 @@ key g_kLeashedTo = NULL_KEY;
 integer g_iLeashedRank = 0;
 integer g_iLeashedTime = 0;
 
-DebugOutput(list ITEMS){
+DebugOutput(integer iLevel, list ITEMS) {
+	if (g_iDebugLevel > iLevel) return;
 	++g_iDebugCounter;
 	integer i=0;
 	integer end=llGetListLength(ITEMS);
@@ -78,9 +82,13 @@ DebugOutput(list ITEMS){
 	for(i=0;i<end;i++){
 		final+=llList2String(ITEMS,i)+" ";
 	}
-	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+//	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
-integer g_bDebugOn = TRUE;
+
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
+integer KB_DEBUG_CHANNEL		   = -617783;
 integer g_iDebugCounter = 0;
 /*
 key g_kTry;
@@ -109,14 +117,14 @@ integer CalcAuth(key kID){
 	}
 	return CMD_NOACCESS;
 }
-
+*/
 list g_lMenuIDs;
 integer g_iMenuStride;
 
 integer NOTIFY = 1002;
 integer NOTIFY_OWNERS=1003;
-integer g_iPublic;
-*/
+//integer g_iPublic;
+
 string g_sPrefix;
 
 integer g_iLimitRange=TRUE;
@@ -131,19 +139,19 @@ integer in_range(key kID){
 }
 
 HandleSettings(string sStr) {
-	if (g_bDebugOn) DebugOutput(["HandleSettings", sStr]);
+	if (g_bDebugOn) DebugOutput(3, ["HandleSettings", sStr]);
 	list lParams = llParseString2List(sStr, ["="], []); // now [0] = "major_minor" and [1] = "value"
 	string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
 	string sValue = llList2String(lParams, 1); // now sValue = "value"
 	integer i = llSubStringIndex(sToken, "_");
 	string sTokenMajor = llToLower(llGetSubString(sToken, 0, i - 1));
 	string sTokenMinor = llToLower(llGetSubString(sToken, i + 1, -1));
-	if (g_bDebugOn) DebugOutput(["HandleSettings", sTokenMajor, sTokenMinor, sValue]);
+	if (g_bDebugOn) DebugOutput(3, ["HandleSettings", sTokenMajor, sTokenMinor, sValue]);
 	if (sTokenMajor == "leash") {
 //        if (g_bDebugOn) DebugOutput([sStr, sToken]);
 		if (sTokenMinor == "leashedto") {
 			list lLeashed = llParseString2List(sValue, [","], []);
-			if (g_bDebugOn) DebugOutput(lLeashed);
+			if (g_bDebugOn) DebugOutput(3, lLeashed);
 			if (llGetListLength(lLeashed) > 2) {
 				if (g_kLeashedTo == NULL_KEY) {
 					g_kLeashedTo = llList2Key(lLeashed, 0); 
@@ -156,10 +164,6 @@ HandleSettings(string sStr) {
 						"leashedtime", g_iLeashedTime,
 						"victim", g_kWearer]));
 				}
-//	[19:38:22] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731103} 
-//	[19:38:32] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731113} 
-//	[19:38:42] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731123} 
-//	[19:38:45] OpenCollar Minimal2: kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1595731126} 
 			}
 		}
 	} else if (sTokenMajor == "addons") {
@@ -194,23 +198,41 @@ HandleDeletes(string sStr) {
 	}
 }
 
-/*
-UserCommand(integer iAuth, string sCmd, key kID){
-	if(iAuth == CMD_OWNER){
-		if(sCmd == "safeword-disable")g_iSafewordDisable=TRUE;
-		else if(sCmd == "safeword-enable")g_iSafewordDisable=FALSE;
-	}
-	if (iAuth <CMD_OWNER || iAuth>CMD_EVERYONE) return;
-	if (iAuth == CMD_OWNER && sCmd == "runaway") {
-		
-		return;
-	}
-	
-	if(llToLower(sCmd) == "menu addons" || llToLower(sCmd)=="addons"){
-		AddonsMenu(kID, iAuth);
+HandleMenus(string sStr, key kID) {
+	integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
+	if (~iMenuIndex) {
+		list lMenuParams = llParseString2List(sStr, ["|"], []);
+		key kAv = (key)llList2String(lMenuParams, 0);
+		string sMessage = llList2String(lMenuParams, 1);
+		integer iAuth = (integer)llList2String(lMenuParams, 3);
+		string sMenu=llList2String(g_lMenuIDs, iMenuIndex + 1);
+		g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
+		if (sMenu == "debug") {
+			if (sMessage == UPMENU) {
+				llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
+			} else {
+				SetDebugLevel(sMessage);
+				DoMenu(kAv, iAuth);
+			}
+		}
 	}
 }
- 
+
+SetDebugLevel(string sLevel) {
+	integer iNew = (integer) sLevel;
+	g_iDebugLevel = iNew;
+	if (g_iDebugLevel > 9) g_bDebugOn = FALSE;
+	else g_bDebugOn = TRUE;
+	if (g_bDebugOn) {DebugOutput(0, ["Debug Level", g_iDebugLevel, "Debug Status", g_bDebugOn]); }
+}
+
+
+UserCommand(integer iAuth, string sCmd, key kID){
+	if (sCmd == "menu "+g_sSubMenu) {
+		DoMenu(kID, iAuth);
+	}
+}
+/*
 list StrideOfList(list src, integer stride, integer start, integer end)
 {
 	list l = [];
@@ -253,7 +275,7 @@ AddOnMessage(string sMessage) {
 	// Max of 50 LMs to send out in a 30 second period, after that ignore
 		if(llGetListLength(g_lAddons)>0) {
 			llRegionSay(API_CHANNEL, sMessage);
-			if (g_bDebugOn) DebugOutput(["AddOnMessage", sMessage, API_CHANNEL]);
+			if (g_bDebugOn) DebugOutput(3, ["AddOnMessage", sMessage, API_CHANNEL]);
 		}
 	}
 
@@ -267,7 +289,7 @@ string xJSONstring(string JSONcluster, string sElement) {
 
 string xJSONkey(string JSONcluster, string sElement) {
 	string sWork = llJsonGetValue(JSONcluster, [sElement]);
-	if (g_bDebugOn) DebugOutput(["xJSONkey", JSONcluster, sElement, sWork]);
+	if (g_bDebugOn) DebugOutput(3, ["xJSONkey", JSONcluster, sElement, sWork]);
 	if (sWork != JSON_INVALID && sWork != JSON_NULL) return sWork;
 	return NULL_KEY;
 }
@@ -286,17 +308,17 @@ default
 //        DoListeners();
 		// make the API Channel be per user
 		API_CHANNEL = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
-		if (g_bDebugOn) DebugOutput(["state_entry", "API_CHANNEL", API_CHANNEL]);
+		if (g_bDebugOn) DebugOutput(3, ["state_entry", "API_CHANNEL", API_CHANNEL]);
 		llListen(API_CHANNEL, "", "", "");
-		if (g_bDebugOn) { DebugOutput([g_sVersionId]); }
+		if (g_bDebugOn) { DebugOutput(3, [g_sVersionId]); }
 	}
 	
 	on_rez(integer i) {
-		if (g_bDebugOn) { DebugOutput([g_sVersionId]); }		
+		if (g_bDebugOn) { DebugOutput(3, [g_sVersionId]); }		
 	}
 	
 	listen(integer c,string n,key i,string m){
-		if (g_bDebugOn) DebugOutput(["listen", c, n, i, m]);
+		if (g_bDebugOn) DebugOutput(3, ["listen", c, n, i, m]);
 		if(c==API_CHANNEL) {
 			string sAddon = xJSONstring(m, "addon_name");
 			if (llListFindList(g_lAddons, [sAddon]) >= 0) {
@@ -320,7 +342,7 @@ default
 					integer iNum = xJSONint(m, "iNum");
 					string sMsg = xJSONstring(m, "sMsg");
 					key kID = xJSONkey(m,"kID");
-					if (g_bDebugOn) DebugOutput(["listen", "llMessageLinked", LINK_SET, iNum, sMsg, kID]);
+					if (g_bDebugOn) DebugOutput(3, ["listen", "llMessageLinked", LINK_SET, iNum, sMsg, kID]);
 					llMessageLinked(LINK_SET, iNum, sMsg, kID);
 				}         
 			}
@@ -348,72 +370,23 @@ default
 	}
 	link_message(integer iSender, integer iNum, string sStr, key kID){
 //        if (g_bDebugOn) DebugOutput(["link_message", iSender, iNum, sStr, kID]);
-		if (iNum == KB_ADDON_MESSAGE) {
+		if(iNum == MENUNAME_REQUEST && sStr == g_sParentMenu) {
+			llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
+		} else if (iNum == KB_ADDON_MESSAGE) {
 			AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "link_message", "addon_name", "OpenCollar", "iNum", iNum, "sMsg", sStr, "kID", kID]));
 		} else if (iNum == LM_SETTING_RESPONSE) {
 			HandleSettings(sStr);
 		} else if( iNum == LM_SETTING_DELETE) {
 			HandleDeletes(sStr);
-
-				
-//        if(iNum>=CMD_OWNER && iNum <= CMD_NOACCESS) { llOwnerSay(llDumpList2String([iSender, iNum, sStr, kID], " ^ "));
+		} else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER) { 
+			UserCommand(iNum, sStr, kID); // This is intentionally not available to public access.
+		} else if (iNum == DIALOG_RESPONSE) {
+			HandleMenus(sStr, kID);
 		} else if(iNum == REBOOT){
 			if(sStr=="reboot"){
 				llResetScript();
 			}
 		}
-/*
-		else if(iNum == DIALOG_RESPONSE){
-			integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
-			if(iMenuIndex!=-1){
-				string sMenu = llList2String(g_lMenuIDs, iMenuIndex+1);
-				g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex-1, iMenuIndex-2+g_iMenuStride);
-				list lMenuParams = llParseString2List(sStr, ["|"],[]);
-				key kAv = llList2Key(lMenuParams,0);
-				string sMsg = llList2String(lMenuParams,1);
-				integer iAuth = llList2Integer(lMenuParams,3);
-				integer iRespring=TRUE;
-				
-				if(g_bAuthModsAreLive && sMenu == "scan~add"){
-					if(sMsg == UPMENU){
-						llMessageLinked(LINK_SET, iAuth, "menu Access", kAv);
-						return;
-					} else if(sMsg == ">Wearer<"){
-						UpdateLists(llGetOwner());
-						llMessageLinked(LINK_SET, 0, "menu Access", kAv);
-					}else {
-						//UpdateLists((key)sMsg);
-						g_kTry = (key)sMsg;
-						if(!(g_iMode&ACTION_BLOCK))
-							Dialog(g_kTry, "OpenCollar\n\n"+SLURL(g_kTry)+" is trying to add you to an access list, do you agree?", ["Yes", "No"], [], 0, CMD_NOACCESS, "scan~confirm");
-						else UpdateLists((key)sMsg);
-					}
-				} else if(g_bAuthModsAreLive && sMenu == "scan~confirm"){
-					if(sMsg == "No"){
-						g_iMode = 0;
-						llMessageLinked(LINK_SET, 0, "menu Access", kAv);
-					} else if(sMsg == "Yes"){
-						UpdateLists(g_kTry);
-						llSleep(1);
-						llMessageLinked(LINK_SET, 0, "menu Access", kAv);
-					}
-				} else if(g_bAuthModsAreLive && sMenu == "removeUser"){
-					if(sMsg == UPMENU){
-						llMessageLinked(LINK_SET,0, "menu Access", kAv);
-					}else{
-						UpdateLists(sMsg);
-					}
-				} else if(sMenu == "addons"){
-					if(sMsg == UPMENU){
-						llMessageLinked(LINK_SET,0,"menu",kAv);
-					} else {
-						// Call this addon
-						llMessageLinked(LINK_SET, iAuth, "menu "+sMsg, kAv);
-					}
-				}
-			}
-		}
-*/
 	}
 /*    
 	sensor(integer iNum){
