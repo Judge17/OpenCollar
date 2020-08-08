@@ -6,20 +6,27 @@
 
 string g_sScriptVersion = "7.5b";
 
-DebugOutput(list ITEMS){
+DebugOutput(integer iLevel, list ITEMS) {
+    if (g_iDebugLevel > iLevel) return;
+    ++g_iDebugCounter;
     integer i=0;
     integer end=llGetListLength(ITEMS);
     string final;
     for(i=0;i<end;i++){
         final+=llList2String(ITEMS,i)+" ";
     }
-//    llInstantMessage(kID, llGetScriptName() +final);
-    llOwnerSay(llGetScriptName() + " " + final);
+    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+//	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
+
 integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
+integer KB_DEBUG_CHANNEL		   = -617783;
+integer g_iDebugCounter = 0;
 
 string  KB_VERSION = "7.5";
 string  KB_DEVSTAGE = "b";
+string g_sVersionId = "20200806 1645";
 
 string g_sWearerID;
 
@@ -147,22 +154,28 @@ Dialog(string sID, string sPrompt, list lChoices, list lUtilityButtons, integer 
 }
 
 SetSWActive(integer iNew, integer iSave) {
-    if (g_iSWActive == iNew) return;
+    if (g_iSWActive == iNew) return; // no need to check for equality or inequality from this point forward
     g_iSWActive = iNew;
-    if (g_iSWActive) { 
-        if (iSave) SaveAndResend(g_sGlobalToken + "swactive", (string) g_iSWActive);
-    } else {
-        if (iSave) DeleteAndResend(g_sGlobalToken + "swactive");
-    }
+    if (g_iSWActive) SaveAndResend(g_sGlobalToken + "swactive", (string) g_iSWActive);
+    else DeleteAndResend(g_sGlobalToken + "swactive");
 }
 
-SetLogLevel(integer iNew, integer iSave) {
+SetLogLevel(integer iNew, integer iSave, key kID) {
     if ((iNew < 0) || (iNew > 9)) return;
     if (g_iLogLevel == iNew) return;
     g_iLogLevel = iNew;
     if (iSave) SaveAndResend(g_sGlobalToken + "loglevel", (string) g_iLogLevel);
+    llMessageLinked(LINK_SET,NOTIFY,"1"+"Log level is now " + (string) g_iLogLevel + ".",kID);
 }
 
+SetDebugLevel(string sLevel) {
+    integer iNew = (integer) sLevel;
+    g_iDebugLevel = iNew;
+    if (g_iDebugLevel > 9) g_bDebugOn = FALSE;
+    else g_bDebugOn = TRUE;
+    if (g_bDebugOn) {DebugOutput(0, ["Debug Level", g_iDebugLevel, "Debug Status", g_bDebugOn]); }
+}
+/*
 string TranslateButtons(string sInput) {
     list lTranslation=[
         "KBar ☑", "kbar on",
@@ -183,17 +196,17 @@ string TranslateButtons(string sInput) {
     if (~buttonIndex) sOutput = llList2String(lTranslation,buttonIndex+1);
     return sOutput;
 }
-
+*/
 HandleSettings(string sStr) {
     if (!g_bPrepareToSend) return;
 
     integer iDx = llListFindList(g_lCollarSettings, [sStr]);
     if (iDx < 0) {
         g_lCollarSettings += [sStr];
-        if (g_bDebugOn) DebugOutput(["adding", sStr]);
-    } else { if (g_bDebugOn) DebugOutput(["not adding, duplicated", sStr]); }
+        if (g_bDebugOn) DebugOutput(3, ["adding", sStr]);
+    } else { if (g_bDebugOn) DebugOutput(3, ["not adding, duplicated", sStr]); }
     
-    if (g_bDebugOn) DebugOutput(g_lCollarSettings);
+    if (g_bDebugOn) DebugOutput(0, g_lCollarSettings);
     list lParams = llParseString2List(sStr, ["="], []); // now [0] = "major_minor" and [1] = "value"
     string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
     string sValue = llList2String(lParams, 1); // now sValue = "value"
@@ -206,12 +219,12 @@ HandleSettings(string sStr) {
         else if(sToken == "checkboxes"){
             g_lCheckboxes = llCSV2List(sValue);
         }
-    } else if(llGetSubString(sToken,0,i)=="capture_") { // if "major_" = "capture_"
-        if(llGetSubString(sToken,i+1,-1)=="isActive") {
-            g_iCaptureIsActive=TRUE;
-        }
+//    } else if(llGetSubString(sToken,0,i)=="capture_") { // if "major_" = "capture_"
+//        if(llGetSubString(sToken,i+1,-1)=="isActive") {
+//            g_iCaptureIsActive=TRUE;
+//        }
     } else if(llGetSubString(sToken,0,i)=="leash_") {
-        if (g_bDebugOn) DebugOutput([sStr, sToken]);
+        if (g_bDebugOn) DebugOutput(3, [sStr, sToken]);
         if(llGetSubString(sToken,i+1,-1)=="leashedto") {
             list lLeashed = llParseString2List(sValue, [","], []);
             if (llList2Integer(lLeashed, 2) > 0) {å
@@ -227,15 +240,15 @@ HandleDeletes(string sStr) {
     list lParams = llParseString2List(sStr, ["_"],[]);
     string sToken = llList2String(lParams,0);
     string sVariable = llList2String(lParams,1);
-    if (sToken=="capture") {
-        if (sVariable == "isActive") g_iCaptureIsActive=FALSE;
-    } else if (sToken == "global") {
+//    if (sToken=="capture") {
+//        if (sVariable == "isActive") g_iCaptureIsActive=FALSE;
+    if (sToken == "global") {
         if (sVariable == "swactive") SetSWActive(FALSE, FALSE);
     }
     integer iDx = llListFindList(g_lCollarSettings, [sStr]);
     if (iDx >= 0) g_lCollarSettings = llDeleteSubList(g_lCollarSettings, iDx, iDx);
 }
-
+/*
 ConfirmMenu(key kAv, integer iAuth) {
     string sPrompt = "\n[Confirmation]";
     sPrompt += "\nYou are about to permit the Judge to change your protection status if he pleases.";
@@ -244,7 +257,7 @@ ConfirmMenu(key kAv, integer iAuth) {
     list lButtons = ["Confirm", "Cancel"];
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Confirm",FALSE);
 }
-
+*/
 LogLevelMenu(key kAv, integer iAuth) {
     string sPrompt = "\n[Logging Level]";
     sPrompt += "\nSelect a log leve between 0 and 9.";
@@ -254,20 +267,20 @@ LogLevelMenu(key kAv, integer iAuth) {
 }
 
 StatMenu(key kAv, integer iAuth) {
-    if(g_iCaptureIsActive){
-        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS% while capture is active",kAv);
-        return;
-    }
-
-    string sPrompt = "\n[KBar Status " + KB_VERSION + KB_DEVSTAGE + "]; " + (string) llGetFreeMemory() + " bytes free";
+    string sPrompt = "\n[KBar Status " + KB_VERSION + KB_DEVSTAGE + g_sVersionId + "]; " + (string) llGetFreeMemory() + " bytes free";
     if (g_iSWActive) sPrompt += "\nSafeword enabled"; else sPrompt += "\nSafeword disabled";
 
     list lButtons = []; // ["KickStart"];
-    if (iAuth == CMD_OWNER) lButtons += ["Diagnose", "LogLevel"];
-    if (iAuth == CMD_OWNER) {
-        lButtons += [Checkbox(g_iSWActive, "Safeword")];
-    }
+    if (iAuth == CMD_OWNER) lButtons += ["Debug", "LogLevel", Checkbox(g_iSWActive, "Safeword")];
+
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat",FALSE);
+}
+
+
+DebugMenu(key keyID, integer iAuth) {
+    string sPrompt = "\n[KB Status Debug Level (less is more)] "+g_sVersionId + ", " + (string) llGetFreeMemory() + " bytes free.\nCurrent debug level: " + (string) g_iDebugLevel;
+    list lMyButtons = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "Debug");
 }
 
 HandleMenus(string sStr, key kID) {
@@ -285,13 +298,16 @@ HandleMenus(string sStr, key kID) {
 //llOwnerSay("link_message " + sMessage);
             if (sMessage == UPMENU)
                 llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
+            else if (llToLower(sMessage) == "debug") DebugMenu(kAv, iAuth);
             else {
-                string sCmd = TranslateButtons(sMessage);
-                UserCommand(iAuth, sCmd, kAv, TRUE);
+                if (sCmd == Checkbox(TRUE, "Safeword") UserCommand(iAugh, "safeword on", kAv, TRUE);
+                else if (sCmd == Checkbox(FALSE, "Safeword") UserCommand(iAugh, "safeword off", kAv, TRUE);
             }
+        } else if (sMenu == "Debug") {
+            SetDebugLevel(sMessage);
+            StatMenu(kAv, iAuth);
         } else if (sMenu == "LogLevel") {
-            SetLogLevel((integer) sMessage, TRUE);
-            llMessageLinked(LINK_SET,NOTIFY,"1"+"Log level is now " + (string) g_iLogLevel + ".",kID);
+            SetLogLevel((integer) sMessage, TRUE, kID);
             StatMenu(kAv, iAuth);
         }
     }
@@ -304,13 +320,9 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
     string sCommand = llToLower(llList2String(lParams, 0));
     string sAction = llToLower(llList2String(lParams, 1));
     if (sStr == "menu "+g_sSubMenu){
-        if(g_iCaptureIsActive){
-            llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS% while capture is active",kID);
-            return;
-        }
         StatMenu(kID, iNum);
     } else if (sCommand == "safeword") {
-        if (kID == KURT_KEY) {
+        if (1Auth == CMD_OWNER) {
            if (sAction == "on") {
                 SetSWActive(TRUE, TRUE);
                 llMessageLinked(LINK_SET,NOTIFY,"1"+"Your safeword has been enabled.",(key) g_sWearerID);
@@ -322,15 +334,22 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
         else
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to safeword function",kID);
         if (iRemenu) StatMenu(kID, iNum);
-    } else if (sCommand == "diagnose") {
-//        llMessageLinked(LINK_SET, LINK_KB_VERS_REQ, "", kID);
-        llMessageLinked(LINK_SET, KB_LOG_REPORT_STATUS, "", kID);
     } else if (sCommand == "loglevel") {
-        LogLevelMenu(kID, iNum);
-        return;
+//        llMessageLinked(LINK_SET, LINK_KB_VERS_REQ, "", kID);
+        if (1Auth == CMD_OWNER) {
+            LogLevelMenu(kID, iNum);
+        }
+        else
+            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to log level function",kID);
+    } else if (sCommand == "debug") {
+        if (1Auth == CMD_OWNER) {
+            DebuglMenu(kID, iNum);
+        }
+        else
+            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to debug function",kID);
     }
-//    else if (sCommand == UPMENU)
-//        llMessageLinked(LINK_ROOT, iNum, "menu "+g_sParentMenu, kID);
+    else if (sCommand == llToLower(UPMENU))
+        llMessageLinked(LINK_SET, iNum, "menu "+g_sParentMenu, kID);
 }
 
 SaveAndResend(string sToken, string sValue) {
@@ -394,7 +413,7 @@ default {
         else if (iNum >= CMD_OWNER && iNum <= CMD_EVERYONE) UserCommand(iNum, sStr, kID, FALSE);
         else if (iNum == LM_SETTING_RESPONSE) {
             if (sStr == "settings=sent" && g_bPrepareToSend) {
-                if (g_bDebugOn) DebugOutput(["link_message", sStr, g_fStartDelay]);
+                if (g_bDebugOn) DebugOutput(5, ["link_message", sStr, g_fStartDelay]);
                 llSetTimerEvent(0.0);
                 if (g_fStartDelay > 11.0) { g_fStartDelay = 10.0; llSetTimerEvent(g_fStartDelay); }
                 else if (g_fStartDelay > 6.0) { g_fStartDelay = 5.0; llSetTimerEvent(g_fStartDelay); }
@@ -430,13 +449,13 @@ default {
 
     listen(integer iChannel, string sName, key kId, string sMessage) {
         g_bPrepareToSend = FALSE;
-        if (g_bDebugOn) DebugOutput(["listen heard", sName, (string) kId, sMessage]);
+        if (g_bDebugOn) DebugOutput(5, ["listen heard", sName, (string) kId, sMessage]);
 //        llOwnerSay("heard "+ sName + " " + (string) kId);
 //        llOwnerSay((string) llGetOwnerKey(kId));
 //        llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
         g_lHostSettings = llParseString2List(sMessage, ["%%"], [""]);
-        if (g_bDebugOn) DebugOutput(["settings from kb_settings_host"]);
-        if (g_bDebugOn) DebugOutput(g_lHostSettings);
+        if (g_bDebugOn) DebugOutput(3, ["settings from kb_settings_host"]);
+        if (g_bDebugOn) DebugOutput(3, g_lHostSettings);
 //        g_lHostSettings += lSettings;
         list lOutputSettings = [];
         integer iCollarPtr = 0;
@@ -451,7 +470,7 @@ default {
         integer iCollarLen = llGetListLength(g_lCollarSettings);
         while (iCollarIdx < iCollarLen) {
             string sWork = llList2String(g_lCollarSettings, iCollarIdx);
-            if (g_bDebugOn) { DebugOutput(["in loop", iCollarIdx, iCollarLen, sWork]); }
+            if (g_bDebugOn) { DebugOutput(0, ["in loop", iCollarIdx, iCollarLen, sWork]); }
             list lParams = llParseString2List(sWork, ["="], []); // now [0] = "major_minor" and [1] = "value"
             string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
             string sValue = llList2String(lParams, 1); // now sValue = "value"
@@ -481,14 +500,14 @@ default {
             string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
             if (sToken != "kbhostline" && sToken != "kbhostaction") {
                 integer iExists = llListFindList(lOutputSettings, [sHostSetting]);
-                if (g_bDebugOn) DebugOutput(["final check", sHostSetting, iExists]);
+                if (g_bDebugOn) DebugOutput(3, ["final check", sHostSetting, iExists]);
                 if (iExists < 0) lOutputSettings += [sHostSetting];
             }
             ++iHostIdx;
         }
 
-        if (g_bDebugOn) DebugOutput(["settings ready for output"]);
-        if (g_bDebugOn) DebugOutput(lOutputSettings);
+        if (g_bDebugOn) DebugOutput(5, ["settings ready for output"]);
+        if (g_bDebugOn) DebugOutput(5, lOutputSettings);
 
         while (llGetListLength(lOutputSettings) > 0) {
             string sCurrent = llList2String(lOutputSettings, 0);
@@ -497,7 +516,7 @@ default {
 //            else if (llList2String(lCurrent, 0) == "kbhostaction") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
 //            else { 
                 llMessageLinked(LINK_SET, LM_SETTING_SAVE, sCurrent, "");
-                if (g_bDebugOn) DebugOutput(["sent", LINK_SET, LM_SETTING_SAVE, sCurrent]);
+                if (g_bDebugOn) DebugOutput(5, ["sent", LINK_SET, LM_SETTING_SAVE, sCurrent]);
                 lOutputSettings = llDeleteSubList(lOutputSettings, 0, 0);
 //            }
         }
@@ -518,7 +537,7 @@ default {
     }
     timer() {
         llSetTimerEvent(0.0);
-        if (g_bDebugOn) DebugOutput(["link_message pinging", KB_HAIL_CHANNEL]);
+        if (g_bDebugOn) DebugOutput(5, ["link_message pinging", KB_HAIL_CHANNEL]);
         llRegionSay(KB_HAIL_CHANNEL, "ping");        
     }
 }

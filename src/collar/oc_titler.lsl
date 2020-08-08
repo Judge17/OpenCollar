@@ -1,6 +1,6 @@
 /*
 
-K-Bar Version 7.5a
+K-Bar Version 7.5b
 
 This file is a part of OpenCollar.
 Copyright 2020

@@ -414,7 +414,7 @@ default {
             // Allow for Firestorm style "(( SAFEWORD ))" by trimming.
             if (llGetSubString(sw, 0, 1) == "((" && llGetSubString(sw, -2, -1) == "))") sw = llStringTrim(llGetSubString(sw, 2, -3), STRING_TRIM);
             if (llSubStringIndex(llToLower(sw), llToLower(g_sPrefix))==0) sw = llGetSubString(sw, llStringLength(g_sPrefix), -1);
-.
+
 /*
 ---------------KBar Modification ----------------------------------------
 | 

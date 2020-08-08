@@ -226,7 +226,6 @@ SetDebugLevel(string sLevel) {
 	if (g_bDebugOn) {DebugOutput(0, ["Debug Level", g_iDebugLevel, "Debug Status", g_bDebugOn]); }
 }
 
-
 UserCommand(integer iAuth, string sCmd, key kID){
 	if (sCmd == "menu "+g_sSubMenu) {
 		DoMenu(kID, iAuth);
