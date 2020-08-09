@@ -313,6 +313,7 @@ default
 	}
 	
 	on_rez(integer i) {
+		g_iDebugCounter = 0;
 		if (g_bDebugOn) { DebugOutput(3, [g_sVersionId]); }		
 	}
 	

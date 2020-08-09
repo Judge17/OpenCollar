@@ -104,7 +104,7 @@ Menu(key kID, integer iAuth) {
 // KBar Mod
 //    string sPrompt = "\n[Titler]";
     string sPrompt = "\n[Titler]\tKBar Ranch Version\n\n\tCurrent Title: " + g_sTitle ;
-        sPrompt +="\n\tName: " + g_sSlaveName + "KBar Title: " + g_sKbarTitle ;
+        sPrompt +="\n\tName: " + g_sSlaveName + " KBar Title: " + g_sKbarTitle ;
         sPrompt += "\n\tAvailable memory " + (string) llGetFreeMemory();
 // KBar Mod end
 
@@ -376,12 +376,6 @@ default
                     g_iLocked=llList2Integer(lSettings,2);
                 } else if(llList2String(lSettings,1) == "checkboxes"){
                     g_lCheckboxes = llCSV2List(llList2String(lSettings,2));
-// KBar Mod
-                } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
-                    g_sSlaveName = llList2String(lSettings,2); 
-                } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
-                    g_sKbarTitle = llList2String(lSettings,2); 
-// KBar Mod end
                 }
 
             } else if(llList2String(lSettings,0) == "titler"){
@@ -410,6 +404,12 @@ default
                     }
                 } else if(llList2String(lSettings,1)=="color"){
                     g_vColor=(vector)llList2String(lSettings,2);
+// KBar Mod
+                } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
+                    g_sSlaveName = llList2String(lSettings,2); 
+                } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
+                    g_sKbarTitle = llList2String(lSettings,2); 
+// KBar Mod end
                 } else if(llList2String(lSettings,1) == "on"){
                     // this was definitely a upgrade. Re-request!
                     g_iWasUpgraded=TRUE;

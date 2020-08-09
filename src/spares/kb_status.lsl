@@ -1,9 +1,4 @@
 
-//K-Bar Version 20191224 1415 kb_status
-
-// collar settings retains everything - need to merge in host settings and figure out how to send the difference
-// useful key: f03fba89-80e8-6d03-4071-109d85252c72
-
 string g_sScriptVersion = "7.5b";
 
 DebugOutput(integer iLevel, list ITEMS) {
@@ -214,7 +209,7 @@ HandleSettings(string sStr) {
     if (llToLower(llGetSubString(sToken, 0, i)) == llToLower(g_sGlobalToken)) { // if "major_" = "global_"
         sToken = llGetSubString(sToken, i + 1, -1);
         if (sToken == "slavemsg") g_sSlaveMessage = sValue;
-        else if (sToken == "loglevel") SetLogLevel((integer) sValue, FALSE);
+        else if (sToken == "loglevel") SetLogLevel((integer) sValue, FALSE, (key) g_sWearerID);
         else if (sToken == "swactive") SetSWActive((integer) sValue, FALSE);
         else if(sToken == "checkboxes"){
             g_lCheckboxes = llCSV2List(sValue);
@@ -271,7 +266,7 @@ StatMenu(key kAv, integer iAuth) {
     if (g_iSWActive) sPrompt += "\nSafeword enabled"; else sPrompt += "\nSafeword disabled";
 
     list lButtons = []; // ["KickStart"];
-    if (iAuth == CMD_OWNER) lButtons += ["Debug", "LogLevel", Checkbox(g_iSWActive, "Safeword")];
+    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", Checkbox(g_iSWActive, "Safeword")];
 
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat",FALSE);
 }
@@ -280,7 +275,7 @@ StatMenu(key kAv, integer iAuth) {
 DebugMenu(key keyID, integer iAuth) {
     string sPrompt = "\n[KB Status Debug Level (less is more)] "+g_sVersionId + ", " + (string) llGetFreeMemory() + " bytes free.\nCurrent debug level: " + (string) g_iDebugLevel;
     list lMyButtons = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-    Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "Debug");
+    Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "Debug", FALSE);
 }
 
 HandleMenus(string sStr, key kID) {
@@ -300,8 +295,8 @@ HandleMenus(string sStr, key kID) {
                 llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
             else if (llToLower(sMessage) == "debug") DebugMenu(kAv, iAuth);
             else {
-                if (sCmd == Checkbox(TRUE, "Safeword") UserCommand(iAugh, "safeword on", kAv, TRUE);
-                else if (sCmd == Checkbox(FALSE, "Safeword") UserCommand(iAugh, "safeword off", kAv, TRUE);
+                if (llToLower(sMessage) == llToLower(Checkbox(TRUE, "Safeword"))) UserCommand(iAuth, "safeword on", kAv, TRUE);
+                else if (llToLower(sMessage) == llToLower(Checkbox(FALSE, "Safeword"))) UserCommand(iAuth, "safeword off", kAv, TRUE);
             }
         } else if (sMenu == "Debug") {
             SetDebugLevel(sMessage);
@@ -322,7 +317,7 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
     if (sStr == "menu "+g_sSubMenu){
         StatMenu(kID, iNum);
     } else if (sCommand == "safeword") {
-        if (1Auth == CMD_OWNER) {
+        if ((iNum == CMD_OWNER) || g_bDebugOn) {
            if (sAction == "on") {
                 SetSWActive(TRUE, TRUE);
                 llMessageLinked(LINK_SET,NOTIFY,"1"+"Your safeword has been enabled.",(key) g_sWearerID);
@@ -336,14 +331,14 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
         if (iRemenu) StatMenu(kID, iNum);
     } else if (sCommand == "loglevel") {
 //        llMessageLinked(LINK_SET, LINK_KB_VERS_REQ, "", kID);
-        if (1Auth == CMD_OWNER) {
+        if ((iNum == CMD_OWNER) || g_bDebugOn) {
             LogLevelMenu(kID, iNum);
         }
         else
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to log level function",kID);
     } else if (sCommand == "debug") {
-        if (1Auth == CMD_OWNER) {
-            DebuglMenu(kID, iNum);
+        if ((iNum == CMD_OWNER) || g_bDebugOn) {
+            DebugMenu(kID, iNum);
         }
         else
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to debug function",kID);
@@ -387,6 +382,7 @@ integer FindMajorMinor(string sInput) {
 default {
     on_rez(integer iParam) {
 //        llResetScript();
+        g_iDebugCounter = 0;
         g_lCollarSettings = [];
         g_lHostSettings = [];
         if (g_iListenHandle == 0) g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
