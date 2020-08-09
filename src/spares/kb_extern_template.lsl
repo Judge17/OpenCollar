@@ -127,7 +127,7 @@ TryVictim(integer iDx){
 	if (sStat == "try") {
 		AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashinquiry", 
 				"addon_name", g_sAddOnID,
-				"leashkey", kWork]));
+				"leashkey", kWork]), iChannel);
 		return;
 	}
 	if (kLT == NULL_KEY) AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "link_message", 
@@ -135,7 +135,7 @@ TryVictim(integer iDx){
 		"leashkey", kWork,
 		"iNum", CMD_OWNER,
 		"sMsg", sAnchor,
-		"kID", sKey]));		
+		"kID", sKey]), iChannel);		
 }
 
 integer CheckVictimChannel(integer iInputChannel) {
@@ -237,13 +237,13 @@ AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed",
 						"addon_name", g_sAddOnID,
 						"iNum", CMD_TRUSTED,
 						"sMsg", sWork,
-						"kID", KURT_KEY]));
+						"kID", KURT_KEY]), llList2Integer(g_lVictims, iInt1 + 2));
 			}
 		}
 	}
 }
 
-AddOnMessage(string sMessage) {
+AddOnMessage(string sMessage, integer iChannel) {
 	if(llGetTime()>30){
 		llResetTime();
 		g_iLMCounter=0;
@@ -251,8 +251,8 @@ AddOnMessage(string sMessage) {
 	g_iLMCounter++;
 	if(g_iLMCounter < 50) {
 	// Max of 50 LMs to send out in a 30 second period, after that ignore
-		llRegionSay(API_CHANNEL, sMessage);
-		if (g_bDebugOn) DebugOutput(9, ["AddOnMessage", sMessage]);
+		llRegionSay(iChannel, sMessage);
+		if (g_bDebugOn) DebugOutput(9, ["AddOnMessage", sMessage, iChannel]);
 	}
 }
 
@@ -265,9 +265,15 @@ ParseEntry(string sInput) {
 	string s2 = llList2String(lInput, 1);
 	if (s1 == "target") { 
 		g_lTargets += [llList2Key(lInput, 1), "idle"]; 
-		integer iChannel = (integer)("0x"+llGetSubString(sTarget,0,8))+0xf6eb-0xd2;
+		integer iChannel = (integer)("0x"+llGetSubString(s2,0,8))+0xf6eb-0xd2;
 		integer iHandle = llListen(iChannel, "", "", "");
 		g_lTargets += [iChannel, iHandle, NULL_KEY, 0, 0]; // channel, listen handle
+		if (g_bDebugOn) {
+			list lOutput = ["ParseEntry", sInput];
+			lOutput += lInput;
+			lOutput += [llList2Key(lInput, 1), "idle", iChannel, iHandle];
+			DebugOutput(9, lOutput);
+		}
 	} else if (s1 == "debug") { g_iDebugLevel = llList2Integer(lInput, 1); g_bDebugOn = FALSE; if (g_iDebugLevel < 10) g_bDebugOn = TRUE; }
 }
 

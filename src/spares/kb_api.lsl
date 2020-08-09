@@ -309,7 +309,7 @@ default
 		API_CHANNEL = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
 		if (g_bDebugOn) DebugOutput(3, ["state_entry", "API_CHANNEL", API_CHANNEL]);
 		llListen(API_CHANNEL, "", "", "");
-		if (g_bDebugOn) { DebugOutput(3, [g_sVersionId]); }
+		if (g_bDebugOn) { DebugOutput(3, [g_sVersionId, API_CHANNEL]); }
 	}
 	
 	on_rez(integer i) {
