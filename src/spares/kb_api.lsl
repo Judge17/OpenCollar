@@ -264,6 +264,7 @@ integer g_iInterfaceChannel;
 integer g_iLMCounter=0;
 
 AddOnMessage(string sMessage) {
+	if (g_bDebugOn) DebugOutput(3, ["AddOnMessage", "entry", sMessage, API_CHANNEL]);
 	if(llGetTime()>30){
 		llResetTime();
 		g_iLMCounter=0;
@@ -274,7 +275,7 @@ AddOnMessage(string sMessage) {
 	// Max of 50 LMs to send out in a 30 second period, after that ignore
 		if(llGetListLength(g_lAddons)>0) {
 			llRegionSay(API_CHANNEL, sMessage);
-			if (g_bDebugOn) DebugOutput(3, ["AddOnMessage", sMessage, API_CHANNEL]);
+			if (g_bDebugOn) DebugOutput(3, ["AddOnMessage", "sent", sMessage, API_CHANNEL]);
 		}
 	}
 
@@ -304,8 +305,12 @@ default
 	state_entry(){
 		g_kWearer = llGetOwner();
 		g_sPrefix = llToLower(llGetSubString(llKey2Name(llGetOwner()),0,1));
-//        DoListeners();
-		// make the API Channel be per user
+//
+//	make the API Channel be per user
+//		this script resides in a collar worn by a specific individual
+//		since the API channel is dependent on the individual, there can be only one per person
+//		there's no need to maintain any kind of list
+//
 		API_CHANNEL = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
 		if (g_bDebugOn) DebugOutput(3, ["state_entry", "API_CHANNEL", API_CHANNEL]);
 		llListen(API_CHANNEL, "", "", "");

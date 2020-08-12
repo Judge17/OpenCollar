@@ -1,12 +1,13 @@
 //TODO: random timer for unleash
 
 string g_sAddOnID = "grabby";
-string g_sVersionId = "20200801 1830";
+string g_sVersionId = "20200810 1300";
 
 integer g_iLMCounter = 0;
 integer g_iDebugCounter = 0;
 string g_sPrefix;
 integer API_CHANNEL = 0x60b97b5e;
+float RELEASE_CHECK_INTERVAL = 30.0;
 string     g_sCard = ".externsettings";
 key g_kMyKey = NULL_KEY;
 integer g_iLineNr = 0;
@@ -29,9 +30,12 @@ integer TARGETSTRIDE = 4;
 list g_lVictims = [];
 
 //
-//	g_lVictims structure ( stride = 4):
+//	g_lVictims structure ( stride = 7):
 //		[0] - key
 //		[1] - status per addon
+//			"try" - try to leash this victim
+//			"int" - leashed by this addon
+//			"ext" - leashed by something else
 //		[2] - unique channel number
 //		[3] - listen handle
 //		[4] - leashed to key
@@ -51,6 +55,11 @@ key g_kLeashedTo = NULL_KEY;
 integer g_iLeashedRank = 0;
 integer g_iLeashedTime = 0;
 
+//
+//	DebugOutput routine mostly cribbed from aria's work; debug level and debug counter added
+//		debug counter provides better message sequence information than the timestamp
+//
+
 DebugOutput(integer iLevel, list ITEMS) {
 	if (g_iDebugLevel > iLevel) return;
 	++g_iDebugCounter;
@@ -68,10 +77,18 @@ integer g_bDebugOn = FALSE;
 integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL		   = -617783;
 
+//
+//	CalcChannel routing cribbed from aria's API module; should be distinguished from the one there before deploying oc_api
+//
+
 integer CalcChannel(key kIn) {
 	integer iChannel = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
 	return iChannel;
 }
+
+//
+//	Initiate the repeating sensor scan for available victims; SCAN_RANGE and SCAN_INTERVAL constants self-explanatory
+//
 
 StartSensor() {
 	float   SCAN_RANGE       = 10.0;
@@ -83,10 +100,8 @@ StartSensor() {
 
 //
 //	at this point, the victims list contains the people who are in range and targeted by this addon
-//		the way someone gets on the victim list is by both beint on the target list and being sensed in range; when that happens, she gets added with a status of "try"
-//	TODO: the leash information has to be in a list, can't be individual static variables
-//
-//
+//		the way someone gets on the victim list is by both being on the target list and being sensed in range; when that happens, she gets added with a status of "try"
+//		the other elements added conform to the entry list in g_lVictims above: 
 //
 
 CheckVictims() {
@@ -100,20 +115,21 @@ CheckVictims() {
 		integer iChannel = llList2Integer(g_lVictims, iDx+2);
 		
 		if (sStat == "try") TryVictim(iDx);
-//		integer iManagedIdx = llListFindList(g_lManaged, [kWork]);
-		
-//		if (iManagedIdx < 0) {
-//			AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashinquiry", 
-//				"addon_name", g_sAddOnID,
-//				"leashkey", kWork]));
-//		} else {
-// TODO Leash and unleash logic goes here
-//			key kLeashedTo = llList2Key(g_lManaged, iManagedIdx+1);
-//			integer iLeashedRank = llList2Integer(g_lManaged, iManagedIdx+2);
-//			integer iLeashedTime = llList2Integer(g_lManaged, iManagedIdx+3);
-//		}
 	}
 }
+
+//
+//	TryVictim examines a single potential victim; it pulls victim variables as follows:
+//		kWork - key of victim
+//		sStat - status of victim ('try' means try this victim for leashing)
+//		iChannel - unique communication channel for this victim
+//		kLT - key of current leashholder if any
+//		iLR - rank of current leashholder, if any
+//		iLT - time current leash was first detected, or zero
+//
+//	If the status is 'try' send an AddOn Message to ask the collar the victim's current leash status
+//		the rest of the leash logic is handled by the responst to the status message, if any
+//
 
 TryVictim(integer iDx){
 	key kWork = llList2Key(g_lVictims, iDx);
@@ -130,12 +146,14 @@ TryVictim(integer iDx){
 				"leashkey", kWork]), iChannel);
 		return;
 	}
+/*
 	if (kLT == NULL_KEY) AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "link_message", 
 		"addon_name", g_sAddOnID,
 		"leashkey", kWork,
 		"iNum", CMD_OWNER,
 		"sMsg", sAnchor,
-		"kID", sKey]), iChannel);		
+		"kID", sKey]), iChannel);	
+*/	
 }
 
 integer CheckVictimChannel(integer iInputChannel) {
@@ -151,6 +169,10 @@ integer CheckVictimChannel(integer iInputChannel) {
 	}
 	return -1;
 }
+
+//
+//	Service routines to extract JSON values and return sensible alternatives to the JSON invalid codes
+//
 
 string xJSONstring(string JSONcluster, string sElement) {
 	string sWork = llJsonGetValue(JSONcluster, [sElement]);
@@ -171,29 +193,100 @@ integer xJSONint(string JSONcluster, string sElement) {
 	return 0;
 }
 
+//
+//	Obvious random number generator (sort of)
+//
+
 integer random_integer(integer min, integer max)
 {
 	return min + (integer)(llFrand(max - min + 1));
 }
 
+//
+//	if a random number between 0 and 100 is higher than the input number, return FALSE; otherwise, TRUE
+//
+
 integer odds(integer iChance) {
-	if (random_integer(0, 100) > iChance) return FALSE;
+	integer iRand = random_integer(0, 100);
+	if (g_bDebugOn) DebugOutput(9, ["odds", iRand, iChance]);
+	if (iRand > iChance) return FALSE;
 	return TRUE;
 }
+
+//
+//	use "odds()" to return a yes/no decision; yes means leash, no means don't
+//		if "yes" update the status to reflect internal leash command and send message to API to issue the anchor command
+//
+
+TryLeash(integer iVictimIndex) {
+	integer iLeashOrNot = 0;
+	integer iLeashOdds = 0;
+	if (g_iDebugLevel == 0) {
+		iLeashOdds = 110; 
+	} else {
+		iLeashOdds = 50;
+	}
+	iLeashOrNot = odds(iLeashOdds);
+	if (g_bDebugOn) DebugOutput(9, ["TryLeash", iVictimIndex, iLeashOdds, iLeashOrNot]);
+	if (iLeashOrNot) {
+		if (iVictimIndex >= 0) {
+			g_lVictims = llListReplaceList(g_lVictims, ["int"], iVictimIndex + 1, iVictimIndex + 1);
+			string sWork = "anchor " + (string) g_kMyKey;
+			AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "launch", 
+					"addon_name", g_sAddOnID,
+					"iNum", CMD_TRUSTED,
+					"sMsg", sWork,
+					"kID", KURT_KEY]), llList2Integer(g_lVictims, iVictimIndex + 2));
+		}
+	}
+}
+
+//
+//	use "odds()" to return a yes/no decision; yes means leash, no means don't
+//		if "yes" update the status to reflect internal leash command and send message to API to issue the anchor command
+//
+
+TryUnleash(integer iVictimIndex) {
+	if (iVictimIndex < 0) return; // some kind of internal error
+	integer iUnLeashOrNot = 110;
+	integer iLeashOdds = 0;
+	integer iTimeLeashed = llList2Integer(g_lVictims, iVictimIndex + 6);
+	iTimeLeashed = MinutesSince(iTimeLeashed, llGetUnixTime()); // calculate minutes since leashed
+	if (g_iDebugLevel == 0) {
+		iLeashOdds = 110; 
+	} else {
+		iLeashOdds = 50 + iTimeLeashed;  // odds of being released increase minute by minute
+	}
+	iUnLeashOrNot = odds(iLeashOdds);
+	if (g_bDebugOn) DebugOutput(9, ["TryUnleash", iVictimIndex, iLeashOdds, iUnLeashOrNot]);
+	if (iUnLeashOrNot) {
+		g_lVictims = llListReplaceList(g_lVictims, ["int"], iVictimIndex + 1, iVictimIndex + 1);
+		AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "launch", 
+				"addon_name", g_sAddOnID,
+				"iNum", CMD_OWNER,
+				"sMsg", "unleash",
+				"kID", KURT_KEY]), llList2Integer(g_lVictims, iVictimIndex + 2));
+	}
+}
+
+integer MinutesSince(integer iFrom, integer iTo) {
+	integer iWork = iTo - iFrom;
+	iWork += 30;
+	iWork = iWork / 60;
+	if (g_bDebugOn) DebugOutput(9, ["MinutesSince", iFrom, iTo, iWork]);
+	return iWork;
+}
+
+//
+//	Process an incoming addon message
+//		We're only interested in messages from OpenCollar
+//		We can only hand message ids "leashed", "notleashed", and "unleashed"
+//			"leashed" means "currently leashed" (leashed already)
+//			"notleashed" means "currently not leashed"
+//			"unleashed" means "just now unleashed"
+//
+
 DecodeMessage(string sMsg) {
-/*
-AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashed", 
-	"addon_name", "OpenCollar", 
-	"leashedto", g_kLeashedTo, 
-	"leashedrank", g_iLeashedRank, 
-	"leashedtime", g_iLeashedTime]));
-
-kb_api AddOnMessage {"msgid":"leashed","addon_name":"OpenCollar","leashedto":"f03fba89-80e8-6d03-4071-109d85252c72","leashedrank":503,"leashedtime":1596157701,"victim":"e55c511b-bcd7-4103-bc95-1ccef72ea021"} 
-	
-AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed", 
-	"addon_name", "OpenCollar"]));
-
-*/
 	if (g_bDebugOn) DebugOutput(9, ["DecodeMessage entry", sMsg]);
 	string sSource = llJsonGetValue(sMsg, ["addon_name"]);
 	if (sSource != "OpenCollar") return;
@@ -202,44 +295,54 @@ AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed",
 	key kKey2 = NULL_KEY;
 	integer iInt1 = 0;
 	integer iInt2 = 0;
+	integer iVictimIdx = -1;
 	if (sId == "leashed") {
 //
-//	a "leashed" message gives details about a person's current leash status. possibilities: 
-//
-//
-//
-//
+//	a "leashed" message gives details about a person's current leash status.
+//		"victim" is the individual leashed (should always be the collar wearer)
+//		"leashedto" is the person or thing holding the leash
+//		"leashedrank" is the authority level of the individual issuing the grab or anchor command
+//		"leashedtime" is the time we first became aware of this particular leash
 //
 		kKey1 = xJSONkey(sMsg, "victim");
 		kKey2 = xJSONkey(sMsg, "leashedto");
 		iInt1 = xJSONint(sMsg, "leashedrank");
 		iInt2 = xJSONint(sMsg, "leashedtime");
-		integer iVictimIdx = llListFindList(g_lVictims, [kKey1]);
-		if (iVictimIdx >= 0 && kKey2 != g_kMyKey) {
-			g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6);
+		iVictimIdx = llListFindList(g_lVictims, [kKey1]);
+		if (iVictimIdx >= 0) {
 			string sWork = llList2String(g_lVictims, iVictimIdx + 1);
-			if (sWork != "int") g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
-		}
-//		else g_lManaged = llListReplaceList(g_lManaged, [kKey1, kKey2, iInt1, iInt2], iManagedIdx, iManagedIdx+3);
-//		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
-	} else if (sId == "unleashed") {
-		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
-	} else if (sId == "notleashed") {
-		kKey1 = xJSONkey(sMsg, "victim");
-		iInt1 = llListFindList(g_lVictims, [kKey1]);
-		if (g_bDebugOn)	iInt2 = odds(110); else iInt2 = odds(50);
-		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
-		if (iInt2) {
-			if (iInt1 >= 0) {
-				g_lVictims = llListReplaceList(g_lVictims, ["int"], iInt1 + 1, iInt1 + 1);
-				string sWork = "anchor " + (string) g_kMyKey;
-				AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "launch", 
-						"addon_name", g_sAddOnID,
-						"iNum", CMD_TRUSTED,
-						"sMsg", sWork,
-						"kID", KURT_KEY]), llList2Integer(g_lVictims, iInt1 + 2));
+			if (g_bDebugOn) DebugOutput(9, ["DecodeMessage leashed", kKey1, sWork, kKey2, iInt1, iInt2]);
+			if (sWork == "int") { // leashed by us
+				if (llList2Key(g_lVictims, iVictimIdx + 4) == NULL_KEY) { // record doesn't reflect (i.e. first time we've received confirmation)
+					g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // if so, record it and move on
+				} else {
+					TryUnleash(iVictimIdx); // if not, see if this person's been leashed "long enough"
+				}
+			} else { // leashed by someone else
+				g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // just record it and move on
+				g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
 			}
 		}
+	} else if (sId == "unleashed") {
+/*
+	AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "unleashed", 
+			"addon_name", "OpenCollar", "victim", g_kWearer]));
+*/
+		kKey1 = xJSONkey(sMsg, "victim");
+		iVictimIdx = llListFindList(g_lVictims, [kKey1]);
+		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage unleashed", iVictimIdx]);
+		if (iVictimIdx >= 0) {
+			g_lVictims = llListReplaceList(g_lVictims, [NULL_KEY, 0, 0], iVictimIdx + 4, iVictimIdx + 6);
+			string sWork = llList2String(g_lVictims, iVictimIdx + 1);
+			g_lVictims = llListReplaceList(g_lVictims, ["try"], iVictimIdx + 1, iVictimIdx + 1);
+			TryLeash(iVictimIdx);
+		}
+		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage", sId, kKey1, kKey2, iInt1, iInt2]);
+	} else if (sId == "notleashed") {
+		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage notleashed"]);
+		kKey1 = xJSONkey(sMsg, "victim");
+		iVictimIdx = llListFindList(g_lVictims, [kKey1]);
+		TryLeash(iVictimIdx);
 	}
 }
 
@@ -290,6 +393,8 @@ default
 //        DoListeners();
 		// make the API Channel be per user
 		API_CHANNEL = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
+		llSetTimerEvent(0.0);
+		llSetTimerEvent(RELEASE_CHECK_INTERVAL);
 		if (llGetInventoryKey(g_sCard)) {
 			g_iLineNr = 0;
 			g_kLineID = llGetNotecardLine(g_sCard, g_iLineNr);
@@ -297,6 +402,8 @@ default
 	}
 	
 	on_rez(integer i) {
+		llSetTimerEvent(0.0);
+		llSetTimerEvent(RELEASE_CHECK_INTERVAL);
 		g_lTargets = [];
 		g_bDebugOn = FALSE;
 		g_iDebugLevel = TRUE;
@@ -310,10 +417,12 @@ default
 //
 //	Don't bother dealing with messages sent on channels that aren't ours
 //
+//	Pass any responses to DecodeMessage for processing
+//
 	
 	listen(integer c, string n, key i, string m) {
-		integer iDx = CheckVictimChannel(c);
-		if (g_bDebugOn) { DebugOutput(9, ["listen", c, n, i, m, iDx]); }
+//		integer iDx = CheckVictimChannel(c);
+		if (g_bDebugOn) { DebugOutput(9, ["listen", c, n, i, m]); }
 //		if (c < 0) return;
 		DecodeMessage(m);
 	}
@@ -414,4 +523,18 @@ default
 		if (iChange & (CHANGED_OWNER || CHANGED_INVENTORY)) llResetScript();
 	}
 
+	timer() {
+		if (g_bDebugOn) DebugOutput(9, ["timer entry"]);
+//
+//	check each key in the victim list 
+//
+		integer iVicLen = llGetListLength(g_lVictims);
+		integer iVicIdx = 0;
+		while (iVicIdx < iVicLen) {
+			string sStat = llList2String(g_lVictims, iVicIdx + 1);
+			if (g_bDebugOn) DebugOutput(9, ["timer victim", iVicIdx, sStat]);
+			if (sStat == "int") TryUnleash(iVicIdx); 
+			iVicIdx += VICTIMSTRIDE;
+		}	
+	}
 }
