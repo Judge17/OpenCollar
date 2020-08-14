@@ -275,7 +275,7 @@ HelpMenu(key kID, integer iAuth) {
     sPrompt+="\n\nDocumentation: https://github.com/OpenCollarTeam/OpenCollar/wiki";
     sPrompt+="\nKBar Collar Version: "+g_sKBarVersion;
     if (g_sKBarTarget != "" && g_sKBarTarget != g_sKBarVersion) sPrompt += "; Target: " + g_sKBarTarget;
-    sPrompt+="\n\nPrefix: %PREFIX%\nChannel: %CHANNEL%\nSafeword: "+g_sSafeWord;
+//    sPrompt+="\n\nPrefix: %PREFIX%\nChannel: %CHANNEL%\nSafeword: "+g_sSafeWord;
     //Debug("max memory used: "+(string)llGetSPMaxMemory());
 
     list lUtility = [UPMENU];

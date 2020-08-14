@@ -1,10 +1,6 @@
 
 //K-Bar tplimits
 
-/*
-    'f' revision - add menu item to toggle debug mode; set debug sayto target to whoever enables it
-*/
-
 string  g_sModule = "tplim";
 list    g_lMenuIDs;
 integer g_iMenuStride = 3;
@@ -14,39 +10,45 @@ string  g_sParentMenu        = "Apps";     // name of the menu, where the menu p
 string  g_sChatCommand       = "tplim";    // every menu should have a chat command
 string  BUTTON_PARENTMENU    = g_sParentMenu;
 key     g_kWebLookup;
-string  KB_VERSION           = "7.4";
-string  KB_DEVSTAGE          = "a";
+string  KB_VERSION           = "7.5";
+string  KB_DEVSTAGE          = "c";
 string  g_sScriptVersion = "";
 integer LINK_CMD_DEBUG=1999;
 
-integer g_bDebugOn = FALSE;
-key     g_kDebugKey = NULL_KEY;
+//integer g_bDebugOn = FALSE;
+//key     g_kDebugKey = NULL_KEY;
 key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
 key SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
 
+//DebugOutput(integer iLevel, list ITEMS) {
+//    if (g_iDebugLevel > iLevel) return;
 DebugOutput(list ITEMS) {
-    key kSayTo = g_kDebugKey;
-    if (kSayTo == NULL_KEY) kSayTo == KURT_KEY;
-    if (g_bDebugOn) {
-        integer i=0;
-        integer end=llGetListLength(ITEMS);
-        string final;
-        for(i = 0; i < end; i++) {
-            final += llList2String(ITEMS,i)+" ";
-        }
-        llInstantMessage(kSayTo, llGetScriptName()+" "+KB_VERSION+KB_DEVSTAGE+" " +final);
+    ++g_iDebugCounter;
+    integer i=0;
+    integer end=llGetListLength(ITEMS);
+    string final;
+    for(i=0;i<end;i++){
+        final+=llList2String(ITEMS,i)+" ";
     }
+    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+//    llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
+
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
+integer KB_DEBUG_CHANNEL           = -617783;
+integer g_iDebugCounter = 0;
 
 SetDebugOn(key kID) {
     g_bDebugOn = TRUE;
-    g_kDebugKey = kID;
+    g_iDebugLevel = 0;
+    g_iDebugCounter = 0;
     llMessageLinked(LINK_SET,NOTIFY,"0"+"TP debug active.", kID);
 }
 
 SetDebugOff(key kID) {
     g_bDebugOn = FALSE;
-    g_kDebugKey = NULL_KEY;
+    g_iDebugLevel = 10;
     llMessageLinked(LINK_SET,NOTIFY,"0"+"TP debug inactive.", kID);
 }
 
@@ -292,7 +294,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
     string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
     string sValue = llList2String(lParams, 1); // now sValue = "value"
     integer i = llSubStringIndex(sToken, "_");
-    string sTokenMajor = llToLower(llGetSubString(sToken, 0, i));  // now sTokenMajor = "major"
+    string sTokenMajor = llToLower(llGetSubString(sToken, 0, i - 1));  // now sTokenMajor = "major"
     string sTokenMinor = "";
     if (i > 0 ) sTokenMinor = llToLower(llGetSubString(sToken, i + 1, -1));  // now sTokenMinor = "minor"
     if (iNum == LM_SETTING_RESPONSE) {
@@ -304,7 +306,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
         }
         else if(sTokenMajor == "kbtp") {
             if (sTokenMinor == "engaged")  {
-                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
+//                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
                 if ((sValue == "y") || (sValue == "Y")) {
                     g_iActive = TRUE;
                     checkStatus(TRUE);
@@ -313,15 +315,21 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
                 }
             }
         } 
-        else if (sToken == "leashed") {
+        else if (sTokenMajor == "leashed") {
             if (sTokenMinor = "leashedto") {
-                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
+//                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
                 list lLeashed = llParseString2List(sValue, [","], []);
                 if (llList2Integer(lLeashed, 2) > 0) {
                     g_kLeashedTo = llList2Key(lLeashed, 0); 
                     g_iLeashedRank = llList2Integer(lLeashed, 1);
                     checkStatus(TRUE);
                 }
+            }
+        }
+        else if (sTokenMajor == "global") {
+            if (sTokenMinor = "checkboxes") {
+                if (g_bDebugOn) { DebugOutput([sTokenMajor, sTokenMinor, sValue]); }
+                g_lCheckboxes = llCSV2List(sValue);
             }
         }
     }
@@ -517,37 +525,32 @@ default  {
                 if (sMenuType == "mainmenu") {
                     if (sMessage == UPMENU)
                         llMessageLinked(LINK_ROOT, iAuth, "menu "+BUTTON_PARENTMENU, kAv);
-                    else if (~llListFindList(PLUGIN_BUTTONS, [sMessage])) {
-                        if (sMessage == ACTIVATE) {
-                            UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
-                        }
-                        else if(sMessage == DEACTIVATE) {
-                            UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
-                        }
-                        else if(sMessage == FORCERESET) {
-                            UserCommand(iAuth, g_sChatCommand + " " + FORCERESET, kAv);
-                        }
-                        else if(sMessage == DEBUGON) {
-                            UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-                        }
-                        else if(sMessage == DEBUGOFF) {
-                            UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
-                        }
-                        else if(sMessage == Checkbox(FALSE,"Active")) {
-                            UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
-                        }
-                        else if(sMessage == Checkbox(TRUE,"Active")) {
-                            UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
-                        }
-                        else if(sMessage == Checkbox(FALSE,"Debug")) {
-                            UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-                        }
-                        else if(sMessage == Checkbox(TRUE,"Debug")) {
-                            UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
-                        }
+                    else if (sMessage == ACTIVATE) {
+                        UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
                     }
-                    else if(~llListFindList(g_lButtons, [sMessage])) {
-                        llMessageLinked(LINK_THIS, iAuth, "menu " + sMessage, kAv);
+                    else if(sMessage == DEACTIVATE) {
+                        UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
+                    }
+                    else if(sMessage == FORCERESET) {
+                        UserCommand(iAuth, g_sChatCommand + " " + FORCERESET, kAv);
+                    }
+                    else if(sMessage == DEBUGON) {
+                        UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
+                    }
+                    else if(sMessage == DEBUGOFF) {
+                        UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
+                    }
+                    else if(sMessage == Checkbox(FALSE,"Active")) {
+                        UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
+                    }
+                    else if(sMessage == Checkbox(TRUE,"Active")) {
+                        UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
+                    }
+                    else if(sMessage == Checkbox(FALSE,"Debug")) {
+                        UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
+                    }
+                    else if(sMessage == Checkbox(TRUE,"Debug")) {
+                        UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
                     }
                 }
             }

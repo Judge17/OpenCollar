@@ -266,7 +266,7 @@ StatMenu(key kAv, integer iAuth) {
     if (g_iSWActive) sPrompt += "\nSafeword enabled"; else sPrompt += "\nSafeword disabled";
 
     list lButtons = []; // ["KickStart"];
-    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", Checkbox(g_iSWActive, "Safeword")];
+    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", "Kickstart", Checkbox(g_iSWActive, "Safeword")];
 
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat",FALSE);
 }
@@ -297,6 +297,7 @@ HandleMenus(string sStr, key kID) {
             else {
                 if (llToLower(sMessage) == llToLower(Checkbox(TRUE, "Safeword"))) UserCommand(iAuth, "safeword on", kAv, TRUE);
                 else if (llToLower(sMessage) == llToLower(Checkbox(FALSE, "Safeword"))) UserCommand(iAuth, "safeword off", kAv, TRUE);
+                else if (llToLower(sMessage) == "Kickstart") llResetScript();
             }
         } else if (sMenu == "Debug") {
             SetDebugLevel(sMessage);
@@ -411,8 +412,7 @@ default {
             if (sStr == "settings=sent" && g_bPrepareToSend) {
                 if (g_bDebugOn) DebugOutput(5, ["link_message", sStr, g_fStartDelay]);
                 llSetTimerEvent(0.0);
-                if (g_fStartDelay > 11.0) { g_fStartDelay = 10.0; llSetTimerEvent(g_fStartDelay); }
-                else if (g_fStartDelay > 6.0) { g_fStartDelay = 5.0; llSetTimerEvent(g_fStartDelay); }
+                if (g_fStartDelay > 5.0) { g_fStartDelay -= 1.0; llSetTimerEvent(g_fStartDelay); }
                 else { g_fStartDelay = 5.0; llSetTimerEvent(g_fStartDelay); }
             } else {
                 HandleSettings(sStr);
