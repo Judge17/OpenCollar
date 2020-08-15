@@ -14,6 +14,9 @@ https://github.com/OpenCollarTeam/OpenCollar
 */
 string g_sVersionId = "20200806 1645";
 
+string g_sCollarMajorVersion = "0.0";
+string g_sCollarMinorVersion = "0";
+
 integer API_CHANNEL = 0x60b97b5e;
 
 string  g_sSubMenu              = "KBAPI"; // Name of the submenu
@@ -68,7 +71,6 @@ DoMenu(key keyID, integer iAuth) {
 
 key g_kWearer;
 
-key g_kThisKey = "f03fba89-80e8-6d03-4071-109d85252c72";
 key g_kLeashedTo = NULL_KEY; 
 integer g_iLeashedRank = 0;
 integer g_iLeashedTime = 0;
@@ -178,7 +180,13 @@ HandleSettings(string sStr) {
 				++ii;
 			}
 		}
-	}
+	} else if(sTokenMajor == "global") {
+		if (sTokenMinor == "collver") {
+			list lParts = llParseString2List(sValue, [","], []);
+			g_sCollarMajorVersion = llList2String(lParts,0);
+			g_sCollarMinorVersion = llList2String(lParts,1);
+		}
+	} 
 }
 
 HandleDeletes(string sStr) {
@@ -326,7 +334,7 @@ default
 		if (g_bDebugOn) DebugOutput(3, ["listen", c, n, i, m]);
 		if(c==API_CHANNEL) {
 			string sAddon = xJSONstring(m, "addon_name");
-			if (llListFindList(g_lAddons, [sAddon]) >= 0) {
+			if (llListFindList(g_lAddons, [sAddon]) >= 0) { // only pay attention to addons specified in settings
 				string sMsgid = llJsonGetValue(m,["msgid"]);
 				if (sMsgid == "leashinquiry") {
 					if (g_kLeashedTo != NULL_KEY) {
@@ -349,6 +357,13 @@ default
 					key kID = xJSONkey(m,"kID");
 					if (g_bDebugOn) DebugOutput(3, ["listen", "llMessageLinked", LINK_SET, iNum, sMsg, kID]);
 					llMessageLinked(LINK_SET, iNum, sMsg, kID);
+				} else if (sMsgid == "versioninquiry") {
+					AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "versionresponse", 
+						"addon_name", "OpenCollar", 
+						"majver", g_sCollarMajorVersion,
+						"minver", g_sCollarMinorVersion,
+						"victim", g_kWearer]));
+					return;
 				}         
 			}
 			return;
