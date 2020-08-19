@@ -154,7 +154,7 @@ DoMenu(key keyID, integer iAuth) {
     lButtons += Checkbox(g_iActive, "Active");
     
     if ((keyID == KURT_KEY) || ((keyID == SILKIE_KEY) && (g_kWearer != keyID))) {
-        lButtons += Checkbox(g_bDebugOn, "Active");
+        lButtons += Checkbox(g_bDebugOn, "Debug");
     }
     
     s3 = "Leashed level: " + (string) g_iLeashedRank + "\n"; 
@@ -182,7 +182,7 @@ UserCommand(integer iNum, string sStr, key kID) {
         // an authorized user requested the plugin menu by typing the menus chat command
         DoMenu(kID, iNum);
     }
-    else if(llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + ACTIVATE) - 1) == g_sChatCommand + " " + ACTIVATE) {
+    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + ACTIVATE) - 1) == g_sChatCommand + " " + ACTIVATE) || (sStr == Checkbox(TRUE, "Active"))) {
         if (iNum==CMD_OWNER) {
             g_iActive = TRUE;
             llMessageLinked(LINK_SET, LM_SETTING_SAVE, "KBTP_engaged=y", "");
@@ -192,7 +192,7 @@ UserCommand(integer iNum, string sStr, key kID) {
         }
         DoMenu(kID, iNum);
     }
-    else if(llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEACTIVATE) - 1) == g_sChatCommand + " " + DEACTIVATE) {
+    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEACTIVATE) - 1) == g_sChatCommand + " " + DEACTIVATE) || (sStr == Checkbox(FALSE, "Active"))) {
         if (iNum == CMD_OWNER) {
             g_iActive = FALSE;
             llMessageLinked(LINK_SET, LM_SETTING_SAVE, "KBTP_engaged=n", "");
@@ -202,7 +202,7 @@ UserCommand(integer iNum, string sStr, key kID) {
         }
         DoMenu(kID, iNum);
     }
-    else if(llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGON) - 1) == g_sChatCommand + " " + DEBUGON) {
+    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGON) - 1) == g_sChatCommand + " " + DEBUGON) || (sStr == Checkbox(TRUE, "Debug"))) {
         if ((kID == KURT_KEY) || ((kID == SILKIE_KEY) && (g_kWearer != kID))) {
             SetDebugOn(kID);
         } else {
@@ -210,7 +210,7 @@ UserCommand(integer iNum, string sStr, key kID) {
         }
         DoMenu(kID, iNum);
     }
-    else if(llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGOFF) - 1) == g_sChatCommand + " " + DEBUGOFF) {
+    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGOFF) - 1) == g_sChatCommand + " " + DEBUGOFF) || (sStr == Checkbox(FALSE, "Debug"))) {
         if ((kID == KURT_KEY) || ((kID == SILKIE_KEY) && (g_kWearer != kID))) {
             SetDebugOff(kID);
         } else {
@@ -327,7 +327,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
             }
         }
         else if (sTokenMajor == "global") {
-            if (sTokenMinor = "checkboxes") {
+            if (sTokenMinor == "checkboxes") {
                 if (g_bDebugOn) { DebugOutput([sTokenMajor, sTokenMinor, sValue]); }
                 g_lCheckboxes = llCSV2List(sValue);
             }
