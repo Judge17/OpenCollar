@@ -38,6 +38,7 @@ integer KB_KBSYNC_KICKSTART = -34717;
 list    KB_SCRIPT_STATUS = [];
 
 key     KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
+key    SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
 
 DebugOutput(key kID, list ITEMS) {
     if (g_kKBarDebug == NULL_KEY) return;
@@ -166,8 +167,8 @@ integer g_iRlvMenu=FALSE;
 integer g_iLooks;
 
 // KBar Mod -------------------------------------------------------------------------------------
-//integer g_iUpdateChan = -7483213;
-integer g_iUpdateChan = -7483312;
+integer g_iUpdateChan = -7483213;
+//integer g_iUpdateChan = -7483312;
 // End KBar Mod ---------------------------------------------------------------------------------
 integer g_iUpdateHandle;
 key g_kUpdaterOrb;
@@ -262,13 +263,13 @@ AppsMenu(key kID, integer iAuth) {
 UpdateConfirmMenu() {
     Dialog(g_kWearer, "\nINSTALLATION REQUEST PENDING:\n\nAn update or app installer is requesting permission to continue. Installation progress can be observed above the installer box and it will also tell you when it's done.\n\nShall we continue and start with the installation?", ["Yes","No"], ["Cancel"], 0, CMD_WEARER, "UpdateConfirmMenu");
 }
-
+/*
 // KBar Mod
 AuthorizeMenu(key kID, integer iNum) {
     Dialog(kID,"Enter collar version to authorize (e.g.:7.9x); blank to deauthorize", [], [], 0, iNum,"AuthorizeMenu");
 }
 // End KBar Mod
-
+*/
 HelpMenu(key kID, integer iAuth) {
     string sPrompt="\nOpenCollar Version: "+g_sCollarVersion+g_sDevStage;
     sPrompt+="\n\nPrefix: %PREFIX%\nChannel: %CHANNEL%\nSafeword: "+g_sSafeWord;
@@ -368,7 +369,7 @@ UserCommand(integer iNum, string sStr, key kID, integer fromMenu) {
             return;
         }
         //Debug("User command:"+sCmd);
-        if (iNum == CMD_OWNER || kID == g_kWearer ) {   //primary owners and wearer can lock and unlock. no one else
+        if (iNum == CMD_OWNER || (kID == SILKIE_KEY && g_kWearer != SILKIE_KEY)) {   //primary owners and wearer can lock and unlock. no one else
             //inlined old "Lock()" function
             g_iLocked = TRUE;
             llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sGlobalToken+"locked=1", "");
@@ -408,7 +409,7 @@ UserCommand(integer iNum, string sStr, key kID, integer fromMenu) {
     } else if (sCmd == "update") {
 // KBar Mod
         if (kID == g_kWearer || iNum == CMD_OWNER) {
-            if (g_sKBarTarget!="") {
+//            if (g_sKBarTarget!="") {
                 g_iWillingUpdaters = 0;
                 g_kCurrentUser = kID;
                 g_iUpdateAuth = iNum;
@@ -417,18 +418,21 @@ UserCommand(integer iNum, string sStr, key kID, integer fromMenu) {
                 g_iUpdateFromMenu=fromMenu;
 /*
     Challenge the updater with the KBar collar version approved for this individual
-*/
+
                 llWhisper(g_iUpdateChan, "UPDATE|" + g_sKBarTarget);
+*/
+                llWhisper(g_iUpdateChan, "UPDATE|" + g_sCollarVersion);
                 g_iWaitUpdate = TRUE;
                 llSetTimerEvent(5.0); //set a timer to wait for responses from updaters
-            } else {
-                llMessageLinked(LINK_SET,NOTIFY,"0"+"No update level authorized",kID);
-                if (fromMenu) HelpMenu(kID, iNum);
-            }
+//            } else {
+//                llMessageLinked(LINK_SET,NOTIFY,"0"+"No update level authorized",kID);
+//                if (fromMenu) HelpMenu(kID, iNum);
+//            }
         } else {
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to update the %DEVICETYPE%.",kID);
             if (fromMenu) HelpMenu(kID, iNum);
         }
+/*
     } else if (sCmd == "authorize") {
         if (iNum == CMD_OWNER){
             AuthorizeMenu(kID, iNum);
@@ -450,6 +454,7 @@ UserCommand(integer iNum, string sStr, key kID, integer fromMenu) {
             llMessageLinked(LINK_SET,NOTIFY,"0"+"Scripts Status:"+sTemp,kID);
         } else llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to script status",kID);
 // End KBar Mod
+*/
     } else if (!llSubStringIndex(sStr,".- ... -.-")) {
         if (kID == g_kWearer) {
             list lTemp = llParseString2List(sStr,["|"],[]);
@@ -618,9 +623,9 @@ RebuildMenu(integer iRemenu, key kLastUser, integer iLastAuth) {
 init (){
 // KBar Mod -------------------------------------------------------------------------------------
 //    g_sKBarVersion=g_sCollarVersion+g_sDevStage;
-    if(llGetInventoryType(".name") == INVENTORY_NOTECARD) {
-        g_kVersionReader = llGetNotecardLine(".name", 0);
-    }
+//    if(llGetInventoryType(".name") == INVENTORY_NOTECARD) {
+//        g_kVersionReader = llGetNotecardLine(".name", 0);
+//    }
 //    github_version_request = llHTTPRequest(g_sWeb+"~version", [HTTP_METHOD, "GET", HTTP_VERBOSE_THROTTLE, FALSE], "");
 // End KBar Mod ---------------------------------------------------------------------------------
     g_iWaitRebuild = TRUE;
@@ -719,9 +724,9 @@ default {
                     else if (sMessage == CONTACT) UserCommand(iAuth,"contact",kAv, TRUE);
                     else if (sMessage == "Update") UserCommand(iAuth,"update",kAv,TRUE);
 // KBar Mod
-                    else if (sMessage == "PullOrb") UserCommand(iAuth,"pullorb",kAv,TRUE);
-                    else if (sMessage == "Authorize") UserCommand(iAuth,"authorize",kAv,TRUE);
-                    else if (sMessage == "Status") UserCommand(iAuth,"status",kAv,TRUE);
+//                    else if (sMessage == "PullOrb") UserCommand(iAuth,"pullorb",kAv,TRUE);
+//                    else if (sMessage == "Authorize") UserCommand(iAuth,"authorize",kAv,TRUE);
+//                    else if (sMessage == "Status") UserCommand(iAuth,"status",kAv,TRUE);
 // End of KBar Mod
                 } else if (sMenu == "UpdateConfirmMenu"){
                     if (sMessage=="Yes") StartUpdate();
@@ -754,12 +759,12 @@ default {
                     }
                     SettingsMenu(kAv,iAuth);
 // KBar Mod
-                } else if(sMenu == "AuthorizeMenu") {
-                    if(sMessage != " ")
-                        g_sKBarTarget=sMessage;
-                    else
-                        g_sKBarTarget="";
-                    HelpMenu(kAv, iAuth);
+//                } else if(sMenu == "AuthorizeMenu") {
+//                    if(sMessage != " ")
+//                        g_sKBarTarget=sMessage;
+//                    else
+//                        g_sKBarTarget="";
+//                    HelpMenu(kAv, iAuth);
 // End KBar Mod
                 }
             }
@@ -867,6 +872,7 @@ default {
                 llMessageLinked(LINK_SET, LM_SETTING_RELAY_CONTENT, sData, (string)g_iSettingsReader);
                 g_kSettingsReader=llGetNotecardLine(".settings", g_iSettingsReader);
             }
+/*
         	if (kID==g_kVersionReader) {
             	g_sKBarVersion="xxxx";
 // TestCollar - Updater 7.2g&AppInstall
@@ -878,6 +884,7 @@ default {
                         else g_sKBarVersion = llStringTrim(llGetSubString(sData,i+8,j-1),STRING_TRIM);
                 }
             }
+*/
         }
     }
 
