@@ -11,12 +11,12 @@ DebugOutput(integer iLevel, list ITEMS) {
         final+=llList2String(ITEMS,i)+" ";
     }
     llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
-//	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+//    llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
 
-integer g_bDebugOn = FALSE;
-integer g_iDebugLevel = 10;
-integer KB_DEBUG_CHANNEL		   = -617783;
+integer g_bDebugOn = TRUE;
+integer g_iDebugLevel = 0;
+integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
 string  KB_VERSION = "7.5";
@@ -37,6 +37,8 @@ integer g_bPrepareToSend = FALSE;
 list g_lHostSettings = [];
 list g_lCollarSettings = [];
 float g_fStartDelay = 0.0;
+integer g_iSettings = 0;
+integer g_iSayings1 = 0;
 
 //integer g_iKBarOptions=0;
 //integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
@@ -101,6 +103,8 @@ integer SENSORDIALOG = -9003;
 integer KB_LOG_REPORT_STATUS       = -34721;
 integer LINK_KB_VERS_REQ = -75301;
 integer LINK_KB_VERS_RESP = -75302;
+integer LINK_SAYING1               = -75336;
+
 /*
 //added for attachment auth (garvin)
 integer AUTH_REQUEST = 600;
@@ -380,13 +384,24 @@ integer FindMajorMinor(string sInput) {
     return -1;
 }
 
+InitListen() {
+    if (g_bDebugOn) DebugOutput(5, ["InitListen", g_iListenHandle, KB_HAIL_CHANNEL]);
+    if (g_iListenHandle == 0) g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
+}
+/*
+DeleteListen() {
+    llListenRemove(g_iListenHandle);
+    g_iListenHandle = 0;
+    if (g_bDebugOn) DebugOutput(5, ["DeleteListen", g_iListenHandle, KB_HAIL_CHANNEL]);
+}
+*/
 default {
     on_rez(integer iParam) {
 //        llResetScript();
         g_iDebugCounter = 0;
         g_lCollarSettings = [];
         g_lHostSettings = [];
-        if (g_iListenHandle == 0) g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
+        InitListen();
         g_sWearerID = llGetOwner();
         llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
@@ -450,74 +465,99 @@ default {
 //        llOwnerSay((string) llGetOwnerKey(kId));
 //        llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
         g_lHostSettings = llParseString2List(sMessage, ["%%"], [""]);
-        if (g_bDebugOn) DebugOutput(3, ["settings from kb_settings_host"]);
-        if (g_bDebugOn) DebugOutput(3, g_lHostSettings);
+        string sFirst = llList2String(g_lHostSettings, 0);
+        list lTemp = llParseString2List(sFirst, ["="], [""]);
+        string sLineID = llList2String(lTemp, 0);
+        integer iLineID = llList2Integer(lTemp, 1);
+        if (sLineID == "kbhostline" || sLineID == "kbhostaction") {
+            if (g_bDebugOn) { list lTemp = ["settings from kb_settings_host"] + g_lHostSettings; DebugOutput(3, lTemp); }
+//        if (g_bDebugOn) DebugOutput(3, g_lHostSettings);
 //        g_lHostSettings += lSettings;
-        list lOutputSettings = [];
-        integer iCollarPtr = 0;
+            list lOutputSettings = [];
+            integer iCollarPtr = 0;
 //
-//    Need to step through collar settings
-//        anything in the collar set that's not in the host set gets included as-is in the output set
-//        if the host set and collar set both address the same variable with different values, the host set wins
-//        anything in the host set, whether corrected or not, goes to the output set
+//        Need to step through collar settings
+//            anything in the collar set that's not in the host set gets included as-is in the output set
+//            if the host set and collar set both address the same variable with different values, the host set wins
+//            anything in the host set, whether corrected or not, goes to the output set
 //
 
-        integer iCollarIdx = 0;
-        integer iCollarLen = llGetListLength(g_lCollarSettings);
-        while (iCollarIdx < iCollarLen) {
-            string sWork = llList2String(g_lCollarSettings, iCollarIdx);
-            if (g_bDebugOn) { DebugOutput(0, ["in loop", iCollarIdx, iCollarLen, sWork]); }
-            list lParams = llParseString2List(sWork, ["="], []); // now [0] = "major_minor" and [1] = "value"
-            string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-            string sValue = llList2String(lParams, 1); // now sValue = "value"
-            integer iHostPtr = FindMajorMinor(sToken);  // see if this collar major_minor entry already exists in the host set
-            if (iHostPtr > 0) {  // if it does, see if its value is different
-                string sCandidate = llList2String(g_lHostSettings, iHostPtr); // extract the host setting string
-                lParams = llParseString2List(sCandidate, ["="], []); // split it into candidate pieces
-                string sCandToken = llList2String(lParams, 0); // now SCandToken = "major_minor"
-                string sCandValue = llList2String(lParams, 1); // now sCandValue = "value"
-                if (llToLower(sValue) == llToLower(sCandValue)) {
-                    lOutputSettings += [sWork]; // if they're the same, just move the entry to the output list
+            integer iCollarIdx = 0;
+            integer iCollarLen = llGetListLength(g_lCollarSettings);
+            while (iCollarIdx < iCollarLen) {
+                string sWork = llList2String(g_lCollarSettings, iCollarIdx);
+                if (g_bDebugOn) { DebugOutput(0, ["in loop", iCollarIdx, iCollarLen, sWork]); }
+                list lParams = llParseString2List(sWork, ["="], []); // now [0] = "major_minor" and [1] = "value"
+                string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
+                string sValue = llList2String(lParams, 1); // now sValue = "value"
+                integer iHostPtr = FindMajorMinor(sToken);  // see if this collar major_minor entry already exists in the host set
+                if (iHostPtr > 0) {  // if it does, see if its value is different
+                    string sCandidate = llList2String(g_lHostSettings, iHostPtr); // extract the host setting string
+                    lParams = llParseString2List(sCandidate, ["="], []); // split it into candidate pieces
+                    string sCandToken = llList2String(lParams, 0); // now SCandToken = "major_minor"
+                    string sCandValue = llList2String(lParams, 1); // now sCandValue = "value"
+                    if (llToLower(sValue) == llToLower(sCandValue)) {
+                        lOutputSettings += [sWork]; // if they're the same, just move the entry to the output list
+                    } else {
+                        sWork = sCandToken + "=" + sCandValue; // if they're different, use the one from kb_settings_host
+                        lOutputSettings += [sWork];
+                    }
                 } else {
-                    sWork = sCandToken + "=" + sCandValue; // if they're different, use the one from kb_settings_host
-                    lOutputSettings += [sWork];
+                    lOutputSettings += [sWork]; // if there's no matching entry, just move the entry to the output list
                 }
-            } else {
-                lOutputSettings += [sWork]; // if there's no matching entry, just move the entry to the output list
+                ++iCollarIdx;
+            }        
+            integer iHostIdx = 0;
+            integer iHostLen = llGetListLength(g_lHostSettings);
+            while (iHostIdx < iHostLen) {
+                string sHostSetting = llList2String(g_lHostSettings, iHostIdx);
+                list lParams = llParseString2List(sHostSetting, ["="], []); // now [0] = "major_minor" and [1] = "value"
+                string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
+                if (sToken != "kbhostline" && sToken != "kbhostaction") {
+                    integer iExists = llListFindList(lOutputSettings, [sHostSetting]);
+                    if (g_bDebugOn) DebugOutput(3, ["final check", sHostSetting, iExists]);
+                    if (iExists < 0) lOutputSettings += [sHostSetting];
+                }
+                ++iHostIdx;
             }
-            ++iCollarIdx;
-        }
-        
-        integer iHostIdx = 0;
-        integer iHostLen = llGetListLength(g_lHostSettings);
-        while (iHostIdx < iHostLen) {
-            string sHostSetting = llList2String(g_lHostSettings, iHostIdx);
-            list lParams = llParseString2List(sHostSetting, ["="], []); // now [0] = "major_minor" and [1] = "value"
-            string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-            if (sToken != "kbhostline" && sToken != "kbhostaction") {
-                integer iExists = llListFindList(lOutputSettings, [sHostSetting]);
-                if (g_bDebugOn) DebugOutput(3, ["final check", sHostSetting, iExists]);
-                if (iExists < 0) lOutputSettings += [sHostSetting];
+
+            if (g_bDebugOn) DebugOutput(5, ["settings ready for output"]);
+            if (g_bDebugOn) DebugOutput(5, lOutputSettings);
+
+            while (llGetListLength(lOutputSettings) > 0) {
+                string sCurrent = llList2String(lOutputSettings, 0);
+//                list lCurrent = llParseString2List(sCurrent, ["="], [""]);
+//                if (llList2String(lCurrent, 0) == "kbhostline") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
+//                else if (llList2String(lCurrent, 0) == "kbhostaction") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
+//                else { 
+                    llMessageLinked(LINK_SET, LM_SETTING_SAVE, sCurrent, "");
+                    if (g_bDebugOn) DebugOutput(5, ["sent", LINK_SET, LM_SETTING_SAVE, sCurrent]);
+                    lOutputSettings = llDeleteSubList(lOutputSettings, 0, 0);
+//                }
             }
-            ++iHostIdx;
+        } else if (sLineID == "kbsayings1line" || sLineID == "kbsayings1action") {
+            if (g_bDebugOn) { list lTemp = ["sayings 1 from kb_settings_host"] + g_lHostSettings; DebugOutput(3, lTemp); }
+            integer iHostIdx = 1;
+            integer iHostLen = llGetListLength(g_lHostSettings);
+            string sPackage = "";
+            while (iHostIdx < iHostLen) {
+                sPackage = "";
+                string sHostSaying = llList2String(g_lHostSettings, iHostIdx);
+                integer iCalcLength = llStringLength(sPackage) + llStringLength("%%") + llStringLength(sHostSaying);
+                if (iCalcLength < 1024) {
+                    sPackage += "%%";
+                    sPackage += sHostSaying;
+                } else {
+                    if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message sending", sPackage]);
+                    llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
+                    sPackage = sHostSaying;
+                }
+                ++iHostIdx;
+            }
+            if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message sending", sPackage]);
+            if (llStringLength(sPackage) > 0) llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
         }
-
-        if (g_bDebugOn) DebugOutput(5, ["settings ready for output"]);
-        if (g_bDebugOn) DebugOutput(5, lOutputSettings);
-
-        while (llGetListLength(lOutputSettings) > 0) {
-            string sCurrent = llList2String(lOutputSettings, 0);
-//            list lCurrent = llParseString2List(sCurrent, ["="], [""]);
-//            if (llList2String(lCurrent, 0) == "kbhostline") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
-//            else if (llList2String(lCurrent, 0) == "kbhostaction") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
-//            else { 
-                llMessageLinked(LINK_SET, LM_SETTING_SAVE, sCurrent, "");
-                if (g_bDebugOn) DebugOutput(5, ["sent", LINK_SET, LM_SETTING_SAVE, sCurrent]);
-                lOutputSettings = llDeleteSubList(lOutputSettings, 0, 0);
-//            }
-        }
-        llListenRemove(g_iListenHandle);
-        g_iListenHandle = 0;
+//        DeleteListen();
     }
     
     changed(integer iChange) {
@@ -533,7 +573,9 @@ default {
     }
     timer() {
         llSetTimerEvent(0.0);
+        InitListen();
         if (g_bDebugOn) DebugOutput(5, ["link_message pinging", KB_HAIL_CHANNEL]);
+        llSleep(2.0);
         llRegionSay(KB_HAIL_CHANNEL, "ping");        
     }
 }
