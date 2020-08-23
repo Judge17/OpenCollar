@@ -1,3 +1,5 @@
+// TODO: no action if no updater or if all targets have been updated
+
 string g_sAddOnID = "updater";
 string g_sVersionId = "20200810 1300";
 
@@ -6,26 +8,40 @@ integer g_iDebugCounter = 0;
 string g_sPrefix;
 integer API_CHANNEL = 0x60b97b5e;
 float RELEASE_CHECK_INTERVAL = 30.0;
-string     g_sCard = ".externsettings";
+string     g_sCard = ".updatersettings";
 key g_kMyKey = NULL_KEY;
 integer g_iLineNr = 0;
 key g_kLineID = NULL_KEY;
 list g_lTargets = [];
 string g_sCollarMajorVersion = "0.0";
 string g_sCollarMinorVersion = "0";
+list g_lCollarVersion = [];
+list g_lUpdaterVersion = [];
 
 key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
 
 //
-//	g_lTargets structure ( stride = 4):
+//	g_lTargets structure ( stride = 8):
 //		[0] - key
 //		[1] - status per addon
 //		[2] - unique channel number
 //		[3] - listen handle
+//		[4] - major left component of this person's collar
+//		[5] - major right component of this person's collar
+//		[6] - minor component of this person's collar
+//		[7] - last date reported
 //
 //	This list contains the keys specified in the input card, and information regarding their individual statuses. These keys are the people to look for for potential interaction
 //
-integer TARGETSTRIDE = 4;
+integer TARGETSTRIDE = 8;
+integer TGTKEY = 0;
+integer TGTSTATUS = 1;
+integer TGTCHANNEL = 2;
+integer TGTHANDLE = 3;
+integer TGTMAJORLEFT = 4;
+integer TGTMAJORRIGHT = 5;
+integer TGTMINOR = 6;
+integer TGTLASTDATE = 7;
 
 list g_lVictims = [];
 
@@ -43,6 +59,18 @@ list g_lVictims = [];
 //	This list contains the keys from the input card that have been sensed in range, and information regarding their individual statuses. Interaction is a stong possibility
 //
 integer VICTIMSTRIDE = 6;
+
+list g_lPermanent = [];
+
+//
+//	g_lPermanent structure ( stride = 5 )
+//		[0] - key
+//		[1] - major left component of this person's collar
+//		[2] - major right component of this person's collar
+//		[3] - minor component of this person's collar
+//		[4] - last date reported
+//
+integer PERMANENTSTRIDE = 5
 
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
@@ -279,45 +307,72 @@ integer MinutesSince(integer iFrom, integer iTo) {
 //			"unleashed" means "just now unleashed"
 //
 
-AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "versionresponse", 
-	"addon_name", "OpenCollar", 
-	"majver", g_sCollarMajorVersion,
-	"minver", g_sCollarMinorVersion]));
-
-
-
 DecodeMessage(string sMsg) {
 	if (g_bDebugOn) DebugOutput(9, ["DecodeMessage entry", sMsg]);
 	string sSource = llJsonGetValue(sMsg, ["addon_name"]);
 	if (sSource != "OpenCollar") return;
 	string sId = xJSONstring(sMsg, "msgid");
-	key key1 = NULL_KEY;
+	key kKey1 = NULL_KEY;
 	integer iVictimIdx = -1;
+	integer iPermIdx = -1;
 	if (sId == "versionresponse") {
 //
 //	a "leashed" message gives details about a person's current leash status.
 //		"victim" is the individual leashed (should always be the collar wearer)
-//		"leashedto" is the person or thing holding the leash
-//		"leashedrank" is the authority level of the individual issuing the grab or anchor command
-//		"leashedtime" is the time we first became aware of this particular leash
+//		"majver" is the collar major version (e.g. 7.5)
+//		"minvwe" is the collar minor version (e.g. 1)
+//			That example would be 7.5.1
 //
 		kKey1 = xJSONkey(sMsg, "victim");
 		g_sCollarMajorVersion = xJSONstring(sMsg, "majver");
 		g_sCollarMinorVersion = xJSONstring(sMsg, "minver");
+		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage versionresponse", kKey1, sWork, g_sCollarMajorVersion, g_sCollarMinorVersion]);
+		list lParts = llParseString2List(g_sCollarMajorVersion, ["."], "");
+		integer iI1 = llList2Integer(lParts, 0);
+		integer iI2 = llList2Integer(lParts, 1);
+		integer iI3 = (integer) g_sCollarMinorVersion;
+//
+//	iI integers have the current version of the target collar
+//
+		integer iJ1 = llList2Integer(g_lUpdaterVersion, 0);
+		integer iJ2 = llList2Integer(g_lUpdaterVersion, 1);
+		integer iJ3 = llList2Integer(g_lUpdaterVersion, 2);
+//
+//	iJ integers have version of the updater
+//
+		integer iK1 = 0:
+		iPermIdx = llListFindList(g_lPermanent, [kKey1]);
+		if (iPermIdx < 0) {
+			g_lPermanent += [kKey, 0, 0, 0, 0];
+			iPermIdx = llListFindList(g_lPermanent, [kKey1]);
+		}
+		if (llList2Integer(g_lPermanent, iPermIdx+4) == 0)
+			g_lPermanent = llListReplaceList(g_lPermanent, [iI1, iI2, iI3, llGetUnixTime()]  iPermIdx+1, iPermIdx+4); // save 
+		
+//	Only got tthis far - need to check versions and such to decide whether to try the update
+		
+		
+		
+		iK1 = llList2Integer(g_lPermanent, iPermIdx + 4);
 		iVictimIdx = llListFindList(g_lVictims, [kKey1]);
 		if (iVictimIdx >= 0) {
-			string sWork = llList2String(g_lVictims, iVictimIdx + 1);
-			if (g_bDebugOn) DebugOutput(9, ["DecodeMessage versionresponse", kKey1, sWork, g_sCollarMajorVersion, g_sCollarMinorVersion]);
-			if (sWork == "int") { // leashed by us
-				if (llList2Key(g_lVictims, iVictimIdx + 4) == NULL_KEY) { // record doesn't reflect (i.e. first time we've received confirmation)
-					g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // if so, record it and move on
-				} else {
-					TryUnleash(iVictimIdx); // if not, see if this person's been leashed "long enough"
-				}
-			} else { // leashed by someone else
-				g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // just record it and move on
-				g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
-			}
+			llListReplaceList
+			g_lVictims = llListReplaceList(g_lVictims, [iI1, iI2, iI3], iVictimIdx + 4, iVictimIdx + 6); // record it and move on
+
+			iI1 = llList2Integer(g_lVictims, )		
+			integer iK2 = llGetUnixTime() - iK1; // # seconds since version last recorded
+			if (sWork == "oth") return;
+			
+//			if (sWork == "int") { // leashed by us
+//				if (llList2Key(g_lVictims, iVictimIdx + 4) == NULL_KEY) { // record doesn't reflect (i.e. first time we've received confirmation)
+//					g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // if so, record it and move on
+//				} else {
+//					TryUnleash(iVictimIdx); // if not, see if this person's been leashed "long enough"
+//				}
+//			} else { // leashed by someone else
+//				g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // just record it and move on
+//				g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
+//			}
 		}
 	}
 }
@@ -335,25 +390,41 @@ AddOnMessage(string sMessage, integer iChannel) {
 	}
 }
 
+//
+//	Parse control card entries
+//	Populate g_lTargets if necessary
+//
+//
+//
+
 ParseEntry(string sInput) {
 	string sTarget = llStringTrim(sInput, STRING_TRIM);
 	list lInput = [];
+	key kKey = NULL_KEY;
 	if (sTarget != "") lInput = llParseString2List(sTarget, ["="], []); else lInput = ["", ""];
 	while (llGetListLength(lInput) < 2) lInput += [""];
 	string s1 = llList2String(lInput, 0);
 	string s2 = llList2String(lInput, 1);
-	if (s1 == "target") { 
-		g_lTargets += [llList2Key(lInput, 1), "idle"]; 
+	if (s1 == "target") {
+		kKey = llList2Key(lInput, 1);
+		g_lTargets += [kKey, "idle"]; 
 		integer iChannel = (integer)("0x"+llGetSubString(s2,0,8))+0xf6eb-0xd2;
 		integer iHandle = llListen(iChannel, "", "", "");
-		g_lTargets += [iChannel, iHandle, NULL_KEY, 0, 0]; // channel, listen handle
+		g_lTargets += [iChannel, iHandle, 0, 0, 0, 0]; // channel, listen handle, 3-part version, last date
 		if (g_bDebugOn) {
 			list lOutput = ["ParseEntry", sInput];
 			lOutput += lInput;
 			lOutput += [llList2Key(lInput, 1), "idle", iChannel, iHandle];
 			DebugOutput(9, lOutput);
 		}
-	} else if (s1 == "debug") { g_iDebugLevel = llList2Integer(lInput, 1); g_bDebugOn = FALSE; if (g_iDebugLevel < 10) g_bDebugOn = TRUE; }
+	} else if (s1 == "debug") { 
+		g_iDebugLevel = llList2Integer(lInput, 1); 
+		g_bDebugOn = FALSE; 
+		if (g_iDebugLevel < 10) g_bDebugOn = TRUE; 
+	} else if (s1 == "version") {
+		list lWork = llParseString2List(s2, ["."], []);
+		g_lUpdaterVersion = [llList2Integer(lWork, 0), llList2Integer(lWork, 1), llList2Integer(lWork, 2)];
+	}	
 }
 
 //
@@ -441,8 +512,9 @@ default
 //		if she isn't just add her
 //		if she is, check the status; if it's "int", leave it along
 //
+//	if someone on the list has a status of "oth" then ignore; otherwise, populate the rest of the entry and set the status to "try"
 //
-//
+// TODO: put date currency checks in here - only send sufficiently non-current dates to be tried
 //
 		for(i = 0; i < iNum; i++) {
 			if (g_bDebugOn) { list lTemp = ["sensor", "seeking", llDetectedKey(i), "Targets:"]; lTemp += g_lTargets; DebugOutput(9, lTemp); }
@@ -452,7 +524,7 @@ default
 				integer ki = llListFindList(g_lVictims, [llDetectedKey(i)]);
 				if (ki >= 0) {
 					string sStat = llList2String(g_lVictims, ki + 1);
-					if (sStat != "int") {
+					if (sStat != "oth") {
 						g_lVictims = llListReplaceList(g_lVictims, ["try"], ki + 1, ki + 1);
 					}
 					if (g_bDebugOn) { list lTemp = ["sensor1", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
@@ -460,7 +532,7 @@ default
 					g_lVictims += [llDetectedKey(i), "try"];  // replaces ji + 1
 					g_lVictims += [llList2Integer(g_lTargets, ji + 2)];
 					g_lVictims += [llList2Integer(g_lTargets, ji + 3)];
-					g_lVictims += [NULL_KEY, 0, 0];
+					g_lVictims += ["", ""];
 					if (g_bDebugOn) { list lTemp = ["sensor2", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 				}
 			}

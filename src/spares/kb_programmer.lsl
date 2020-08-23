@@ -18,7 +18,7 @@ string g_sChatCommand = "kbprogram"; // every menu should have a chat command
 
 integer LINK_KB_VERS_REQ = -75301;
 integer LINK_KB_VERS_RESP = -75302;
-string  KB_VERSION = "7.4";
+string  KB_VERSION = "7.5";
 string  KB_DEVSTAGE = "c";
 
 string g_sWearer;
@@ -87,16 +87,29 @@ integer DIALOG              = -9000;
 integer DIALOG_RESPONSE     = -9001;
 integer DIALOG_TIMEOUT      = -9002;
 
+integer LINK_SAYING1        = -75336;
+
 string UPMENU               = "BACK";
-string g_sGlobalToken       = "global_";
-string g_sProgToken         = "kbwhisper_";
+string g_sGlobalToken       = "global";
+string g_sProgToken         = "kbwhisper";
 
 list g_lIndex = [];
 integer g_iIndex = 0;
 integer g_iIndCount = 0;
 string g_sIndName = "";
+integer bool(integer a){
+    if(a)return TRUE;
+    else return FALSE;
+}
 
-DebugOutput(list ITEMS) {
+list g_lCheckboxes=["⬜","⬛"];
+
+string Checkbox(integer iValue, string sLabel) {
+    return llList2String(g_lCheckboxes, bool(iValue))+" "+sLabel;
+}
+
+DebugOutput(integer iLevel, list ITEMS) {
+  if (g_iDebugLevel > iLevel) return;
   ++g_iDebugCounter;
   integer i=0;
   integer end=llGetListLength(ITEMS);
@@ -105,7 +118,7 @@ DebugOutput(list ITEMS) {
     final+=llList2String(ITEMS,i)+" ";
   }
   llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
-//    llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+//	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
 
 integer g_bDebugOn = FALSE;
@@ -220,23 +233,29 @@ DoMenu(key keyID, integer iAuth) {
     string s5;
     string sPrompt ="\n" + llGetScriptName() + " v" + KB_VERSION + KB_DEVSTAGE;
     
-    list lButtons = g_lLocalbuttons + g_lButtons + [ADDSAYING, DELSAYING, LISTSAYINGS, RELOAD];
+    list lButtons = g_lLocalbuttons + g_lButtons + [ADDSAYING, DELSAYING, LISTSAYINGS];
 
     s1 = "\nCurrent delay " + (string) g_iMsgDelay + " seconds; iteration " + (string) g_iAutoCount + "\n";
 
     if (g_iProgramming) {
         s2 = "Whispers enabled "; 
-        lButtons += [PROGRAM_OFF];
+		
+		lButtons += [Checkbox(TRUE, "Active")];
+//        lButtons += [PROGRAM_OFF];
     } else {
         s2 = "Whispers disabled ";
-        lButtons += [PROGRAM_ON];
+		lButtons += [Checkbox(FALSE, "Active")];
+//        lButtons += [PROGRAM_ON];
+		
     }
     if (g_iAutoLoop) {   
-        s2 += "endless loop\n"; 
-        lButtons += [PROGRAM_TIMER];
+        s2 += "endless loop\n";
+		lButtons += [Checkbox(TRUE, "Endless")];
+//        lButtons += [PROGRAM_TIMER];
     } else {
         s2 += "on timer\n";
-        lButtons += [PROGRAM_CONSTANT];
+//        lButtons += [PROGRAM_CONSTANT];
+		lButtons += [Checkbox(FALSE, "Endless")];
     }
     s4 = llGetScriptName() + " " + (string) llGetFreeMemory() + " bytes free\n";
     s5 = (string) g_iCount + " sayings ready\n";
@@ -247,6 +266,14 @@ DoMenu(key keyID, integer iAuth) {
     lButtons = llListSort(lButtons, 1, TRUE); // resort menu buttons alphabetical
     // and display the menu
     Dialog(keyID, sPrompt, lButtons, [UPMENU], 0, iAuth, "ProgMenu");
+}
+
+SetDebugLevel(string sLevel) {
+  integer iNew = (integer) sLevel;
+  g_iDebugLevel = iNew;
+  if (g_iDebugLevel > 9) g_bDebugOn = FALSE;
+  else g_bDebugOn = TRUE;
+  if (g_bDebugOn) {DebugOutput(0, ["Debug Level", g_iDebugLevel, "Debug Status", g_bDebugOn]); }
 }
 
 setTimer() {
@@ -289,6 +316,7 @@ UserCommand(integer iNum, string sStr, key kID)
     string sValue = llToLower(llList2String(lParams, 1));
     string sMenuName = llToLower(g_sSubMenu);
     integer iChange = FALSE;
+    if (g_bDebugOn) DebugOutput(3, ["UserCommand", iNum, sStr, kID, sCommand, sButton, sValue, sMenuName]);    
     if (sCommand == "programsmenu" 
     || (sCommand == "menu" && sValue =="programs")
     || (sCommand == "menu" && sValue =="Programs")) {
@@ -303,51 +331,163 @@ UserCommand(integer iNum, string sStr, key kID)
         llMessageLinked(LINK_SET, iNum, "menu " + g_sParentMenu, kID);
       } else llResetScript();
     }
-    else if (iNum == CMD_OWNER) {
-      if (sButton == PROGRAM_ON) { 
-//          iChange = setSetting(PROGRUN_SETTING, "y");
-          g_iProgramming = TRUE; 
-          llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGRUN_SETTING + "=y", "");
-          setTimer();
-          llMessageLinked(LINK_SET,NOTIFY,"0"+"Programming active",kID);
-          DoMenu(kID, iNum);
-      } else if (sButton == PROGRAM_OFF) { 
-//          iChange = setSetting(PROGRUN_SETTING, "n");
-          g_iProgramming = FALSE; 
-          llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGRUN_SETTING + "=n", "");
-          unsetTimer();
-          llMessageLinked(LINK_SET,NOTIFY,"0"+"Programming inactive",kID);
-          DoMenu(kID, iNum);
-      } else if (sButton == PROGRAM_CONSTANT) { 
-//          iChange = setSetting(PROGLOOP_SETTING, "y");
-          g_iAutoLoop = TRUE; 
-          g_iAutoCount = 0;
-          llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGLOOP_SETTING + "=y", "");
-          llMessageLinked(LINK_SET,NOTIFY,"0"+"No time limit",kID);
-          DoMenu(kID, iNum);
-      } else if (sButton == PROGRAM_TIMER) { 
-//          iChange = setSetting(PROGLOOP_SETTING, "n");
-          g_iAutoLoop = FALSE; 
-          g_iAutoCount = 0;
-          llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGLOOP_SETTING + "=n", "");
-          llMessageLinked(LINK_SET,NOTIFY,"0"+"Auto off enabled",kID);
-          DoMenu(kID, iNum);
-      } else if (sButton == ADDSAYING) { 
-          Dialog(kID, g_sAddPhrasePrompt, [], [], 0, iNum, "AddMenu");
-      } else if (sButton == DELSAYING) { 
-          Dialog(kID, "Select a saying to be removed...", g_lTempLines, [UPMENU], 0, iNum, "DelMenu");
-      } else if (sButton == LISTSAYINGS) { 
-          printPhrases(kID);
-          DoMenu(kID, iNum);
-      } else if (sButton == RELOAD) { 
-          ReadIndex(g_sWearer);
-          DoMenu(kID, iNum);
+    else if ((sButton == PROGRAM_ON) || (sStr == Checkbox(TRUE, "Active"))) { 
+      if (iNum == CMD_OWNER) {
+        g_iProgramming = TRUE; 
+        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGRUN_SETTING + "=y", "");
+        setTimer();
+        llMessageLinked(LINK_SET,NOTIFY,"0"+"Programming active",kID);
+      } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change programming",kID);
       }
-//      if (iChange) {
-//        UpdateSettings();
-//        SaveSettings();
-//      }
+      DoMenu(kID, iNum);
     }
+    else if ((sButton == PROGRAM_OFF) || (sStr == Checkbox(FALSE, "Active"))) { 
+      if (iNum == CMD_OWNER) {
+        g_iProgramming = FALSE; 
+        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGRUN_SETTING + "=n", "");
+        unsetTimer();
+        llMessageLinked(LINK_SET,NOTIFY,"0"+"Programming inactive",kID);
+      } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change programming",kID);
+      }
+      DoMenu(kID, iNum);
+    } 
+    else if ((sButton == PROGRAM_CONSTANT) || (sStr == Checkbox(TRUE, "Endless"))) {
+      if (iNum == CMD_OWNER) {
+        g_iAutoLoop = TRUE; 
+        g_iAutoCount = 0;
+        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGLOOP_SETTING + "=y", "");
+        llMessageLinked(LINK_SET,NOTIFY,"0"+"No time limit",kID);
+      } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change timer",kID);
+      }
+      DoMenu(kID, iNum);
+    } 
+    else if ((sButton == PROGRAM_TIMER) || (sStr == Checkbox(FALSE, "Endless"))) {
+      if (iNum == CMD_OWNER) {
+        g_iAutoLoop = FALSE; 
+        g_iAutoCount = 0;
+        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGLOOP_SETTING + "=n", "");
+        llMessageLinked(LINK_SET,NOTIFY,"0"+"Auto off enabled",kID);
+      } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change timer",kID);
+      }
+      DoMenu(kID, iNum);
+    } 
+    else if (sButton == ADDSAYING) { 
+      if (iNum == CMD_OWNER) {
+        Dialog(kID, g_sAddPhrasePrompt, [], [], 0, iNum, "AddMenu");
+      } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change sayings",kID);
+      }
+      DoMenu(kID, iNum);
+    }
+    else if (sButton == DELSAYING) { 
+      if (iNum == CMD_OWNER) {
+        Dialog(kID, "Select a saying to be removed...", g_lTempLines, [UPMENU], 0, iNum, "DelMenu");
+      } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change sayings",kID);
+      }
+      DoMenu(kID, iNum);
+    } 
+    else if (sButton == LISTSAYINGS) { 
+      if (iNum == CMD_OWNER) {
+        printPhrases(kID);
+      } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to list sayings",kID);
+      }
+      DoMenu(kID, iNum);
+    } 
+}
+
+HandleMenus(string sStr, key kID) {
+  integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
+  if (~iMenuIndex) {
+    list lMenuParams = llParseString2List(sStr, ["|"], []);
+    key kAv = (key)llList2String(lMenuParams, 0);
+    string sMessage = llList2String(lMenuParams, 1);
+    integer iPage = (integer)llList2String(lMenuParams, 2);
+    integer iAuth = (integer)llList2String(lMenuParams, 3);
+    string sMenu=llList2String(g_lMenuIDs, iMenuIndex + 1);
+    g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
+    if (sMenu == "ProgMenu") {
+      if (sMessage == UPMENU)
+        llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
+      else
+        UserCommand(iAuth, sMessage, kAv);
+      } else if (sMenu == "AddMenu") {
+          if ((sMessage != "") && (iAuth = CMD_OWNER)) {
+            if(llListFindList(g_lTempLines, [sMessage]) >= 0) {
+              llMessageLinked(LINK_SET,NOTIFY,"0"+"This phrase already exists",kAv);
+            } else {
+              g_lTempLines += [sMessage];
+              g_iCount = llGetListLength(g_lTempLines);
+              DoMenu(kAv, iAuth);
+            } 
+          }
+      } else if (sMenu == "DelMenu") {
+          if(sMessage == UPMENU) {
+            DoMenu(kAv, iAuth);
+          } else {
+            if (llListFindList(g_lTempLines, [sMessage]) < 0) {
+              llMessageLinked(LINK_SET,NOTIFY,"0"+"Can't find " + sMessage + " to delete",kAv);
+            } else {
+              integer iIndex;
+              iIndex = llListFindList(g_lTempLines, [sMessage]);
+              g_lTempLines = llDeleteSubList(g_lTempLines, iIndex, iIndex);
+              g_iCount = llGetListLength(g_lTempLines);
+              llMessageLinked(LINK_SET,NOTIFY,"0"+"Removed",kAv);
+            }
+            DoMenu(kAv, iAuth);
+          }
+      } else if (sMenu == "debug") {
+        if (sMessage == UPMENU) {
+          llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
+        } else {
+          SetDebugLevel(sMessage);
+          DoMenu(kAv, iAuth);
+        }
+      }
+  }
+}
+
+HandleSettings(string sStr) {
+  if (g_bDebugOn) DebugOutput(3, ["HandleSettings", sStr]);
+  list lParams = llParseString2List(sStr, ["="], []); // now [0] = "major_minor" and [1] = "value"
+  string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
+  string sValue = llList2String(lParams, 1); // now sValue = "value"
+  integer i = llSubStringIndex(sToken, "_");
+  string sTokenMajor = llToLower(llGetSubString(sToken, 0, i - 1));
+  string sTokenMinor = llToLower(llGetSubString(sToken, i + 1, -1));
+  if (g_bDebugOn) DebugOutput(3, ["HandleSettings", sTokenMajor, sTokenMinor, sValue]);
+  if (sTokenMajor == g_sProgToken) {
+    if (sTokenMinor == PROGRUN_SETTING) {
+      if (llToLower(sValue) == "y") { g_iProgramming = TRUE; setTimer(); } else g_iProgramming = FALSE;
+    } else if (sTokenMinor == PROGLOOP_SETTING) {
+      if (llToLower(sValue) == "y") g_iAutoLoop = TRUE; else g_iAutoLoop = FALSE;
+    }
+  } else if (sTokenMajor == g_sGlobalToken) {
+      if (sTokenMinor == "checkboxes") {
+      g_lCheckboxes = llCSV2List(sValue);
+    }
+  }
+}
+
+HandleDeletes(string sStr) {
+  list lParams = llParseString2List(sStr, ["="], []); // now [0] = "major_minor" and [1] = "value"
+  string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
+  string sValue = llList2String(lParams, 1); // now sValue = "value"
+  integer i = llSubStringIndex(sToken, "_");
+  string sTokenMajor = llToLower(llGetSubString(sToken, 0, i - 1));
+  string sTokenMinor = llToLower(llGetSubString(sToken, i + 1, -1));
+  if (sTokenMajor == g_sProgToken) {
+    if (sTokenMinor == PROGRUN_SETTING) {
+      g_iProgramming = FALSE;
+    } else if (sTokenMinor == PROGLOOP_SETTING) {
+      g_iAutoLoop = FALSE;
+    }
+  } 
 }
 
 ReadIndex(string sName)
@@ -363,7 +503,7 @@ ReadIndex(string sName)
       g_lIndex = [];
       g_iIndex = 0;
       g_iLine = 0;
-      if (!g_iKBarOptions) g_kQuery = llGetNotecardLine(g_sNoteCardName, g_iLine);  
+      g_kQuery = llGetNotecardLine(g_sNoteCardName, g_iLine);  
     }
 }
 
@@ -382,17 +522,29 @@ AddLine(string sLine) {
       g_lTempLines += [sLine];
   }
   g_iCount = llGetListLength(g_lTempLines);
+  if (g_bDebugOn) { DebugOutput(0, ["AddLine", sLine, iCount]); }
 }
 
-SetKBarOn() {
-  llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-  g_iKBarOptions = 1;
+InternalLoad(string sMessage) {
+  list lTemp = llParseString2List(sMessage, ["%%"], [""]);
+  if (g_bDebugOn) { list lX = ["InternalLoad"] + lTemp; DebugOutput(0, lX); }
+  integer iHostIdx = 0;
+  integer iHostLen = llGetListLength(lTemp);
+  while (iHostIdx < iHostLen) {
+    AddLine(llStringTrim(llList2String(lTemp, iHostIdx), STRING_TRIM));
+    ++iHostIdx;
+  }
 }
 
-SetKBarOff() {
-  llMessageLinked(LINK_SET, MENUNAME_REMOVE , g_sParentMenu + "|" + g_sSubMenu, "");
-  g_iKBarOptions = 0;
-}
+//SetKBarOn() {
+//  llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
+//  g_iKBarOptions = 1;
+//}
+
+//SetKBarOff() {
+//  llMessageLinked(LINK_SET, MENUNAME_REMOVE , g_sParentMenu + "|" + g_sSubMenu, "");
+//  g_iKBarOptions = 0;
+//}
 
 default
 {
@@ -401,7 +553,7 @@ default
         g_sWearer = llKey2Name(g_kWearer);
         list lName = llParseString2List(g_sWearer, [" "], [""]);
         g_sWearer = llList2String(lName, 0) + llList2String(lName, 1);
-        if (g_iGirlStatus == 0) ReadIndex(g_sWearer);
+        ReadIndex(g_sWearer);
     }
 
     on_rez(integer iParam) {
@@ -416,114 +568,30 @@ default
 
     link_message(integer iSender, integer iNum, string sStr, key kID)
     {
-        if (g_iKBarOptions) {
-          if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
-            llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-          else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER)
-            UserCommand( iNum, sStr, kID);
-          else if (iNum == DIALOG_RESPONSE) {
-            integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
-            if (iMenuIndex != -1) {
-              list lMenuParams = llParseString2List(sStr, ["|"], []);
-              key kAv = (key)llList2String(lMenuParams, 0);
-              string sMessage = llList2String(lMenuParams, 1);
-              integer iPage = (integer)llList2String(lMenuParams, 2);
-              integer iAuth = (integer)llList2String(lMenuParams, 3);
-              string sMenuType = llList2String(g_lMenuIDs, iMenuIndex + 1);
-              //remove stride from g_lMenuIDs
-              //we have to subtract from the index because the dialog id comes in the middle of the stride
-              g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-              if (sMenuType == "ProgMenu") {
-                if (sMessage == UPMENU)
-                  llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
-                else
-                  UserCommand(iAuth, sMessage, kAv);
-              } else if (sMenuType == "AddMenu") {
-                  list lMenuParams = llParseString2List(sStr, ["|"], []);
-                  key kAv = (key)llList2String(lMenuParams, 0);
-                  string sMessage = llList2String(lMenuParams, 1);
-                  integer iPage = (integer)llList2String(lMenuParams, 2);
-                  integer iAuth = (integer)llList2String(lMenuParams, 3); // auth level of avatar
-                  if ((sMessage != "") && (iAuth = CMD_OWNER)) {
-                    if(llListFindList(g_lTempLines, [sMessage]) >= 0) {
-                      llMessageLinked(LINK_SET,NOTIFY,"0"+"This phrase already exists",kAv);
-                    } else {
-                      g_lTempLines += [sMessage];
-                      g_iCount = llGetListLength(g_lTempLines);
-//                      SaveSettings();
-//                      llMessageLinked(LINK_SET,NOTIFY,"0"+"Added",kAv);
-                      DoMenu(kAv, iAuth);
-                    } 
-                  }
-              } else if (sMenuType == "DelMenu") {
-                  list lMenuParams = llParseString2List(sStr, ["|"], []);
-                  key kAv = (key)llList2String(lMenuParams, 0);
-                  string sMessage = llList2String(lMenuParams, 1);
-                  integer iPage = (integer)llList2String(lMenuParams, 2);
-                  integer iAuth = (integer)llList2String(lMenuParams, 3); // auth level of avatar
-                  if(sMessage == UPMENU) {
-                    DoMenu(kAv, iAuth);
-                  } else {
-                    if (llListFindList(g_lTempLines, [sMessage]) < 0) {
-                      llMessageLinked(LINK_SET,NOTIFY,"0"+"Can't find " + sMessage + " to delete",kAv);
-                    } else {
-                      integer iIndex;
-                      iIndex = llListFindList(g_lTempLines, [sMessage]);
-                      g_lTempLines = llDeleteSubList(g_lTempLines, iIndex, iIndex);
-                      g_iCount = llGetListLength(g_lTempLines);
-//                      SaveSettings();
-                      llMessageLinked(LINK_SET,NOTIFY,"0"+"Removed",kAv);
-                    }
-                    DoMenu(kAv, iAuth);
-                  }
-              }
-            }
-          }
+        if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
+          llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
+        else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER)
+          UserCommand( iNum, sStr, kID);
+        else if (iNum == DIALOG_RESPONSE)
+          HandleMenus(sStr, kID);
+        else if (iNum == LINK_SAYING1) {
+          if (g_bDebugOn) DebugOutput(0, ["LINK_SAYING1", sStr]);
+          InternalLoad(sStr);
         }
-        if (iNum == DIALOG_TIMEOUT) {
+        else if (iNum == DIALOG_TIMEOUT) {
           integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
           if (iMenuIndex != -1) {
             g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
           }
         }
         else if (iNum == LM_SETTING_RESPONSE) {
-          //this is tricky since our db value contains equals signs
-          //split string on both comma and equals sign
-          //first see if this is the token we care about
-          list lParams = llParseString2List(sStr, ["="], []);
-          string sToken = llList2String(lParams, 0);
-          string sValue = llList2String(lParams, 1);
-//          string sTest1 = g_sProgToken+ "List";
-//          string sTest2 = g_sProgToken+ "list";
-//          llOwnerSay("kb_programmer link_message " + sToken + " " + sValue + " " + sTest1 + " " + sTest2);
-          if (llToLower(sToken) == "kbprograms_list") {
-            llMessageLinked(LINK_SET, LM_SETTING_DELETE, sToken, "");
-          }
-//          if ((sToken == sTest1) || (sToken == sTest2)) {
-//            g_lSettings = llParseString2List(sValue, [","], []);
-//            llOwnerSay("kb_programmer link_message g_lSettings 13 " + llDumpList2String(g_lSettings, "---"));
-//            UpdateSettings();
-//          }
-          else if (llToLower(sToken) == llToLower(g_sProgToken+PROGRUN_SETTING)) {
-            if (llToLower(sValue) == "y") g_iProgramming = TRUE; else g_iProgramming = FALSE;
-          }
-          else if (llToLower(sToken) == llToLower(g_sProgToken+PROGLOOP_SETTING)) {
-            if (llToLower(sValue) == "y") g_iAutoLoop = TRUE; else g_iAutoLoop = FALSE;
-          }
-          else if (llToLower(sToken) == llToLower(g_sGlobalToken+"kbar")) {
-            if ((g_iKBarOptions != 0) && (0 == (integer) sValue)) SetKBarOff();
-            else if ((g_iKBarOptions != 1) && (1 == (integer) sValue)) SetKBarOn();
-            else g_iKBarOptions = (integer) sValue;
-          }
-          else if (llToLower(sToken) == llToLower(g_sGlobalToken+"kbarstat")) g_iGirlStatus = (integer) sValue;
-          else if (llToLower(sToken) == llToLower(g_sProgToken+"prog")) { AddLine(sValue); llMessageLinked(LINK_SET, LM_SETTING_DELETE, sToken, ""); }
-//          else if (llToLower(sToken) == llToLower(g_sProgToken+"list")) AddLine(sValue);
+          HandleSettings(sStr);
         }
-
-        else if (iNum == LINK_KB_VERS_REQ) {
-          llMessageLinked(LINK_SET,LINK_KB_VERS_RESP,llGetScriptName()+"|"+KB_VERSION+KB_DEVSTAGE,"");
+        else if (iNum == LM_SETTING_DELETE) {
+          HandleDeletes(sStr);
         }
     }
+    
     timer()
     {
         unsetTimer();
@@ -543,21 +611,17 @@ default
         } else {
             setTimer();
         }
-    }    
+    }
+    
     dataserver(key kQueryId, string sData) 
     {
-      if (g_iGirlStatus == 0) {
-        if (kQueryId == g_kQuery) 
-        {
-          if ((sData != EOF) && (sData != "")) {
-            string sWork = llStringTrim(sData, STRING_TRIM);
-            AddLine(sWork);
-    
-//          g_lTempLines += [sWork];
-//          g_iCount = llGetListLength(g_lTempLines);
-            g_iLine++;
-            g_kQuery = llGetNotecardLine(g_sNoteCardName, g_iLine);
-          }
+      if (kQueryId == g_kQuery) 
+      {
+        if ((sData != EOF) && (sData != "")) {
+          string sWork = llStringTrim(sData, STRING_TRIM);
+          AddLine(sWork);
+          g_iLine++;
+          g_kQuery = llGetNotecardLine(g_sNoteCardName, g_iLine);
         }
       }
     }
@@ -566,7 +630,6 @@ default
     {
       if (iChg & CHANGED_INVENTORY ) 
       {
-  //            Debug2(STATE_NAME, LOC_NAME, "Change " + (string) iChg);
         llResetScript();
       }
     }

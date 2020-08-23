@@ -23,11 +23,11 @@ float g_fBuildVersion = 1.0;
 key g_kWearer;
 // KBar Mod -------------------------------------------------------------------------------------
 key     KBAROWNER = ""; // will be used later for spy
-integer g_iKBarOptions=0;
-integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
+//integer g_iKBarOptions=0;
+//integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
 integer g_iKBarDebug=0;
 key     g_kKBarDebug = NULL_KEY;
-string  g_sKBarVersion="7.5b";
+string  g_sKBarVersion="7.5c";
 string  g_sKBarTarget="";
 key     g_kVersionReader;
 integer LINK_KB_VERS_REQ = -75301;

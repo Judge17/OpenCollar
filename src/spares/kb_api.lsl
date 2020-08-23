@@ -336,7 +336,7 @@ default
 			string sAddon = xJSONstring(m, "addon_name");
 			if (llListFindList(g_lAddons, [sAddon]) >= 0) { // only pay attention to addons specified in settings
 				string sMsgid = llJsonGetValue(m,["msgid"]);
-				if (sMsgid == "leashinquiry") {
+				if (sMsgid == "leashinquiry") { // report on leash status
 					if (g_kLeashedTo != NULL_KEY) {
 						AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "leashed", 
 							"addon_name", "OpenCollar", 
@@ -351,13 +351,13 @@ default
 							"victim", g_kWearer]));
 						return;
 					}
-				} else if (sMsgid == "launch") {
+				} else if (sMsgid == "launch") { // send a link message
 					integer iNum = xJSONint(m, "iNum");
 					string sMsg = xJSONstring(m, "sMsg");
 					key kID = xJSONkey(m,"kID");
 					if (g_bDebugOn) DebugOutput(3, ["listen", "llMessageLinked", LINK_SET, iNum, sMsg, kID]);
 					llMessageLinked(LINK_SET, iNum, sMsg, kID);
-				} else if (sMsgid == "versioninquiry") {
+				} else if (sMsgid == "versioninquiry") { // report collar version
 					AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "versionresponse", 
 						"addon_name", "OpenCollar", 
 						"majver", g_sCollarMajorVersion,

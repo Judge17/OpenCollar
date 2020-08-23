@@ -221,7 +221,7 @@ SendValues() {
 		integer iCalcLength = llStringLength(g_sMsgPackage) + llStringLength("%%") + llStringLength(sWork);
 		iCalcLength += llStringLength("%%");
 		iCalcLength += llStringLength(sEndFlag);
-		if (iCalcLength < 1024) {
+		if (iCalcLength < 768) {
 			g_sMsgPackage += "%%";
 			g_sMsgPackage += sWork;
 		} else {
@@ -257,8 +257,8 @@ SendSayings() {
 		for (iDx = 0; iDx < iLimit; ++iDx) {
 			string sWork = llList2String(g_lMsgPackage, iDx);
 			integer iCalcLength = llStringLength(g_sMsgPackage) + llStringLength("%%") + llStringLength(sWork);
-			iCalcLength += llStringLength("%%");
-			iCalcLength += llStringLength(sEndFlag);
+//			iCalcLength += llStringLength("%%");
+//			iCalcLength += llStringLength(sEndFlag);
 			if (iCalcLength < 1024) {
 				g_sMsgPackage += "%%";
 				g_sMsgPackage += sWork;
@@ -267,13 +267,15 @@ SendSayings() {
 				llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage);
 				g_sMsgPackage = "kbsayings1line=" + (string) iLineCount;
 				++iLineCount;
-				g_sMsgPackage = sWork;
+				g_sMsgPackage += sWork;
 			}
 		}
-		g_sMsgPackage += "%%";
-		g_sMsgPackage += sEndFlag;
-		if (g_bDebugOn) DebugOutput(["SendSayings sending", g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage]);
-		llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage);
+//		g_sMsgPackage += "%%";
+//		g_sMsgPackage += sEndFlag;
+		if (llStringLength(g_sMsgPackage) > 0) {
+			if (g_bDebugOn) DebugOutput(["SendSayings sending", g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage]);
+			llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage);
+		}
 
 	//	DeleteKey(g_kActiveKey);
 	//	g_kActiveKey = NULL_KEY;
@@ -351,11 +353,17 @@ default
 		} else if (kID == g_kSayings1ID) {
 			if (g_bDebugOn) DebugOutput(["dataserver", g_iProcessingPhase, sData, g_iLineNr]);
 			if (sData != EOF) {
-				g_lMsgPackage += [sData];
-				++g_iLineNr;
+				sData = llStringTrim(sData, STRING_TRIM);
+				if (llStringLength(sData) > 0) {
+					g_lMsgPackage += [sData];
+					++g_iLineNr;
+				}
 				g_kSayings1ID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
 			} else {
-				g_lMsgPackage += [sData];
+				sData = llStringTrim(sData, STRING_TRIM);
+				if (llStringLength(sData) > 0) {
+					g_lMsgPackage += [sData];
+				}
 				SendSayings();
 				EndRun();
 //				else LoadSaying(sData,g_iLineNr);

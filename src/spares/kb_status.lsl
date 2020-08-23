@@ -1,5 +1,5 @@
 
-string g_sScriptVersion = "7.5b";
+string g_sScriptVersion = "7.5c";
 
 DebugOutput(integer iLevel, list ITEMS) {
     if (g_iDebugLevel > iLevel) return;
@@ -14,13 +14,13 @@ DebugOutput(integer iLevel, list ITEMS) {
 //    llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
 string  KB_VERSION = "7.5";
-string  KB_DEVSTAGE = "b";
+string  KB_DEVSTAGE = "c";
 string g_sVersionId = "20200806 1645";
 
 string g_sWearerID;
@@ -104,6 +104,8 @@ integer KB_LOG_REPORT_STATUS       = -34721;
 integer LINK_KB_VERS_REQ = -75301;
 integer LINK_KB_VERS_RESP = -75302;
 integer LINK_SAYING1               = -75336;
+integer CLEAR_SAYING1			   = -75337;
+integer SAYING1_CLEARED			   = -75337;
 
 /*
 //added for attachment auth (garvin)
@@ -541,20 +543,20 @@ default {
             integer iHostLen = llGetListLength(g_lHostSettings);
             string sPackage = "";
             while (iHostIdx < iHostLen) {
-                sPackage = "";
+//                sPackage = "";
                 string sHostSaying = llList2String(g_lHostSettings, iHostIdx);
                 integer iCalcLength = llStringLength(sPackage) + llStringLength("%%") + llStringLength(sHostSaying);
                 if (iCalcLength < 1024) {
                     sPackage += "%%";
                     sPackage += sHostSaying;
                 } else {
-                    if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message sending", sPackage]);
+                    if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message-1 sending", sPackage]);
                     llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
                     sPackage = sHostSaying;
                 }
                 ++iHostIdx;
             }
-            if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message sending", sPackage]);
+            if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message-2 sending", sPackage]);
             if (llStringLength(sPackage) > 0) llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
         }
 //        DeleteListen();
