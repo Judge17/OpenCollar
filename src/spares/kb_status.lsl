@@ -558,6 +558,8 @@ default {
             }
             if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message-2 sending", sPackage]);
             if (llStringLength(sPackage) > 0) llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
+        } else if (sLineID == "Notify") {
+            // TODO: process 'no xx card' messages
         }
 //        DeleteListen();
     }

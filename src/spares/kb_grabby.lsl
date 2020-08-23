@@ -41,10 +41,19 @@ list g_lVictims = [];
 //		[4] - leashed to key
 //		[5] - leashed to rank
 //		[6] - leashed to time
+//		[7] - last time leashed
 //
 //	This list contains the keys from the input card that have been sensed in range, and information regarding their individual statuses. Interaction is a stong possibility
 //
-integer VICTIMSTRIDE = 7;
+integer VICTIMSTRIDE = 8;
+integer VICKEY = 0;
+integer VICSTATUS = 1;
+integer VICCHANNEL = 2;
+integer VICHANDLE = 3;
+integer VICLEASHTOKEY = 4;
+integer VICLEASHTORANK = 5;
+integer VICLEASHTOTIME = 6;
+integer VICLASTTIME = 7;
 
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
@@ -79,10 +88,11 @@ integer KB_DEBUG_CHANNEL		   = -617783;
 
 //
 //	CalcChannel routing cribbed from aria's API module; should be distinguished from the one there before deploying oc_api
+//	Done
 //
 
 integer CalcChannel(key kIn) {
-	integer iChannel = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
+	integer iChannel = ((integer)("0x"+llGetSubString((string)kIn,0,8)))+0xf6eb-0xa2;
 	return iChannel;
 }
 
@@ -132,12 +142,12 @@ CheckVictims() {
 //
 
 TryVictim(integer iDx){
-	key kWork = llList2Key(g_lVictims, iDx);
-	string sStat = llList2String(g_lVictims, iDx+1);
-	integer iChannel = llList2Integer(g_lVictims, iDx+2);
-	key kLT = llList2Key(g_lVictims, iDx + 4);
-	integer iLR = llList2Integer(g_lVictims, iDx + 5);
-	integer iLT = llList2Integer(g_lVictims, iDx + 6);
+	key kWork = ExtractVictimKey(iDx);
+	string sStat = ExtractVictimStatus(iDx);
+	integer iChannel = ExtractVictimChannel(iDx);
+	key kLT = ExtractVictimLeashToKey(iDx);
+	integer iLR = ExtractVictimLeashToRank(iDx);
+	integer iLT = ExtractVictimLeashToTime(iDx);
 	string sKey = g_kMyKey;
 	string sAnchor = "anchor " + sKey;
 	if (sStat == "try") {
@@ -146,14 +156,6 @@ TryVictim(integer iDx){
 				"leashkey", kWork]), iChannel);
 		return;
 	}
-/*
-	if (kLT == NULL_KEY) AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "link_message", 
-		"addon_name", g_sAddOnID,
-		"leashkey", kWork,
-		"iNum", CMD_OWNER,
-		"sMsg", sAnchor,
-		"kID", sKey]), iChannel);	
-*/	
 }
 
 integer CheckVictimChannel(integer iInputChannel) {
@@ -162,9 +164,9 @@ integer CheckVictimChannel(integer iInputChannel) {
 	integer iLen = llGetListLength(g_lVictims);
 	if (iLen == 0) return -1;
 	for (iDx = 0; iDx < iLen; iDx += VICTIMSTRIDE) {
-		key kWork = llList2Key(g_lVictims, iDx);
-		string sStat = llList2String(g_lVictims, iDx+1);
-		integer iChannel = llList2Integer(g_lVictims, iDx+2);
+		key kWork = ExtractVictimKey(iDx);
+		string sStat = ExtractVictimStatus(iDx);
+		integer iChannel = ExtractVictimChannel(iDx);
 		if (iChannel == iInputChannel) return iDx;
 	}
 	return -1;
@@ -230,13 +232,13 @@ TryLeash(integer iVictimIndex) {
 	if (g_bDebugOn) DebugOutput(9, ["TryLeash", iVictimIndex, iLeashOdds, iLeashOrNot]);
 	if (iLeashOrNot) {
 		if (iVictimIndex >= 0) {
-			g_lVictims = llListReplaceList(g_lVictims, ["int"], iVictimIndex + 1, iVictimIndex + 1);
+			StoreVictimStatus(iVictimIndex, "int");
 			string sWork = "anchor " + (string) g_kMyKey;
 			AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "launch", 
 					"addon_name", g_sAddOnID,
 					"iNum", CMD_TRUSTED,
 					"sMsg", sWork,
-					"kID", KURT_KEY]), llList2Integer(g_lVictims, iVictimIndex + 2));
+					"kID", KURT_KEY]), ExtractVictimChannel(iVictimIndex));
 		}
 	}
 }
@@ -250,7 +252,7 @@ TryUnleash(integer iVictimIndex) {
 	if (iVictimIndex < 0) return; // some kind of internal error
 	integer iUnLeashOrNot = 110;
 	integer iLeashOdds = 0;
-	integer iTimeLeashed = llList2Integer(g_lVictims, iVictimIndex + 6);
+	integer iTimeLeashed = ExtractVictimLeashToTime(iVictimIndex);
 	iTimeLeashed = MinutesSince(iTimeLeashed, llGetUnixTime()); // calculate minutes since leashed
 	if (g_iDebugLevel == 0) {
 		iLeashOdds = 110; 
@@ -260,7 +262,7 @@ TryUnleash(integer iVictimIndex) {
 	iUnLeashOrNot = odds(iLeashOdds);
 	if (g_bDebugOn) DebugOutput(9, ["TryUnleash", iVictimIndex, iLeashOdds, iUnLeashOrNot]);
 	if (iUnLeashOrNot) {
-		g_lVictims = llListReplaceList(g_lVictims, ["int"], iVictimIndex + 1, iVictimIndex + 1);
+		StoreVictimStatus(iVictimIndex, "int");
 		AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "launch", 
 				"addon_name", g_sAddOnID,
 				"iNum", CMD_OWNER,
@@ -310,17 +312,21 @@ DecodeMessage(string sMsg) {
 		iInt2 = xJSONint(sMsg, "leashedtime");
 		iVictimIdx = llListFindList(g_lVictims, [kKey1]);
 		if (iVictimIdx >= 0) {
-			string sWork = llList2String(g_lVictims, iVictimIdx + 1);
+			string sWork = ExtractVictimStatus(iVictimIdx);
 			if (g_bDebugOn) DebugOutput(9, ["DecodeMessage leashed", kKey1, sWork, kKey2, iInt1, iInt2]);
 			if (sWork == "int") { // leashed by us
-				if (llList2Key(g_lVictims, iVictimIdx + 4) == NULL_KEY) { // record doesn't reflect (i.e. first time we've received confirmation)
-					g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // if so, record it and move on
+				if (ExtractVictimLeashToKey(iVictimIdx) == NULL_KEY) { // record doesn't reflect (i.e. first time we've received confirmation)
+					StoreVictimLeashToKey(iVictimIdx, kKey2); // if so, record it and move on
+					StoreVictimLeashToRank(iVictimIdx, iInt1);
+					StoreVictimLeashToTime(iVictimIdx, llGetUnixTime());
 				} else {
 					TryUnleash(iVictimIdx); // if not, see if this person's been leashed "long enough"
 				}
 			} else { // leashed by someone else
-				g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // just record it and move on
-				g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
+				StoreVictimLeashToKey(iVictimIdx, kKey2); // just record it and move on
+				StoreVictimLeashToRank(iVictimIdx, iInt1);
+				StoreVictimLeashToTime(iVictimIdx, iInt2);
+				StoreVictimStatus(iVictimIdx, "ext");
 			}
 		}
 	} else if (sId == "unleashed") {
@@ -332,8 +338,10 @@ DecodeMessage(string sMsg) {
 		iVictimIdx = llListFindList(g_lVictims, [kKey1]);
 		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage unleashed", iVictimIdx]);
 		if (iVictimIdx >= 0) {
-			g_lVictims = llListReplaceList(g_lVictims, [NULL_KEY, 0, 0], iVictimIdx + 4, iVictimIdx + 6);
-			string sWork = llList2String(g_lVictims, iVictimIdx + 1);
+			StoreVictimLeashToKey(iVictimIdx, NULL_KEY); // just record it and move on
+			StoreVictimLeashToRank(iVictimIdx, 0);
+			StoreVictimLeashToTime(iVictimIdx, 0);
+			StoreVictimStatus(iVictimIdx, "try");
 			g_lVictims = llListReplaceList(g_lVictims, ["try"], iVictimIdx + 1, iVictimIdx + 1);
 			TryLeash(iVictimIdx);
 		}
@@ -362,15 +370,17 @@ AddOnMessage(string sMessage, integer iChannel) {
 ParseEntry(string sInput) {
 	string sTarget = llStringTrim(sInput, STRING_TRIM);
 	list lInput = [];
+	key kKey = NULL_KEY;
 	if (sTarget != "") lInput = llParseString2List(sTarget, ["="], []); else lInput = ["", ""];
 	while (llGetListLength(lInput) < 2) lInput += [""];
 	string s1 = llList2String(lInput, 0);
 	string s2 = llList2String(lInput, 1);
 	if (s1 == "target") { 
+		kKey = llList2Key(lInput, 1);
 		g_lTargets += [llList2Key(lInput, 1), "idle"]; 
-		integer iChannel = (integer)("0x"+llGetSubString(s2,0,8))+0xf6eb-0xd2;
+		integer iChannel = CalcChannel(kKey);
 		integer iHandle = llListen(iChannel, "", "", "");
-		g_lTargets += [iChannel, iHandle, NULL_KEY, 0, 0]; // channel, listen handle
+		g_lTargets += [iChannel, iHandle, NULL_KEY, 0, 0, 0]; // channel, listen handle
 		if (g_bDebugOn) {
 			list lOutput = ["ParseEntry", sInput];
 			lOutput += lInput;
@@ -378,6 +388,70 @@ ParseEntry(string sInput) {
 			DebugOutput(9, lOutput);
 		}
 	} else if (s1 == "debug") { g_iDebugLevel = llList2Integer(lInput, 1); g_bDebugOn = FALSE; if (g_iDebugLevel < 10) g_bDebugOn = TRUE; }
+}
+
+key ExtractVictimKey(integer iStart) {
+	return llList2Key(g_lVictims, iStart);
+}
+
+string ExtractVictimStatus(integer iStart) {
+	return llList2String(g_lVictims, iStart + VICSTATUS);
+}
+
+integer ExtractVictimChannel(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + VICCHANNEL);
+}
+
+integer ExtractVictimHandle(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + VICHANDLE);
+}
+
+key ExtractVictimLeashToKey(integer iStart) {
+	return llList2Key(g_lVictims, iStart + VICLEASHTOKEY);
+}
+
+integer ExtractVictimLeashToRank(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + VICLEASHTORANK);
+}
+
+integer ExtractVictimLeashToTime(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + VICLEASHTOTIME);
+}
+
+integer ExtractVictimLastTime(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + VICLASTTIME);
+}
+
+StoreVictimKey(integer iStart, key kKey) {
+	g_lVictims = llListReplaceList(g_lVictims, [kKey], iStart + VICKEY, iStart + VICKEY);
+}
+
+StoreVictimStatus(integer iStart, string sStr) {
+	g_lVictims = llListReplaceList(g_lVictims, [sStr], iStart + VICSTATUS, iStart + VICSTATUS);
+}
+
+StoreVictimChannel(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + VICCHANNEL, iStart + VICCHANNEL);
+}
+
+StoreVictimHandle(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + VICHANDLE, iStart + VICHANDLE);
+}
+
+StoreVictimLeashToKey(integer iStart, key kIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [kIn], iStart + VICLEASHTOKEY, iStart + VICLEASHTOKEY);
+}
+
+StoreVictimLeashToRank(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + VICLEASHTORANK, iStart + VICLEASHTORANK);
+}
+
+StoreVictimLeashToTime(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + VICLEASHTOTIME, iStart + VICLEASHTOTIME);
+}
+
+StoreVictimLastTime(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + VICLASTTIME, iStart + VICLASTTIME);
 }
 
 //
@@ -448,11 +522,13 @@ default
 //	check each key in the victim list against the people discovered in the sensor; if there is anyone in the victim list not in the people list (i.e. not in range),
 //		delete that key and associated values from the victim list
 //
+//		TODO: Consider retaining records for history?		
+//
 		integer iVicLen = llGetListLength(g_lVictims);
 		integer iVicIdx = iVicLen - VICTIMSTRIDE;
 		while (iVicIdx >= 0) {
 			if (llListFindList(lPeople, [llList2Key(g_lVictims, iVicIdx)]) < 0) {
-				string sStat = llList2String(g_lVictims, iVicIdx + 1);
+				string sStat = ExtractVictimStatus(iVicIdx);
 				if (sStat != "int") {
 					g_lVictims = llDeleteSubList(g_lVictims, iVicIdx, iVicIdx + VICTIMSTRIDE-1);					
 				}
@@ -475,16 +551,22 @@ default
 			if (ji >= 0) {  // ignore people not on the target list
 				integer ki = llListFindList(g_lVictims, [llDetectedKey(i)]);
 				if (ki >= 0) {
-					string sStat = llList2String(g_lVictims, ki + 1);
-					if (sStat != "int") {
-						g_lVictims = llListReplaceList(g_lVictims, ["try"], ki + 1, ki + 1);
+					string sStat = ExtractVictimStatus(ki);
+//	TODO: This is where the repeat leash bug is caused, I'll bet - need to be sure not to try to leash someone already leashed
+					if (sStat != "int" && sStat != "ext") {
+						integer iT = ExtractVictimLastTime(ki);
+						if (iT == 0) StoreVictimStatus(ki, "try");
+						else {
+							integer iD = llGetUnixTime() - iT;
+							if (iD > 600) StoreVictimStatus(ki, "try");
+						}
 					}
 					if (g_bDebugOn) { list lTemp = ["sensor1", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 				} else {
 					g_lVictims += [llDetectedKey(i), "try"];  // replaces ji + 1
 					g_lVictims += [llList2Integer(g_lTargets, ji + 2)];
 					g_lVictims += [llList2Integer(g_lTargets, ji + 3)];
-					g_lVictims += [NULL_KEY, 0, 0];
+					g_lVictims += [NULL_KEY, 0, 0, 0];
 					if (g_bDebugOn) { list lTemp = ["sensor2", llDetectedKey(i), "Victims:"]; lTemp += g_lVictims; DebugOutput(9, lTemp); }
 				}
 			}
@@ -531,7 +613,7 @@ default
 		integer iVicLen = llGetListLength(g_lVictims);
 		integer iVicIdx = 0;
 		while (iVicIdx < iVicLen) {
-			string sStat = llList2String(g_lVictims, iVicIdx + 1);
+			string sStat = ExtractVictimStatus(iVicIdx);
 			if (g_bDebugOn) DebugOutput(9, ["timer victim", iVicIdx, sStat]);
 			if (sStat == "int") TryUnleash(iVicIdx); 
 			iVicIdx += VICTIMSTRIDE;

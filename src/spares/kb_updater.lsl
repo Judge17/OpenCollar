@@ -70,7 +70,7 @@ list g_lPermanent = [];
 //		[3] - minor component of this person's collar
 //		[4] - last date reported
 //
-integer PERMANENTSTRIDE = 5
+integer PERMANENTSTRIDE = 5;
 
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
@@ -101,10 +101,11 @@ integer KB_DEBUG_CHANNEL		   = -617783;
 
 //
 //	CalcChannel routing cribbed from aria's API module; should be distinguished from the one there before deploying oc_api
+//	Done
 //
 
 integer CalcChannel(key kIn) {
-	integer iChannel = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
+	integer iChannel = ((integer)("0x"+llGetSubString((string)kIn,0,8)))+0xf6eb-0xa2;
 	return iChannel;
 }
 
@@ -317,8 +318,8 @@ DecodeMessage(string sMsg) {
 	integer iPermIdx = -1;
 	if (sId == "versionresponse") {
 //
-//	a "leashed" message gives details about a person's current leash status.
-//		"victim" is the individual leashed (should always be the collar wearer)
+//	a "versionresponse" message gives details about a person's current collar version.
+//		"victim" is the collar wearer)
 //		"majver" is the collar major version (e.g. 7.5)
 //		"minvwe" is the collar minor version (e.g. 1)
 //			That example would be 7.5.1
@@ -326,8 +327,8 @@ DecodeMessage(string sMsg) {
 		kKey1 = xJSONkey(sMsg, "victim");
 		g_sCollarMajorVersion = xJSONstring(sMsg, "majver");
 		g_sCollarMinorVersion = xJSONstring(sMsg, "minver");
-		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage versionresponse", kKey1, sWork, g_sCollarMajorVersion, g_sCollarMinorVersion]);
-		list lParts = llParseString2List(g_sCollarMajorVersion, ["."], "");
+		if (g_bDebugOn) DebugOutput(9, ["DecodeMessage versionresponse", kKey1, sMsg, g_sCollarMajorVersion, g_sCollarMinorVersion]);
+		list lParts = llParseString2List(g_sCollarMajorVersion, ["."], [""]);
 		integer iI1 = llList2Integer(lParts, 0);
 		integer iI2 = llList2Integer(lParts, 1);
 		integer iI3 = (integer) g_sCollarMinorVersion;
@@ -340,7 +341,9 @@ DecodeMessage(string sMsg) {
 //
 //	iJ integers have version of the updater
 //
-		integer iK1 = 0:
+
+/*
+		integer iK1 = 0;
 		iPermIdx = llListFindList(g_lPermanent, [kKey1]);
 		if (iPermIdx < 0) {
 			g_lPermanent += [kKey, 0, 0, 0, 0];
@@ -351,8 +354,8 @@ DecodeMessage(string sMsg) {
 		
 //	Only got tthis far - need to check versions and such to decide whether to try the update
 		
-		
-		
+*/		
+/*		
 		iK1 = llList2Integer(g_lPermanent, iPermIdx + 4);
 		iVictimIdx = llListFindList(g_lVictims, [kKey1]);
 		if (iVictimIdx >= 0) {
@@ -362,7 +365,7 @@ DecodeMessage(string sMsg) {
 			iI1 = llList2Integer(g_lVictims, )		
 			integer iK2 = llGetUnixTime() - iK1; // # seconds since version last recorded
 			if (sWork == "oth") return;
-			
+*/			
 //			if (sWork == "int") { // leashed by us
 //				if (llList2Key(g_lVictims, iVictimIdx + 4) == NULL_KEY) { // record doesn't reflect (i.e. first time we've received confirmation)
 //					g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // if so, record it and move on
@@ -373,7 +376,7 @@ DecodeMessage(string sMsg) {
 //				g_lVictims = llListReplaceList(g_lVictims, [kKey2, iInt1, iInt2], iVictimIdx + 4, iVictimIdx + 6); // just record it and move on
 //				g_lVictims = llListReplaceList(g_lVictims, ["ext"], iVictimIdx + 1, iVictimIdx + 1);
 //			}
-		}
+//		}
 	}
 }
 
@@ -407,16 +410,29 @@ ParseEntry(string sInput) {
 	string s2 = llList2String(lInput, 1);
 	if (s1 == "target") {
 		kKey = llList2Key(lInput, 1);
-		g_lTargets += [kKey, "idle"]; 
-		integer iChannel = (integer)("0x"+llGetSubString(s2,0,8))+0xf6eb-0xd2;
-		integer iHandle = llListen(iChannel, "", "", "");
-		g_lTargets += [iChannel, iHandle, 0, 0, 0, 0]; // channel, listen handle, 3-part version, last date
+		integer iIdx = llListFindList(g_lTargets, [kKey]);
+		if (iIdx < 0) {
+			g_lTargets += [kKey, "idle"]; 
+			integer iChannel = CalcChannel(kKey);
+			integer iHandle = llListen(iChannel, "", "", "");
+			g_lTargets += [iChannel, iHandle, 0, 0, 0, 0]; // channel, listen handle, 3-part version, last date
+		} else {
+			integer iChannel = ExtractTargetChannel(iIdx);
+			integer iHandle = ExtractTargetHandle(iIdx);
+			if (iHandle == 0 ) {
+				iHandle = llListen(iChannel, "", "", "");
+				StoreTargetHandle(iIdx, iHandle);
+			}
+		}
 		if (g_bDebugOn) {
-			list lOutput = ["ParseEntry", sInput];
-			lOutput += lInput;
-			lOutput += [llList2Key(lInput, 1), "idle", iChannel, iHandle];
+			list lOutput = ["ParseEntry", sInput, ExtractTargetKey(iIdx),
+				ExtractTargetStatus(iIdx), ExtractTargetChannel(iIdx), ExtractTargetHandle(iIdx),
+				ExtractTargetMajorLeft(iIdx), ExtractTargetMajorRight(iIdx), ExtractTargetMinor(iIdx),
+				ExtractTargetLastDate(iIdx)];
 			DebugOutput(9, lOutput);
 		}
+		AddOnMessage(llList2Json(JSON_OBJECT, ["msgid", "versioninquiry", 
+			"addon_name", g_sAddOnID]), ExtractTargetChannel(iIdx));		
 	} else if (s1 == "debug") { 
 		g_iDebugLevel = llList2Integer(lInput, 1); 
 		g_bDebugOn = FALSE; 
@@ -427,6 +443,69 @@ ParseEntry(string sInput) {
 	}	
 }
 
+key ExtractTargetKey(integer iStart) {
+	return llList2Key(g_lVictims, iStart);
+}
+
+string ExtractTargetStatus(integer iStart) {
+	return llList2String(g_lVictims, iStart + TGTSTATUS);
+}
+
+integer ExtractTargetChannel(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + TGTCHANNEL);
+}
+
+integer ExtractTargetHandle(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + TGTHANDLE);
+}
+
+integer ExtractTargetMajorLeft(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + TGTMAJORLEFT);
+}
+
+integer ExtractTargetMajorRight(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + TGTMAJORRIGHT);
+}
+
+integer ExtractTargetMinor(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + TGTMINOR);
+}
+
+integer ExtractTargetLastDate(integer iStart) {
+	return llList2Integer(g_lVictims, iStart + TGTLASTDATE);
+}
+
+StoreTargetKey(integer iStart, key kKey) {
+	g_lVictims = llListReplaceList(g_lVictims, [kKey], iStart + TGTKEY, iStart + TGTKEY);
+}
+
+StoreTargetStatus(integer iStart, string sStr) {
+	g_lVictims = llListReplaceList(g_lVictims, [sStr], iStart + TGTSTATUS, iStart + TGTSTATUS);
+}
+
+StoreTargetChannel(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + TGTCHANNEL, iStart + TGTCHANNEL);
+}
+
+StoreTargetHandle(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + TGTHANDLE, iStart + TGTHANDLE);
+}
+
+StoreTargetMajorLeft(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + TGTMAJORLEFT, iStart + TGTMAJORLEFT);
+}
+
+StoreTargetMajorRight(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + TGTMAJORRIGHT, iStart + TGTMAJORRIGHT);
+}
+
+StoreTargetMinor(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + TGTMINOR, iStart + TGTMINOR);
+}
+
+StoreTargetLastDate(integer iStart, integer iIn) {
+	g_lVictims = llListReplaceList(g_lVictims, [iIn], iStart + TGTLASTDATE, iStart + TGTLASTDATE);
+}
 //
 //	on state_entry, do the standard setups, then start reading the control card - that will fire the dataserver event when lines are retrieved
 //

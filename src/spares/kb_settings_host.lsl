@@ -158,6 +158,8 @@ StartRun() {
 			EndRun();
 		}
 	} else {
+		llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card");
+		// send 'no card' notification here
 		EndRun();
 	}
 }

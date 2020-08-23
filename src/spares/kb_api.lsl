@@ -307,6 +307,14 @@ integer xJSONint(string JSONcluster, string sElement) {
 	if (sWork != JSON_INVALID && sWork != JSON_NULL) return (integer) sWork;
 	return 0;
 }
+//
+//	CalcChannel routing cribbed from aria's API module; should be distinguished from the one there before deploying oc_api
+//	Done
+//
+integer CalcChannel(key kIn) {
+	integer iChannel = ((integer)("0x"+llGetSubString((string)kIn,0,8)))+0xf6eb-0xa2;
+	return iChannel;
+}
 
 default
 {
@@ -319,7 +327,7 @@ default
 //		since the API channel is dependent on the individual, there can be only one per person
 //		there's no need to maintain any kind of list
 //
-		API_CHANNEL = ((integer)("0x"+llGetSubString((string)llGetOwner(),0,8)))+0xf6eb-0xd2;
+		API_CHANNEL = CalcChannel(llGetOwner());
 		if (g_bDebugOn) DebugOutput(3, ["state_entry", "API_CHANNEL", API_CHANNEL]);
 		llListen(API_CHANNEL, "", "", "");
 		if (g_bDebugOn) { DebugOutput(3, [g_sVersionId, API_CHANNEL]); }
