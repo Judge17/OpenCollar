@@ -299,7 +299,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
     string sTokenMajor = llToLower(llGetSubString(sToken, 0, i - 1));  // now sTokenMajor = "major"
     string sTokenMinor = "";
     if (i > 0 ) sTokenMinor = llToLower(llGetSubString(sToken, i + 1, -1));  // now sTokenMinor = "minor"
-    if (g_bDebugOn) { DebugOutput(["parseSettings", sStr, sTokenMajor, sTokenMinor, sValue]); }
+    if (g_bDebugOn) { DebugOutput(["parseSettings", iNum, sStr, sTokenMajor, sTokenMinor, sValue]); }
     if (iNum == LM_SETTING_RESPONSE) {
         if (sTokenMajor == "bookmarks") {
             if (g_bDebugOn) { DebugOutput([sTokenMajor, " ", sValue]); }
@@ -337,7 +337,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
         }
     }
     else if (iNum == LM_SETTING_DELETE) {
-        if (sToken == "leash") {
+        if (sTokenMajor == "leash") {
             if (sTokenMinor = "leashedto") {
             if (g_bDebugOn) { DebugOutput(["Delete ", sToken]); }
                 g_kLeashedTo = NULL_KEY; 
