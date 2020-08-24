@@ -11,7 +11,7 @@ string  g_sChatCommand       = "tplim";    // every menu should have a chat comm
 string  BUTTON_PARENTMENU    = g_sParentMenu;
 key     g_kWebLookup;
 string  KB_VERSION           = "7.5";
-string  KB_DEVSTAGE          = "c";
+string  KB_DEVSTAGE          = "d";
 string  g_sScriptVersion = "";
 integer LINK_CMD_DEBUG=1999;
 
@@ -95,8 +95,10 @@ string  DEACTIVATE = "Deactivate";
 string  FORCERESET = "ForceReset";
 string  DEBUGON = "DebugOn";
 string  DEBUGOFF = "DebugOff";
+string  CURFEW = "Curfew";
 
 integer g_iActive      = FALSE;
+integer g_iCurfewActive = FALSE;
 integer g_iLeashedRank = 0;
 key     g_kLeashedTo   = NULL_KEY;
 
@@ -297,6 +299,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
     string sTokenMajor = llToLower(llGetSubString(sToken, 0, i - 1));  // now sTokenMajor = "major"
     string sTokenMinor = "";
     if (i > 0 ) sTokenMinor = llToLower(llGetSubString(sToken, i + 1, -1));  // now sTokenMinor = "minor"
+    if (g_bDebugOn) { DebugOutput(["parseSettings", sStr, sTokenMajor, sTokenMinor, sValue]); }
     if (iNum == LM_SETTING_RESPONSE) {
         if (sTokenMajor == "bookmarks") {
             if (g_bDebugOn) { DebugOutput([sTokenMajor, " ", sValue]); }
@@ -315,11 +318,11 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
                 }
             }
         } 
-        else if (sTokenMajor == "leashed") {
+        else if (sTokenMajor == "leash") {
             if (sTokenMinor = "leashedto") {
-//                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
                 list lLeashed = llParseString2List(sValue, [","], []);
-                if (llList2Integer(lLeashed, 2) > 0) {
+                if (g_bDebugOn) { list lTemp = ["saving settings", sTokenMajor, sTokenMinor] + lLeashed; DebugOutput(lTemp); }
+                if (llList2Integer(lLeashed, 1) > 0) {
                     g_kLeashedTo = llList2Key(lLeashed, 0); 
                     g_iLeashedRank = llList2Integer(lLeashed, 1);
                     checkStatus(TRUE);
@@ -334,7 +337,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
         }
     }
     else if (iNum == LM_SETTING_DELETE) {
-        if (sToken == "leashed") {
+        if (sToken == "leash") {
             if (sTokenMinor = "leashedto") {
             if (g_bDebugOn) { DebugOutput(["Delete ", sToken]); }
                 g_kLeashedTo = NULL_KEY; 
