@@ -1,27 +1,27 @@
 
-//K-Bar tplimits
+//K-Bar curfew
 
 
 
-string  g_sModule = "tplim";
+string  g_sModule = "curfew";
 list    g_lMenuIDs;
 integer g_iMenuStride = 3;
 
-string  g_sSubMenu           = "TPLimits"; // Name of the submenu
-string  g_sParentMenu        = "Apps";     // name of the menu, where the menu plugs in
-string  g_sChatCommand       = "tplim";    // every menu should have a chat command
-string  BUTTON_PARENTMENU    = g_sParentMenu;
-key     g_kWebLookup;
+//string  g_sSubMenu           = "TPLimits"; // Name of the submenu
+//string  g_sParentMenu        = "Apps";     // name of the menu, where the menu plugs in
+//string  g_sChatCommand       = "tplim";    // every menu should have a chat command
+//string  BUTTON_PARENTMENU    = g_sParentMenu;
+//key     g_kWebLookup;
 string  KB_VERSIONMAJOR      = "7";
 string  KB_VERSIONMINOR      = "5";
 string  KB_DEVSTAGE          = "1";
 string  g_sScriptVersion = "";
-integer LINK_CMD_DEBUG=1999;
+//integer LINK_CMD_DEBUG=1999;
 
 //integer g_bDebugOn = FALSE;
 //key     g_kDebugKey = NULL_KEY;
-key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
-key SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
+//key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
+//key SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
 
 //DebugOutput(integer iLevel, list ITEMS) {
 //    if (g_iDebugLevel > iLevel) return;
@@ -41,7 +41,7 @@ integer g_bDebugOn = FALSE;
 integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
-
+/*
 SetDebugOn(key kID) {
     g_bDebugOn = TRUE;
     g_iDebugLevel = 0;
@@ -54,7 +54,7 @@ SetDebugOff(key kID) {
     g_iDebugLevel = 10;
     llMessageLinked(LINK_SET,NOTIFY,"0"+"TP debug inactive.", kID);
 }
-
+*/
 integer g_iRLVOn         = FALSE; //Assume RLV is off until we hear otherwise
 
 key     g_kWearer = NULL_KEY;       // key of the current wearer to reset only on owner changes
@@ -66,7 +66,7 @@ list    g_lPairs = [];
 
 integer CMD_OWNER = 500;
 integer CMD_TRUSTED = 501;
-integer CMD_WEARER = 503;
+//integer CMD_WEARER = 503;
 
 integer NOTIFY              = 1002;
 
@@ -75,22 +75,22 @@ integer LM_SETTING_REQUEST  = 2001;
 integer LM_SETTING_RESPONSE = 2002;
 integer LM_SETTING_DELETE   = 2003;
 
-integer MENUNAME_REQUEST    = 3000;
-integer MENUNAME_RESPONSE   = 3001;
+//integer MENUNAME_REQUEST    = 3000;
+//integer MENUNAME_RESPONSE   = 3001;
 
-integer DIALOG = -9000;
-integer DIALOG_RESPONSE = -9001;
-integer DIALOG_TIMEOUT = -9002;
+//integer DIALOG = -9000;
+//integer DIALOG_RESPONSE = -9001;
+//integer DIALOG_TIMEOUT = -9002;
 
 integer RLV_OFF      = 6100;
 integer RLV_ON       = 6101;
-
+/*
 integer KB_NOTICE_LEASHED          = -34691;
 integer KB_NOTICE_UNLEASHED        = -34692;
 integer KB_SET_REGION_NAME         = -34693;
 integer KB_REM_REGION_NAME         = -34694;
 integer KB_REQUEST_VERSION         = -34591;
-integer	KB_CURFEW_NOTICE		   = -34852;
+integer    KB_CURFEW_NOTICE           = -34852;
 
 string UPMENU = "BACK";
 
@@ -103,15 +103,15 @@ string  CURFEWON = "CurfewOn";
 string  CURFEWOFF = "CurfewOff";
 string  SETSTART = "Start Time";
 string  SETSTOP = " End Time";
+*/
 //
 //    Start of common block
 //
 
-integer g_iActive      = FALSE;
 integer g_iCurfewActive = FALSE;
 integer g_iLeashedRank = 0;
 key     g_kLeashedTo   = NULL_KEY;
-integer g_iChecking = 0;
+//integer g_iChecking = 0;
 list    g_lCurfew = [0, 0, 0, 0];
 //integer g_iCurfewStart = 0; // hour * 100 + minute
 //integer g_iCurfewEnd = 0; // as above
@@ -127,14 +127,14 @@ integer bool(integer a){
 /*
 integer CurfewHour(list lCurfew) {
     integer i = llList2Integer(lCurfew, 0);
-	return i;
+    return i;
 }
 
 integer CurfewMinute(list lCurfew) {
     integer i = llList2Integer(lCurfew, 1);
     return i;
 }
-*/
+
 string FormatCurfew(list lCurfew, integer bStart) {
     list lTemp = ["FormatCurfew", "***"];
     lTemp += lCurfew;
@@ -154,7 +154,8 @@ string FormatCurfew(list lCurfew, integer bStart) {
     }
     return s1 + s2;
 }
-/*
+*/
+
 /////////////////////////////////////////////////////////////////////
 // Script Library Contribution by Flennan Roffo
 // Logic Scripted Products & Script Services
@@ -196,7 +197,7 @@ integer LeapYear( integer year)
 integer DaysPerMonth(integer year, integer month)
 {
     // Compact Days-Per-Month algorithm. Omei Qunhua.
-    if (month == 2)  	return 28 + LeapYear(year);
+    if (month == 2)      return 28 + LeapYear(year);
     return 30 + ( (month + (month > 7) ) & 1);           // Odd months up to July, and even months after July, have 31 days
 }
  
@@ -289,35 +290,35 @@ string TimeString(list timelist)
  
 integer DateTime2Unix(integer year, integer month, integer day, integer hour, integer minute, integer second)
 {
-	integer time = 0;
-	integer yr = 1970;
-	integer mt = 1;
-	integer days;
+    integer time = 0;
+    integer yr = 1970;
+    integer mt = 1;
+    integer days;
  
-	while(yr < year)
-	{
-		days = DaysPerYear(yr++);
-		time += days * SECONDS_PER_DAY;
-	}
+    while(yr < year)
+    {
+        days = DaysPerYear(yr++);
+        time += days * SECONDS_PER_DAY;
+    }
  
-	while (mt < month)
-	{
-		days = DaysPerMonth(year, mt++);
-		time += days * SECONDS_PER_DAY;
-	}
+    while (mt < month)
+    {
+        days = DaysPerMonth(year, mt++);
+        time += days * SECONDS_PER_DAY;
+    }
  
-	days = day - 1;
-	time += days * SECONDS_PER_DAY;
-	time += hour * SECONDS_PER_HOUR;
-	time += minute * SECONDS_PER_MINUTE;
-	time += second;
+    days = day - 1;
+    time += days * SECONDS_PER_DAY;
+    time += hour * SECONDS_PER_HOUR;
+    time += minute * SECONDS_PER_MINUTE;
+    time += second;
  
-	return time;
+    return time;
 }
 //////////////////////////////////////////////
 // End Unix2DateTimev1.0.lsl
 //////////////////////////////////////////////
-*/
+
 /*
 // Returns a list that is a Unix time code converted to the format [Y, M, D, h, m, s]
 
@@ -352,6 +353,7 @@ list uUnix2StampLst( integer vIntDat ){
 ///  Void Singer [ https://wiki.secondlife.com/wiki/User:Void_Singer ]  ///
 ///--
 */
+/*
 list g_lCheckboxes=["⬜","⬛"];
 string Checkbox(integer iValue, string sLabel) {
     return llList2String(g_lCheckboxes, bool(iValue))+" "+sLabel;
@@ -382,14 +384,14 @@ InitPluginButtons() {
 
 DoCurfewMenu(key keyID, integer iAuth, integer iOption) {
     if (keyID == NULL_KEY) { return; }
-	if (iOption == 1)
-		Dialog(keyID, FormatMenuMessage(2), [], [], 0, iAuth, "Textbox~Start");
-	else if (iOption == 2)
-		Dialog(keyID, FormatMenuMessage(3), [], [], 0, iAuth, "Textbox~Stop");
+    if (iOption == 1)
+        Dialog(keyID, FormatMenuMessage(2), [], [], 0, iAuth, "Textbox~Start");
+    else if (iOption == 2)
+        Dialog(keyID, FormatMenuMessage(3), [], [], 0, iAuth, "Textbox~Stop");
 }
 
 string FormatMenuMessage(integer iOption) {
-	string s1;
+    string s1;
     string s2;
     string s3;
     string s4;
@@ -417,10 +419,10 @@ string FormatMenuMessage(integer iOption) {
     sPrompt += "\nThis is a K-Bar plugin; for support, wire roan (Silkie Sabra), K-Bar Ranch.\n";
 
     if (iOption == 1) sPrompt += s1 + s2 + s3 + s4 + s5 + "\nPick an option.";
-	else if (iOption == 2) sPrompt += s1 + s2 + s3 + s4 + s5 + "\nSet curfew start (24-hour SL time).";
-	else if (iOption == 3) sPrompt += s1 + s2 + s3 + s4 + s5 + "\nSet curfew end (24-hour SL time).";
+    else if (iOption == 2) sPrompt += s1 + s2 + s3 + s4 + s5 + "\nSet curfew start (24-hour SL time).";
+    else if (iOption == 3) sPrompt += s1 + s2 + s3 + s4 + s5 + "\nSet curfew end (24-hour SL time).";
 
-	return sPrompt;
+    return sPrompt;
 }
 
 DoMenu(key keyID, integer iAuth) {
@@ -431,8 +433,8 @@ DoMenu(key keyID, integer iAuth) {
     lButtons += Checkbox(g_iActive, "Active");
     
     lButtons += Checkbox(g_iCurfewActive, "Curfew");
-	
-	if (g_iCurfewActive) lButtons += [SETSTART, SETSTOP];
+    
+    if (g_iCurfewActive) lButtons += [SETSTART, SETSTOP];
     
     if ((keyID == KURT_KEY) || ((keyID == SILKIE_KEY) && (g_kWearer != keyID))) {
         lButtons += Checkbox(g_bDebugOn, "Debug");
@@ -515,13 +517,14 @@ UserCommand(integer iNum, string sStr, key kID) {
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to deactivate TP debug", kID);
             DoMenu(kID, iNum);
         }
-	}
-/*
+    }
+
     else if(llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + FORCERESET) - 1) == g_sChatCommand + " " + FORCERESET) {
         checkMemory(TRUE);
-*/
-}
 
+}
+*/
+/*
 list dumpRegions() {
     integer iIdx = 0;
     integer iLen = llGetListLength(g_lPairs);
@@ -536,13 +539,16 @@ list dumpRegions() {
     }
     return lRet;
 }
-
+*/
 addOccurrence(string sName, string sRegion) {
     if (g_bDebugOn) { DebugOutput(["addOccurrence ", sName, sRegion]); }
-    string sEntry = sName + "~" + sRegion;
-    integer iIdx = llListFindList(g_lPairs, [sEntry]);
-    if (iIdx < 0) {
-        g_lPairs += [sEntry];
+    string sWork = llToLower(sName);
+    if ((sName == "home") || (sName == "defaulthome")) {
+        string sEntry = sName + "~" + sRegion;
+        integer iIdx = llListFindList(g_lPairs, [sEntry]);
+        if (iIdx < 0) {
+            g_lPairs += [sEntry];
+        }
     }
 }
 
@@ -604,21 +610,14 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
             addOccurrence(sTokenMinor, sRegion);
         }
         else if(sTokenMajor == "kbtp") {
-            if (sTokenMinor == "engaged")  {
-//                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
-                if ((sValue == "y") || (sValue == "Y")) {
-                    g_iActive = TRUE;
-                    checkStatus(TRUE);
-                } else {
-                    g_iActive = FALSE;
-                }
-            } else if (sTokenMinor == "curfew")  {
+            if (sTokenMinor == "curfew")  {
 //                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
                 if ((sValue == "y") || (sValue == "Y")) {
                     g_iCurfewActive = TRUE;
-                    checkCurfewStatus(TRUE);
+                    KickOff();
                 } else {
                     g_iCurfewActive = FALSE;
+                    llSetTimerEvent(0.0);
                 }
             } else if (sTokenMinor == "curfewtimes") {
                 g_lCurfew = llCSV2List(sValue);
@@ -631,14 +630,8 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
                 if (llList2Integer(lLeashed, 1) > 0) {
                     g_kLeashedTo = llList2Key(lLeashed, 0); 
                     g_iLeashedRank = llList2Integer(lLeashed, 1);
-                    checkStatus(TRUE);
+//                    checkStatus(TRUE);
                 }
-            }
-        }
-        else if (sTokenMajor == "global") {
-            if (sTokenMinor == "checkboxes") {
-                if (g_bDebugOn) { DebugOutput([sTokenMajor, sTokenMinor, sValue]); }
-                g_lCheckboxes = llCSV2List(sValue);
             }
         }
     }
@@ -648,40 +641,20 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
             if (g_bDebugOn) { DebugOutput(["Delete ", sToken]); }
                 g_kLeashedTo = NULL_KEY; 
                 g_iLeashedRank = 0; 
-                checkStatus(TRUE);
+//                checkStatus(TRUE);
             }
         } else if (sTokenMajor == "kbtp") {
-            if (sTokenMinor == "engaged") {
-                g_iActive = FALSE;
-            } else if (sTokenMinor == "curfew")  {
+            if (sTokenMinor == "curfew")  {
                 g_iCurfewActive = FALSE;
+                llSetTimerEvent(0.0);
             } else if (sTokenMinor == "curfewtimes"){
                 g_lCurfew = llCSV2List(sValue);
             }
-        }
-        else if (sTokenMajor == "bookmarks") { 
+        } else if (sTokenMajor == "bookmarks") { 
             list lparts = llParseString2List(sValue, ["_"], [""]);
             string sRegion = llStringTrim(llList2String(lparts, 1), STRING_TRIM);
             deleteOccurence(sRegion);
         }
-    }
-    else if (iNum == KB_NOTICE_LEASHED) {
-        if (g_bDebugOn) { DebugOutput(["Notice:leashed"]); }
-        list lLeashed = llParseString2List(sStr, [","], []);
-        g_kLeashedTo = llList2Key(lLeashed, 0); 
-        g_iLeashedRank = llList2Integer(lLeashed, 1); 
-        checkStatus(TRUE);
-    }
-    else if (iNum == KB_NOTICE_UNLEASHED) {
-        if (g_bDebugOn) { DebugOutput(["Notice:unleashed"]); }
-        g_kLeashedTo = NULL_KEY; 
-        g_iLeashedRank = 0; 
-        checkStatus(TRUE);
-    }
-    else if (iNum == KB_REM_REGION_NAME) {
-        list lparts = llParseString2List(sValue, ["_"], [""]);
-        string sRegion = llStringTrim(llList2String(lparts, 1), STRING_TRIM);
-        deleteOccurence(sRegion);
     }
 }
 
@@ -706,8 +679,8 @@ integer checkOK(integer bFirstTime, string sRegion) {
 */
 
     llSetTimerEvent(0.0);
-    if (g_bDebugOn) { DebugOutput(["checkOK ", "g_iActive " + (string) g_iActive]); }
-    if (!g_iActive) return TRUE;
+    if (g_bDebugOn) { DebugOutput(["checkOK ", "g_iCurfewActive " + (string) g_iCurfewActive]); }
+    if (!g_iCurfewActive) return TRUE;
     if (LeashOK()) return TRUE;
     if (RegOK(sRegion)) return TRUE;
     if ((findOccurrence("Home") >= 0) ||
@@ -763,7 +736,7 @@ integer checkStatus(integer bFirstTime) {
     checkOK is an extension of checkStatus. It handles the actual logic to decide whether the wearer is
         allowed in the region currently occupied
 */
-    g_iChecking = 1;
+//    g_iChecking = 1;
     
     if (bFirstTime) {
         g_iSecondsBeforeBoot = 0;
@@ -778,27 +751,6 @@ integer checkStatus(integer bFirstTime) {
     }
 }
 
-integer checkCurfewStatus(integer bFirstTime) {
-/*
-    checkOK is an extension of checkStatus. It handles the actual logic to decide whether the wearer is
-        allowed in the region currently occupied
-*/
-    g_iChecking = 2;
-/*    
-    if (bFirstTime) {
-        g_iSecondsBeforeBoot = 0;
-        llSetTimerEvent(0.0);
-    }
-    if (checkOK(bFirstTime, llGetRegionName())) {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning TRUE"]); }
-        return TRUE;
-    } else {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning FALSE"]); }
-        return FALSE;
-    }
-*/
-    return TRUE;
-}
 /*
 NotifyCurfew() {
     string sPackage = llList2Json(JSON_OBJECT, ["msgid", "curfew_data", 
@@ -810,13 +762,14 @@ NotifyCurfew() {
     llMessageLinked(LINK_ALL_OTHERS, KB_CURFEW_NOTICE, sPackage, "");
 }
 */
+/*
 HandleMenus(key kID, string sStr, integer iNum) {
-	integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
+    integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
     if (iMenuIndex != -1) {
         list lMenuParams = llParseStringKeepNulls(sStr, ["|"], []);
         key kAv = (key)llList2String(lMenuParams, 0); // avatar using the menu
         string sMessage = llList2String(lMenuParams, 1); // button la
-		integer iPage = (integer)llList2String(lMenuParams, 2); // menu page
+        integer iPage = (integer)llList2String(lMenuParams, 2); // menu page
         integer iAuth = (integer)llList2String(lMenuParams, 3); // auth level of avatar
         list lParams =  llParseStringKeepNulls(sStr, ["|"], []);
         string sMenuType = llList2String(g_lMenuIDs, iMenuIndex + 1);
@@ -871,28 +824,36 @@ HandleMenus(key kID, string sStr, integer iNum) {
         }
     }
 }
-/*
-integer SetTime(string sMsg) {
-    string sX = llStringTrim(sMsg, STRING_TRIM);
-    while (llStringLength(sX) < 4) sX = "0" + sX;
-    string sHour = llGetSubString(sX, 0, 1);
-    string sMinute = llGetSubString(sX, 2, 3);
-	integer iTime = (integer) sMsg;
-	integer iHour = CurfewHour(iTime);
-	integer iMinute = CurfewMinute(iTime);
-	if (iHour < 0 || iHour > 23) iHour = 0;
-	if (iMinute < 0 || iMinute > 59) iMinute = 0;
-	iTime = iMinute + (iHour * 100);
-	return iTime;
-}
 */
+
+KickOff() {
+    llSetTimerEvent(0.0);
+    integer iTimeNow = llGetUnixTime();
+    list lTimeNow = Unix2DateTime(iTimeNow);
+    integer iCurfewStart = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0);
+    integer iCurfewStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0);
+    if (iCurfewStop < iCurfewStart) iCurfewStop += 86400;
+    if (g_bDebugOn) { DebugOutput(["Kickoff", iCurfewStart, iTimeNow, iCurfewStop]); }
+    if (iTimeNow >= iCurfewStart && iTimeNow <= iCurfewStop) {
+        llSetTimerEvent(5.0);
+        return;
+    } else {
+        integer iDelay = iCurfewStop - iTimeNow;
+        if (iDelay <= 0) {
+            llSetTimerEvent(5.0);
+            return;
+        } else {
+            float fDelay = (float) iDelay;
+            llSetTimerEvent(fDelay);
+        }
+    }
+}
+
 default  {
     changed(integer iChange) {
         if(iChange & CHANGED_OWNER) { llResetScript(); }
-
-        if (iChange & CHANGED_REGION) { checkStatus(TRUE); }
-
-        if (iChange & CHANGED_REGION) { checkMemory(FALSE); }
     }
 
     state_entry() {
@@ -900,13 +861,10 @@ default  {
         g_sScriptVersion = KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
         // store key of wearer
         g_kWearer = llGetOwner();
-        InitPluginButtons();
         // sleep a second to allow all scripts to be initialized
-        // send request to main menu and ask other menus if they want to register with us
-        llMessageLinked(LINK_THIS, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
-        llMessageLinked(LINK_THIS, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
         llSleep(1.5);
         llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "bookmarks", "");
+        if (g_iCurfewActive) KickOff();
     }
 
     on_rez(integer iParam) {
@@ -915,18 +873,12 @@ default  {
         // Reset if wearer changed
             llResetScript();
         }
-        checkMemory(FALSE);
+        if (g_iCurfewActive) KickOff();
     }
 
     // listen for linked messages from OC scripts
     link_message(integer iSender, integer iNum, string sStr, key kID) {
-        if(iNum == MENUNAME_REQUEST && sStr == g_sParentMenu) {
-            llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        }
-        else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER) {
-            UserCommand(iNum, sStr, kID);
-        }
-        else if(iNum == RLV_OFF) { // rlvoff -> we have to turn the menu off too
+        if(iNum == RLV_OFF) { // rlvoff -> we have to turn the menu off too
             g_iRLVOn = FALSE;
         }
         else if(iNum == RLV_ON) { // rlvon -> we have to turn the menu on again
@@ -937,61 +889,6 @@ default  {
         }
         else if(iNum == LM_SETTING_DELETE) {
             parseSettings(iSender, iNum, sStr, kID);
-        }
-        else if ((iNum == KB_NOTICE_LEASHED) || iNum == (KB_SET_REGION_NAME)
-              || (iNum == KB_NOTICE_UNLEASHED) || iNum == (KB_REM_REGION_NAME)) {
-            parseSettings(iSender, iNum, sStr, kID);
-        }
-
-        else if(iNum == DIALOG_RESPONSE) {
-			HandleMenus(kID, sStr, iNum);
-/*
-        integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
-        if (iMenuIndex != -1) {
-            list lMenuParams = llParseStringKeepNulls(sStr, ["|"], []);
-            key kAv = (key)llList2String(lMenuParams, 0); // avatar using the menu
-            string sMessage = llList2String(lMenuParams, 1); // button label
-            integer iPage = (integer)llList2String(lMenuParams, 2); // menu page
-            integer iAuth = (integer)llList2String(lMenuParams, 3); // auth level of avatar
-            list lParams =  llParseStringKeepNulls(sStr, ["|"], []);
-            string sMenuType = llList2String(g_lMenuIDs, iMenuIndex + 1);
-            g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-            if (sMenuType == "mainmenu") {
-                if (sMessage == UPMENU)
-                    llMessageLinked(LINK_ROOT, iAuth, "menu "+BUTTON_PARENTMENU, kAv);
-                else if (sMessage == ACTIVATE) {
-                    UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
-                }
-                else if(sMessage == DEACTIVATE) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
-                }
-                else if(sMessage == FORCERESET) {
-                    UserCommand(iAuth, g_sChatCommand + " " + FORCERESET, kAv);
-                }
-                else if(sMessage == DEBUGON) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-                }
-                else if(sMessage == DEBUGOFF) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
-                }
-                else if(sMessage == Checkbox(FALSE,"Active")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
-                }
-                else if(sMessage == Checkbox(TRUE,"Active")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
-                }
-                else if(sMessage == Checkbox(FALSE,"Debug")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-                }
-                else if(sMessage == Checkbox(TRUE,"Debug")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
-                }
-            }
-        }
-*/
-    } else if (iNum == DIALOG_TIMEOUT) {
-            integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
-            g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
         }
     }
     
@@ -1004,16 +901,16 @@ default  {
             g_iSecondsBeforeBoot = 0;
         } else {
             if (g_iSecondsBeforeBoot > 0) {
-                if (g_iChecking == 1)
-                    sMsg = "you are not allowed in this region unless you are leashed. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
-                else if (g_iChecking == 2)
-                    sMsg = "you are not allowed out after curfew. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
+//                if (g_iChecking == 1)
+//                    sMsg = "you are not allowed in this region unless you are leashed. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
+//                if (g_iChecking == 2)
+                sMsg = "you are not allowed out after curfew. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
                 g_iSecondsBeforeBoot -= 5;
                 llMessageLinked(LINK_SET,NOTIFY,"0"+sMsg, g_kWearer);
                 llSetTimerEvent(5.0);
             } else {
                 llSetTimerEvent(0.0);
-                g_iChecking = 0;
+//                g_iChecking = 0;
                 if (findOccurrence("Home") >= 0) {
                     llMessageLinked(LINK_THIS, CMD_OWNER, "tp Home", g_kWearer);
                 } else if (findOccurrence("home") >= 0) {
@@ -1029,4 +926,4 @@ default  {
     }
 }
 
-// kb_tplim
+// kb_curfew
