@@ -1,8 +1,6 @@
 
 //K-Bar curfew
 
-
-
 string  g_sModule = "curfew";
 list    g_lMenuIDs;
 integer g_iMenuStride = 3;
@@ -315,6 +313,57 @@ integer DateTime2Unix(integer year, integer month, integer day, integer hour, in
  
     return time;
 }
+
+integer Unix2PST_PDT(integer insecs)
+{
+    if (Convert(insecs - (3600 * 8))) return insecs - (3600 * 8);
+    return insecs - (3600 * 7);
+}
+
+integer Convert(integer insecs)
+{
+    integer bPST = TRUE;
+    integer w; integer month; integer daysinyear;
+    integer mins = insecs / 60;
+    integer secs = insecs % 60;
+    integer hours = mins / 60;
+    mins = mins % 60;
+    integer days = hours / 24;
+    hours = hours % 24;
+    integer DayOfWeek = (days + 4) % 7;    // 0=Sun thru 6=Sat
+ 
+    integer years = 1970 +  4 * (days / 1461);
+    days = days % 1461;                  // number of days into a 4-year cycle
+ 
+    @loop;
+    daysinyear = 365 + LeapYear(years);
+    if (days >= daysinyear)
+    {
+        days -= daysinyear;
+        ++years;
+        jump loop;
+    }
+    ++days;
+ 
+    for (w = month = 0; days > w; )
+    {
+        days -= w;
+        w = DaysPerMonth(years, ++month);
+    }
+//    string str =  ((string) years + "-" + llGetSubString ("0" + (string) month, -2, -1) + "-" + llGetSubString ("0" + (string) days, -2, -1) + " " +
+//    llGetSubString ("0" + (string) hours, -2, -1) + ":" + llGetSubString ("0" + (string) mins, -2, -1) );
+ 
+    integer LastSunday = days - DayOfWeek;
+    string PST_PDT = " PST";                  // start by assuming Pacific Standard Time
+    // Up to 2006, PDT is from the first Sunday in April to the last Sunday in October
+    // After 2006, PDT is from the 2nd Sunday in March to the first Sunday in November
+    if (years > 2006 && month == 3  && LastSunday >  7)     bPST = FALSE;
+    if (month > 3)                                          bPST = FALSE;
+    if (month > 10)                                         bPST = TRUE;
+    if (years < 2007 && month == 10 && LastSunday > 24)     bPST = TRUE;
+    return bPST;
+}
+
 //////////////////////////////////////////////
 // End Unix2DateTimev1.0.lsl
 //////////////////////////////////////////////
@@ -621,6 +670,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
                 }
             } else if (sTokenMinor == "curfewtimes") {
                 g_lCurfew = llCSV2List(sValue);
+                KickOff();
             }
         } 
         else if (sTokenMajor == "leash") {
@@ -828,14 +878,23 @@ HandleMenus(key kID, string sStr, integer iNum) {
 
 KickOff() {
     llSetTimerEvent(0.0);
-    integer iTimeNow = llGetUnixTime();
+    integer iTimeNow = Unix2PST_PDT(llGetUnixTime());
     list lTimeNow = Unix2DateTime(iTimeNow);
+    if (g_bDebugOn) { list lTemp = ["Kickoff 0"] + lTimeNow; DebugOutput(lTemp); }
+    list lStart = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+        llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0];
+    list lStop = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+        llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0];
+    if (g_bDebugOn) { list lTemp = ["Kickoff 1"] + lStart; DebugOutput(lTemp); }
+    if (g_bDebugOn) { list lTemp = ["Kickoff 2"] + lStop; DebugOutput(lTemp); }
+    
     integer iCurfewStart = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
-llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0);
+        llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0);
     integer iCurfewStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
-llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0);
+        llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0);
+    if (g_bDebugOn) { DebugOutput(["Kickoff3", iCurfewStart, iTimeNow, iCurfewStop]); }
     if (iCurfewStop < iCurfewStart) iCurfewStop += 86400;
-    if (g_bDebugOn) { DebugOutput(["Kickoff", iCurfewStart, iTimeNow, iCurfewStop]); }
+    if (g_bDebugOn) { DebugOutput(["Kickoff4", iCurfewStart, iTimeNow, iCurfewStop]); }
     if (iTimeNow >= iCurfewStart && iTimeNow <= iCurfewStop) {
         llSetTimerEvent(5.0);
         return;
