@@ -23,6 +23,10 @@ integer LINK_CMD_DEBUG=1999;
 key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
 key SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
 
+string formatVersion() {
+    return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
+
 //DebugOutput(integer iLevel, list ITEMS) {
 //    if (g_iDebugLevel > iLevel) return;
 DebugOutput(list ITEMS) {
@@ -33,7 +37,7 @@ DebugOutput(list ITEMS) {
     for(i=0;i<end;i++){
         final+=llList2String(ITEMS,i)+" ";
     }
-    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
 //    llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
 }
 
@@ -91,6 +95,8 @@ integer KB_SET_REGION_NAME         = -34693;
 integer KB_REM_REGION_NAME         = -34694;
 integer KB_REQUEST_VERSION         = -34591;
 integer	KB_CURFEW_NOTICE		   = -34852;
+integer KB_CURFEW_ACTIVE		   = -34845;
+integer KB_CURFEW_INACTIVE		   = -34845;
 
 string UPMENU = "BACK";
 
@@ -109,9 +115,9 @@ string  SETSTOP = " End Time";
 
 integer g_iActive      = FALSE;
 integer g_iCurfewActive = FALSE;
+integer g_iCurfewRemovalActive = FALSE;
 integer g_iLeashedRank = 0;
 key     g_kLeashedTo   = NULL_KEY;
-integer g_iChecking = 0;
 list    g_lCurfew = [0, 0, 0, 0];
 //integer g_iCurfewStart = 0; // hour * 100 + minute
 //integer g_iCurfewEnd = 0; // as above
@@ -124,17 +130,7 @@ integer bool(integer a){
     if(a)return TRUE;
     else return FALSE;
 }
-/*
-integer CurfewHour(list lCurfew) {
-    integer i = llList2Integer(lCurfew, 0);
-	return i;
-}
 
-integer CurfewMinute(list lCurfew) {
-    integer i = llList2Integer(lCurfew, 1);
-    return i;
-}
-*/
 string FormatCurfew(list lCurfew, integer bStart) {
     list lTemp = ["FormatCurfew", "***"];
     lTemp += lCurfew;
@@ -154,204 +150,7 @@ string FormatCurfew(list lCurfew, integer bStart) {
     }
     return s1 + s2;
 }
-/*
-/////////////////////////////////////////////////////////////////////
-// Script Library Contribution by Flennan Roffo
-// Logic Scripted Products & Script Services
-// Peacock Park (183,226,69)
-// (c) 2007 - Flennan Roffo
-//
-// Distributed as GPL, donated to wiki.secondlife.com on 19 sep 2007
-//
-// SCRIPT:  Unix2DateTimev1.0.lsl
-//
-// FUNCTION: 
-// Perform conversion from return value of llGetUnixTime() to
-// date and time strings and vice versa.
-//
-// USAGE:
-// list timelist=Unix2DateTime(llGetUnixTime());
-// llSay(PUBLIC_CHANNEL, "Date: " +  DateString(timelist); // displays date as DD-MON-YYYY
-// llSay(PUBLIC_CHANNEL, "Time: " +  TimeString(timelist); // displays time as HH24:MI:SS
-/////////////////////////////////////////////////////////////////////
- 
-///////////////////////////// Unix Time conversion //////////////////
- 
-integer DAYS_PER_YEAR        = 365;           // Non leap year
-integer SECONDS_PER_YEAR     = 31536000;      // Non leap year
-integer SECONDS_PER_DAY      = 86400;
-integer SECONDS_PER_HOUR     = 3600;
-integer SECONDS_PER_MINUTE   = 60;
- 
-list MonthNameList = [  "JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
-                        "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" ];
- 
-// This leap year test works for all years from 1901 to 2099 (yes, including 2000)
-// Which is more than enough for UnixTime computations, which only operate over the range [1970, 2038].  (Omei Qunhua)
-integer LeapYear( integer year)
-{
-    return !(year & 3);
-}
- 
-integer DaysPerMonth(integer year, integer month)
-{
-    // Compact Days-Per-Month algorithm. Omei Qunhua.
-    if (month == 2)  	return 28 + LeapYear(year);
-    return 30 + ( (month + (month > 7) ) & 1);           // Odd months up to July, and even months after July, have 31 days
-}
- 
-integer DaysPerYear(integer year)
-{
-    return 365 + LeapYear(year);
-}
- 
-///////////////////////////////////////////////////////////////////////////////////////
-// Convert Unix time (integer) to a Date and Time string
-///////////////////////////////////////////////////////////////////////////////////////
- 
-/////////////////////////////// Unix2DataTime() ///////////////////////////////////////
- 
-list Unix2DateTime(integer unixtime)
-{
-    integer days_since_1_1_1970     = unixtime / SECONDS_PER_DAY;
-    integer day = days_since_1_1_1970 + 1;
-    integer year  = 1970;
-    integer days_per_year = DaysPerYear(year);
- 
-    while (day > days_per_year)
-    {
-        day -= days_per_year;
-        ++year;
-        days_per_year = DaysPerYear(year);
-    }
- 
-    integer month = 1;
-    integer days_per_month = DaysPerMonth(year, month);
- 
-    while (day > days_per_month)
-    {
-        day -= days_per_month;
- 
-        if (++month > 12)
-        {    
-            ++year;
-            month = 1;
-        }
- 
-        days_per_month = DaysPerMonth(year, month);
-    }
- 
-    integer seconds_since_midnight  = unixtime % SECONDS_PER_DAY;
-    integer hour        = seconds_since_midnight / SECONDS_PER_HOUR;
-    integer second      = seconds_since_midnight % SECONDS_PER_HOUR;
-    integer minute      = second / SECONDS_PER_MINUTE;
-    second              = second % SECONDS_PER_MINUTE;
- 
-    return [ year, month, day, hour, minute, second ];
-}
- 
-///////////////////////////////// MonthName() ////////////////////////////
- 
-string MonthName(integer month)
-{
-    if (month >= 0 && month < 12)
-        return llList2String(MonthNameList, month);
-    else
-        return "";
-}
- 
-///////////////////////////////// DateString() ///////////////////////////
- 
-string DateString(list timelist)
-{
-    integer year       = llList2Integer(timelist,0);
-    integer month      = llList2Integer(timelist,1);
-    integer day        = llList2Integer(timelist,2);
- 
-    return (string)day + "-" + MonthName(month - 1) + "-" + (string)year;
-}
- 
-///////////////////////////////// TimeString() ////////////////////////////
- 
-string TimeString(list timelist)
-{
-    string  hourstr     = llGetSubString ( (string) (100 + llList2Integer(timelist, 3) ), -2, -1);
-    string  minutestr   = llGetSubString ( (string) (100 + llList2Integer(timelist, 4) ), -2, -1);
-    string  secondstr   = llGetSubString ( (string) (100 + llList2Integer(timelist, 5) ), -2, -1);
-    return  hourstr + ":" + minutestr + ":" + secondstr;
-}
- 
-///////////////////////////////////////////////////////////////////////////////
-// Convert a date and time to a Unix time integer
-///////////////////////////////////////////////////////////////////////////////
- 
-////////////////////////// DateTime2Unix() ////////////////////////////////////
- 
-integer DateTime2Unix(integer year, integer month, integer day, integer hour, integer minute, integer second)
-{
-	integer time = 0;
-	integer yr = 1970;
-	integer mt = 1;
-	integer days;
- 
-	while(yr < year)
-	{
-		days = DaysPerYear(yr++);
-		time += days * SECONDS_PER_DAY;
-	}
- 
-	while (mt < month)
-	{
-		days = DaysPerMonth(year, mt++);
-		time += days * SECONDS_PER_DAY;
-	}
- 
-	days = day - 1;
-	time += days * SECONDS_PER_DAY;
-	time += hour * SECONDS_PER_HOUR;
-	time += minute * SECONDS_PER_MINUTE;
-	time += second;
- 
-	return time;
-}
-//////////////////////////////////////////////
-// End Unix2DateTimev1.0.lsl
-//////////////////////////////////////////////
-*/
-/*
-// Returns a list that is a Unix time code converted to the format [Y, M, D, h, m, s]
 
-list uUnix2StampLst( integer vIntDat ){
-    if (vIntDat / 2145916800){
-        vIntDat = 2145916800 * (1 | vIntDat >> 31);
-    }
-    integer vIntYrs = 1970 + ((((vIntDat %= 126230400) >> 31) + vIntDat / 126230400) << 2);
-    vIntDat -= 126230400 * (vIntDat >> 31);
-    integer vIntDys = vIntDat / 86400;
-    list vLstRtn = [vIntDat % 86400 / 3600, vIntDat % 3600 / 60, vIntDat % 60];
- 
-    if (789 == vIntDys){
-        vIntYrs += 2;
-        vIntDat = 2;
-        vIntDys = 29;
-    }else{
-        vIntYrs += (vIntDys -= (vIntDys > 789)) / 365;
-        vIntDys %= 365;
-        vIntDys += vIntDat = 1;
-        integer vIntTmp;
-        while (vIntDys > (vIntTmp = (30 | (vIntDat & 1) ^ (vIntDat > 7)) - ((vIntDat == 2) << 1))){
-            ++vIntDat;
-            vIntDys -= vIntTmp;
-        }
-    }
-    return [vIntYrs, vIntDat, vIntDys] + vLstRtn;
-}
-///--                       Anti-License Text                         --///
-///     Contributed Freely to the Public Domain without limitation.     ///
-///   2009 (CC0) [ http://creativecommons.org/publicdomain/zero/1.0 ]   ///
-///  Void Singer [ https://wiki.secondlife.com/wiki/User:Void_Singer ]  ///
-///--
-*/
 list g_lCheckboxes=["⬜","⬛"];
 string Checkbox(integer iValue, string sLabel) {
     return llList2String(g_lCheckboxes, bool(iValue))+" "+sLabel;
@@ -616,7 +415,6 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
 //                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
                 if ((sValue == "y") || (sValue == "Y")) {
                     g_iCurfewActive = TRUE;
-                    checkCurfewStatus(TRUE);
                 } else {
                     g_iCurfewActive = FALSE;
                 }
@@ -763,8 +561,6 @@ integer checkStatus(integer bFirstTime) {
     checkOK is an extension of checkStatus. It handles the actual logic to decide whether the wearer is
         allowed in the region currently occupied
 */
-    g_iChecking = 1;
-    
     if (bFirstTime) {
         g_iSecondsBeforeBoot = 0;
         llSetTimerEvent(0.0);
@@ -778,27 +574,6 @@ integer checkStatus(integer bFirstTime) {
     }
 }
 
-integer checkCurfewStatus(integer bFirstTime) {
-/*
-    checkOK is an extension of checkStatus. It handles the actual logic to decide whether the wearer is
-        allowed in the region currently occupied
-*/
-    g_iChecking = 2;
-/*    
-    if (bFirstTime) {
-        g_iSecondsBeforeBoot = 0;
-        llSetTimerEvent(0.0);
-    }
-    if (checkOK(bFirstTime, llGetRegionName())) {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning TRUE"]); }
-        return TRUE;
-    } else {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning FALSE"]); }
-        return FALSE;
-    }
-*/
-    return TRUE;
-}
 /*
 NotifyCurfew() {
     string sPackage = llList2Json(JSON_OBJECT, ["msgid", "curfew_data", 
@@ -942,54 +717,16 @@ default  {
               || (iNum == KB_NOTICE_UNLEASHED) || iNum == (KB_REM_REGION_NAME)) {
             parseSettings(iSender, iNum, sStr, kID);
         }
-
         else if(iNum == DIALOG_RESPONSE) {
-			HandleMenus(kID, sStr, iNum);
-/*
-        integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
-        if (iMenuIndex != -1) {
-            list lMenuParams = llParseStringKeepNulls(sStr, ["|"], []);
-            key kAv = (key)llList2String(lMenuParams, 0); // avatar using the menu
-            string sMessage = llList2String(lMenuParams, 1); // button label
-            integer iPage = (integer)llList2String(lMenuParams, 2); // menu page
-            integer iAuth = (integer)llList2String(lMenuParams, 3); // auth level of avatar
-            list lParams =  llParseStringKeepNulls(sStr, ["|"], []);
-            string sMenuType = llList2String(g_lMenuIDs, iMenuIndex + 1);
-            g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-            if (sMenuType == "mainmenu") {
-                if (sMessage == UPMENU)
-                    llMessageLinked(LINK_ROOT, iAuth, "menu "+BUTTON_PARENTMENU, kAv);
-                else if (sMessage == ACTIVATE) {
-                    UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
-                }
-                else if(sMessage == DEACTIVATE) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
-                }
-                else if(sMessage == FORCERESET) {
-                    UserCommand(iAuth, g_sChatCommand + " " + FORCERESET, kAv);
-                }
-                else if(sMessage == DEBUGON) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-                }
-                else if(sMessage == DEBUGOFF) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
-                }
-                else if(sMessage == Checkbox(FALSE,"Active")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
-                }
-                else if(sMessage == Checkbox(TRUE,"Active")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
-                }
-                else if(sMessage == Checkbox(FALSE,"Debug")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-                }
-                else if(sMessage == Checkbox(TRUE,"Debug")) {
-                    UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
-                }
-            }
+            HandleMenus(kID, sStr, iNum);
         }
-*/
-    } else if (iNum == DIALOG_TIMEOUT) {
+        else if(iNum == KB_CURFEW_INACTIVE) {
+            g_iCurfewRemovalActive = FALSE;
+        }
+        else if(iNum == KB_CURFEW_ACTIVE) {
+            g_iCurfewRemovalActive = TRUE;
+        } 
+        else if (iNum == DIALOG_TIMEOUT) {
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
         }
@@ -999,22 +736,18 @@ default  {
         llSetTimerEvent(0.0);
         if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
         string sMsg = "";
-        if (checkStatus(FALSE)) {
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"removal aborted.", g_kWearer);
+        if (checkStatus(FALSE) || g_iCurfewRemovalActive) {
+            llMessageLinked(LINK_SET,NOTIFY,"0"+"tp limits removal stopped.", g_kWearer);
             g_iSecondsBeforeBoot = 0;
         } else {
             if (g_iSecondsBeforeBoot > 0) {
-                if (g_iChecking == 1)
-                    sMsg = "you are not allowed in this region unless you are leashed. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
-                else if (g_iChecking == 2)
-                    sMsg = "you are not allowed out after curfew. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
+                sMsg = "you are not allowed in this region unless you are leashed. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
                 g_iSecondsBeforeBoot -= 5;
                 llMessageLinked(LINK_SET,NOTIFY,"0"+sMsg, g_kWearer);
                 llSetTimerEvent(5.0);
             } else {
                 llSetTimerEvent(0.0);
-                g_iChecking = 0;
-                if (findOccurrence("Home") >= 0) {
+                 if (findOccurrence("Home") >= 0) {
                     llMessageLinked(LINK_THIS, CMD_OWNER, "tp Home", g_kWearer);
                 } else if (findOccurrence("home") >= 0) {
                     llMessageLinked(LINK_THIS, CMD_OWNER, "tp home", g_kWearer);
