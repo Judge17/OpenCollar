@@ -4,7 +4,7 @@
 string  g_sModule = "curfew";
 string  KB_VERSIONMAJOR      = "7";
 string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "1";
+string  KB_DEVSTAGE          = "6";
 string  g_sScriptVersion = "";
 
 string formatVersion() {
@@ -22,8 +22,8 @@ DebugOutput(list ITEMS) {
     llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
@@ -51,7 +51,7 @@ integer RLV_ON       = 6101;
 integer KB_CLOCK_SET			   = -34843;
 integer KB_CLOCK_ALARM			   = -34844;
 integer KB_CURFEW_ACTIVE		   = -34845;
-integer KB_CURFEW_INACTIVE		   = -34845;
+integer KB_CURFEW_INACTIVE		   = -34846;
 
 string  CURFEW_ALARM = "curfew_alarm";
 
@@ -63,6 +63,7 @@ integer g_iCurfewActive = FALSE;
 integer g_iLeashedRank = 0;
 key     g_kLeashedTo   = NULL_KEY;
 list    g_lCurfew = [0, 0, 0, 0];
+integer g_bRemovalInProgress = FALSE;
 //
 //    End of common block
 //
@@ -306,6 +307,7 @@ integer findRegion(string sName) {
 alarmFired(integer iSender, integer iNum, string sStr, key kID) {
     if (g_bDebugOn) { DebugOutput(["alarmFired"]); }
     if (sStr != CURFEW_ALARM) return; // someone else's alarm, we don't care
+    if (g_bDebugOn) { DebugOutput(["alarmFired", "invoking checkStatus"]); }
     if (!checkStatus()) KickOff();     
 }
 
@@ -336,6 +338,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
                     KickOff();
                 } else {
                     g_iCurfewActive = FALSE;
+                    if (g_bDebugOn) { DebugOutput(["parseSettings", "stopping timer events-1"]); }
                     llSetTimerEvent(0.0);
                 }
             } else if (sTokenMinor == "curfewtimes") {
@@ -366,6 +369,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
         } else if (sTokenMajor == "kbtp") {
             if (sTokenMinor == "curfew")  {
                 g_iCurfewActive = FALSE;
+                if (g_bDebugOn) { DebugOutput(["parseSettings", "stopping timer events-2"]); }
                 llSetTimerEvent(0.0);
             } else if (sTokenMinor == "curfewtimes"){
                 g_lCurfew = llCSV2List(sValue);
@@ -450,16 +454,17 @@ integer checkStatus() {
 }
 
 StartHome() {
-    if (g_bDebugOn) { DebugOutput(["StartHome"]); }
+    if (g_bDebugOn) { DebugOutput(["StartHome", g_iSecondsBeforeBoot]); }
     llMessageLinked(LINK_SET, KB_CURFEW_ACTIVE, "", "");
     if (g_iSecondsBeforeBoot == 0) {
         g_iSecondsBeforeBoot = 30;
-        llSetTimerEvent(2.0);
     }
+    if (g_bDebugOn) { DebugOutput(["StartHome ", "seconds left " + (string) g_iSecondsBeforeBoot, "setting timer event 2.0"]); }
+    llSetTimerEvent(5.0);
 }
 
 KickOff() {
-    if (g_bDebugOn) { DebugOutput(["KickOff"]); }
+    if (g_bDebugOn) { DebugOutput(["KickOff", "stopping timer events-1"]); }
     llSetTimerEvent(0.0);
     integer iTimeNow = Unix2PST_PDT(llGetUnixTime());
     list lTimeNow = Unix2DateTime(iTimeNow);
@@ -488,6 +493,7 @@ KickOff() {
         llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_ALARM, "alarm_type", "**", "alarm_time", iCurfewStart]), "");
         if (g_iSecondsBeforeBoot > 0) {
             llSetTimerEvent(0.0);
+            if (g_bDebugOn) { DebugOutput(["KickOff", "stopping timer events-2"]); }
             llMessageLinked(LINK_SET,NOTIFY,"0"+"removal has been stopped.", g_kWearer);
          }
     }
@@ -501,6 +507,7 @@ default  {
         
         if (iChange & CHANGED_REGION) 
         { 
+            if (g_bDebugOn) { DebugOutput(["changed", "invoking checkStatus"]); }
             if (!checkStatus()) KickOff(); 
         }
     }
@@ -512,11 +519,15 @@ default  {
         g_sScriptVersion = KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
         // store key of wearer
         g_kWearer = llGetOwner();
+        g_iSecondsBeforeBoot = 0;
+        g_bRemovalInProgress = FALSE;
+        if (g_bDebugOn) { DebugOutput(["state_entry ", "seconds left " + (string) g_iSecondsBeforeBoot]); } 
         // sleep a second to allow all scripts to be initialized
         llSleep(1.5);
         llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "bookmarks", "");
         if (g_iCurfewActive)
         { 
+            if (g_bDebugOn) { DebugOutput(["state_entry", "invoking checkStatus"]); }
             if (!checkStatus()) KickOff(); 
         }
     }
@@ -527,8 +538,12 @@ default  {
         // Reset if wearer changed
             llResetScript();
         }
+        g_iSecondsBeforeBoot = 0;
+        g_bRemovalInProgress = FALSE;
+        if (g_bDebugOn) { DebugOutput(["on_rez ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
         if (g_iCurfewActive)
         { 
+            if (g_bDebugOn) { DebugOutput(["on_rez", "invoking checkStatus"]); }
             if (!checkStatus()) KickOff(); 
         }
     }
@@ -555,21 +570,24 @@ default  {
     timer() {
         if (g_bDebugOn) { DebugOutput(["timer"]); }
         llSetTimerEvent(0.0);
-        if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
+        if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot, "invoking checkStatus"]); }
         string sMsg = "";
         if (checkStatus()) {
             llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
             llMessageLinked(LINK_SET,NOTIFY,"0"+"removal has been stopped.", g_kWearer);
             g_iSecondsBeforeBoot = 0;
+            if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
         } else {
             if (g_iSecondsBeforeBoot > 0) {
                 sMsg = "you are not allowed out after curfew. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
                 g_iSecondsBeforeBoot -= 5;
                 llMessageLinked(LINK_SET,NOTIFY,"0"+sMsg, g_kWearer);
                 llSetTimerEvent(5.0);
+                if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
             } else {
                 llSetTimerEvent(0.0);
                 g_iSecondsBeforeBoot = 0;
+                if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
                 if (findOccurrence("Home") >= 0) {
                     llMessageLinked(LINK_SET, CMD_OWNER, "tp Home", g_kWearer);
                 } else if (findOccurrence("home") >= 0) {

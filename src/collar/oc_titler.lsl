@@ -1,6 +1,6 @@
 /*
 
-K-Bar Version 7.5b
+K-Bar Titler
 
 This file is a part of OpenCollar.
 Copyright 2020
@@ -16,11 +16,22 @@ et al.
 Licensed under the GPLv2. See LICENSE for full details.
 https://github.com/OpenCollarTeam/OpenCollar
 */
-
 string g_sParentMenu = "Apps";
 string g_sSubMenu = "Titler";
-string g_sVersion = "7.5b"; // leave unmodified if not changed at all after release, otherwise change to next version number
+string g_sVersion = "7.5"; // leave unmodified if not changed at all after release, otherwise change to next version number
+//
+//    Start of KBar Mod
+//
+string  KB_VERSIONMAJOR      = "7";
+string  KB_VERSIONMINOR      = "5";
+string  KB_DEVSTAGE          = "1";
 
+string formatVersion() {
+    return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
+//
+//    End of KBar Mod
+//
 DebugOutput(key kID, list ITEMS){
     integer i=0;
     integer end=llGetListLength(ITEMS);
@@ -103,7 +114,7 @@ string  g_sKbarTitle = "";
 Menu(key kID, integer iAuth) {
 // KBar Mod
 //    string sPrompt = "\n[Titler]";
-    string sPrompt = "\n[Titler]\tKBar Ranch Version\n\n\tCurrent Title: " + g_sTitle ;
+    string sPrompt = "\n[Titler]\tKBar Ranch Version " + formatVersion() + "\n\n\tCurrent Title: " + g_sTitle ;
         sPrompt +="\n\tName: " + g_sSlaveName + " KBar Title: " + g_sKbarTitle ;
         sPrompt += "\n\tAvailable memory " + (string) llGetFreeMemory();
 // KBar Mod end
@@ -183,10 +194,15 @@ Save(){
     else llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_show","");
     
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_offset="+(string)g_iOffset, "");
-    
-    if(!g_iNoB64)
-        llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+llStringToBase64(g_sTitle), "");
-    else
+//
+//    Start of KBar Mod
+//   
+//    if(!g_iNoB64)
+//        llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+llStringToBase64(g_sTitle), "");
+//    else
+//
+//    End of KBar Mod
+//
         llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+g_sTitle, "");
     
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_color="+(string)g_vColor,"");
@@ -389,19 +405,26 @@ default
                 }else if(llList2String(lSettings,1) == "offset"){
                     g_iOffset=(integer)llList2String(lSettings,2);
                 }else if(llList2String(lSettings,1) == "title"){
-                    if(!g_iNoB64)
-                        g_sTitle = llBase64ToString(llList2String(lSettings,2)); // We can't really check if this is a base64 string
-                    else
+//
+//    Start of KBar Mod
+//
+//                    if(!g_iNoB64)
+//                        g_sTitle = llBase64ToString(llList2String(lSettings,2)); // We can't really check if this is a base64 string
+//                    else
                         g_sTitle = llList2String(lSettings,2);
                         
-                    if(g_iWasUpgraded) {
-                        g_sTitle = llList2String(lSettings,2);
-                        if(!g_iNoB64)
-                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+llStringToBase64(g_sTitle), "");
-                        else
-                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+g_sTitle, "");
-                        g_iWasUpgraded=FALSE;
-                    }
+//                    if(g_iWasUpgraded) {
+//                        g_sTitle = llList2String(lSettings,2);
+//                        if(!g_iNoB64)
+//                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+llStringToBase64(g_sTitle), "");
+//                        else
+//                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+g_sTitle, "");
+//                        g_iWasUpgraded=FALSE;
+//                    }
+//
+//    End of KBar Mod
+//
+
                 } else if(llList2String(lSettings,1)=="color"){
                     g_vColor=(vector)llList2String(lSettings,2);
 // KBar Mod

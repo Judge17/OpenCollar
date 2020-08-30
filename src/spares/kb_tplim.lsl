@@ -1,8 +1,6 @@
 
 //K-Bar tplimits
 
-
-
 string  g_sModule = "tplim";
 list    g_lMenuIDs;
 integer g_iMenuStride = 3;
@@ -14,7 +12,7 @@ string  BUTTON_PARENTMENU    = g_sParentMenu;
 key     g_kWebLookup;
 string  KB_VERSIONMAJOR      = "7";
 string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "1";
+string  KB_DEVSTAGE          = "2";
 string  g_sScriptVersion = "";
 integer LINK_CMD_DEBUG=1999;
 
@@ -96,7 +94,7 @@ integer KB_REM_REGION_NAME         = -34694;
 integer KB_REQUEST_VERSION         = -34591;
 integer	KB_CURFEW_NOTICE		   = -34852;
 integer KB_CURFEW_ACTIVE		   = -34845;
-integer KB_CURFEW_INACTIVE		   = -34845;
+integer KB_CURFEW_INACTIVE		   = -34846;
 
 string UPMENU = "BACK";
 
@@ -721,9 +719,11 @@ default  {
             HandleMenus(kID, sStr, iNum);
         }
         else if(iNum == KB_CURFEW_INACTIVE) {
+            if (g_bDebugOn) { DebugOutput(["link_message KB_CURFEW_INACTIVE", iNum, sStr, kID]); }
             g_iCurfewRemovalActive = FALSE;
         }
         else if(iNum == KB_CURFEW_ACTIVE) {
+            if (g_bDebugOn) { DebugOutput(["link_message KB_CURFEW_ACTIVE", iNum, sStr, kID]); }
             g_iCurfewRemovalActive = TRUE;
         } 
         else if (iNum == DIALOG_TIMEOUT) {
