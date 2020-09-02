@@ -10,20 +10,16 @@ integer ALARM_TIME = 2;
 
 string  KB_VERSIONMAJOR      = "7";
 string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "1";
-string  g_sScriptVersion = "";
+string  KB_DEVSTAGE          = "3";
 
 integer NOTIFY              = 1002;
 
 integer LINK_CMD_DEBUG=1999;
 
-//integer g_bDebugOn = FALSE;
-//key     g_kDebugKey = NULL_KEY;
-key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
-key SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
+string formatVersion() {
+    return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
 
-//DebugOutput(integer iLevel, list ITEMS) {
-//    if (g_iDebugLevel > iLevel) return;
 DebugOutput(list ITEMS) {
     ++g_iDebugCounter;
     integer i=0;
@@ -32,8 +28,7 @@ DebugOutput(list ITEMS) {
     for(i=0;i<end;i++){
         final+=llList2String(ITEMS,i)+" ";
     }
-    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
-//    llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
 }
 
 integer g_bDebugOn = TRUE;
@@ -58,12 +53,14 @@ integer g_iRLVOn         = FALSE; //Assume RLV is off until we hear otherwise
 
 key     g_kWearer = NULL_KEY;       // key of the current wearer to reset only on owner changes
 
-string  g_sScript;                  // part of script name used for settings
-
 list    g_lPairs = [];
 
 integer KB_CLOCK_SET			   = -34843;
 integer KB_CLOCK_ALARM			   = -34844;
+
+integer SECONDS_PER_DAY      = 86400;
+integer SECONDS_PER_HOUR     = 3600;
+integer SECONDS_PER_MINUTE   = 60;
 
 integer Unix2PST_PDT(integer insecs)
 {
@@ -134,6 +131,61 @@ integer DaysPerYear(integer year)
     return 365 + LeapYear(year);
 }
 
+///////////////////////////////////////////////////////////////////////////////////////
+// Convert Unix time (integer) to a Date and Time string
+///////////////////////////////////////////////////////////////////////////////////////
+ 
+/////////////////////////////// Unix2DataTime() ///////////////////////////////////////
+ 
+list Unix2DateTime(integer unixtime)
+{
+    integer days_since_1_1_1970     = unixtime / SECONDS_PER_DAY;
+    integer day = days_since_1_1_1970 + 1;
+    integer year  = 1970;
+    integer days_per_year = DaysPerYear(year);
+ 
+    while (day > days_per_year)
+    {
+        day -= days_per_year;
+        ++year;
+        days_per_year = DaysPerYear(year);
+    }
+ 
+    integer month = 1;
+    integer days_per_month = DaysPerMonth(year, month);
+ 
+    while (day > days_per_month)
+    {
+        day -= days_per_month;
+ 
+        if (++month > 12)
+        {    
+            ++year;
+            month = 1;
+        }
+ 
+        days_per_month = DaysPerMonth(year, month);
+    }
+ 
+    integer seconds_since_midnight  = unixtime % SECONDS_PER_DAY;
+    integer hour        = seconds_since_midnight / SECONDS_PER_HOUR;
+    integer second      = seconds_since_midnight % SECONDS_PER_HOUR;
+    integer minute      = second / SECONDS_PER_MINUTE;
+    second              = second % SECONDS_PER_MINUTE;
+ 
+    return [ year, month, day, hour, minute, second ];
+}
+
+string formatDate(list lDate) {
+    string sDate = llList2String(lDate, 0) + "-"
+                 + llList2String(lDate, 1) + "-"
+                 + llList2String(lDate, 2) + " "
+                 + llList2String(lDate, 3) + ":"
+                 + llList2String(lDate, 4) + ":"
+                 + llList2String(lDate, 5);
+    return sDate;
+}
+
 string xJSONstring(string JSONcluster, string sElement) {
     string sWork = llJsonGetValue(JSONcluster, [sElement]);
     if (sWork != JSON_INVALID && sWork != JSON_NULL) return sWork;
@@ -167,15 +219,17 @@ setAlarm(string sStr) {
 }
 
 setTimer(integer iTime) {
-    if (g_bDebugOn) { DebugOutput(["setTimer", iTime]); }
+    if (g_bDebugOn) { DebugOutput(["setTimer-1", formatDate(Unix2DateTime(iTime)), llGetListLength(g_lInterrupts)]); }
     integer iLowest = 0;
     if (llGetListLength(g_lInterrupts) > 0) iLowest = llList2Integer(g_lInterrupts, INTERRUPTSTRIDE - 1);
     else return;
     integer iIndex = 0;
     while (iIndex < llGetListLength(g_lInterrupts)) {
+    if (g_bDebugOn) { DebugOutput(["setTimer-2", iIndex, llGetListLength(g_lInterrupts), iLowest, llList2Integer(g_lInterrupts, iIndex + ALARM_TIME)]); }
         if (iLowest == 0 || iLowest > llList2Integer(g_lInterrupts, iIndex + ALARM_TIME)) iLowest = llList2Integer(g_lInterrupts, iIndex + ALARM_TIME);
         iIndex += INTERRUPTSTRIDE;
     }
+    if (g_bDebugOn) { DebugOutput(["setTimer-3", iLowest, iTime, iLowest - iTime]); }
     if (iLowest != 0) {
         integer iDelay = iLowest - iTime;
         float fDelay = (float) iDelay;
@@ -187,11 +241,11 @@ checkAlarms() {
     llSetTimerEvent(0.0);
     integer iTime = Unix2PST_PDT(llGetUnixTime());
     integer iIndex = llGetListLength(g_lInterrupts) - INTERRUPTSTRIDE;
-    if (g_bDebugOn) { DebugOutput(["checkAlarms", iTime, iIndex, llGetListLength(g_lInterrupts)]); }
+    if (g_bDebugOn) { DebugOutput(["checkAlarms", formatDate(Unix2DateTime(iTime)), iIndex, llGetListLength(g_lInterrupts)]); }
     while (llGetListLength(g_lInterrupts) > 0) {
         integer iTest = llList2Integer(g_lInterrupts, iIndex + INTERRUPTSTRIDE - 1);
         if (iTime < iTest) {
-            if (g_bDebugOn) { DebugOutput(["checkAlarmsComparison", iTime, iTest]); }
+            if (g_bDebugOn) { DebugOutput(["checkAlarmsComparison", formatDate(Unix2DateTime(iTime)), formatDate(Unix2DateTime(iTest))]); }
             llMessageLinked(LINK_SET, KB_CLOCK_ALARM, llList2String(g_lInterrupts, iIndex), "");
             g_lInterrupts = llDeleteSubList(g_lInterrupts, iIndex, iIndex + INTERRUPTSTRIDE - 1);
             iIndex = llGetListLength(g_lInterrupts) - INTERRUPTSTRIDE;
@@ -208,10 +262,8 @@ default  {
     }
 
     state_entry() {
-        g_sScript = llStringTrim(llList2String(llParseString2List(llGetScriptName(), ["-"], []), 1), STRING_TRIM) + "_";
-        g_sScriptVersion = KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
-        // store key of wearer
         g_kWearer = llGetOwner();
+        llOwnerSay("kb_clock " + formatVersion() + " starting");
         checkAlarms();
     }
 
@@ -225,6 +277,7 @@ default  {
 
     link_message(integer iSender, integer iNum, string sStr, key kID) {
         if(iNum == KB_CLOCK_SET) {
+            if (g_bDebugOn) { DebugOutput(["link_message", "KB_CLOCK_SET", KB_CLOCK_SET]); }
             setAlarm(sStr);
         }
     }
