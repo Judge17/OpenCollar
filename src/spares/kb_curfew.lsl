@@ -1,10 +1,40 @@
-
 //K-Bar curfew
+
+//
+//    "Curfew" is a period each day when an avatar must be at a specified home point (initially, home sim, to be
+//        made more specific when proximity is implemented
+//
+//    The period has a start and stop time specified as HH mm, where HH is the 24-hour start or stop time, with mm being the
+//        minutes. The start time (HHmm-s) and the end time (HHmm-e) are entered and stored separately, in the tplimits menu
+//
+//    If HHmm-s is lower than HHmm-e, they are assumed to be in the same 24-hour day. Curfew is enforced during the period
+//        from HHmm-s to HHmm-e (case 1)
+//
+//    If HHmm-s is larger than HHMM-e, HHmm-s is assumed to occur in 24-hour period 1 (D1) and HHmm-e is assumed to occur 
+//        in the following 24-hour period (D2). Curfew is enforced from HHmm-s through 2359 on D1, and from 0000 through 
+//        HHmm-2 on D2 (case 2)
+//
+//    At state_entry or on_rez, the correct HHmm-s and HHmm-e for the current day are calculated. (InitCalcs, via a
+//        CURFEW_SETUP alarm)
+//    Then, the current date/time is checked against either case 1 or case 2, whichever is appropriate. (inCurfewNow)
+//    If the current date/time is within the curfew enforcement period, final checks are made (CheckStatus)
+//    If no exemption exists, removal to the home point is started. (case 3)
+//
+//    On region change, the same test is run, but the initial calculations are not, having been done already at state_entry
+//        or on_rez
+//
+//    Upon receipt of curfew times via SETTINGS_RESPONSE, the same test is run, but the initial calculations are as well;
+//        state_entry and on_rez will already have passsed, and the curfew times may not have been set at that point
+//
+//    If the above test fails, a link message is sent to kb_clock setting an alarm for HHmm-s
+//
+//    If an alarm is received from kb_clock, the test described in case 3 is tried
+//
 
 string  g_sModule = "curfew";
 string  KB_VERSIONMAJOR      = "7";
 string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "6";
+string  KB_DEVSTAGE          = "14";
 string  g_sScriptVersion = "";
 
 string formatVersion() {
@@ -20,6 +50,7 @@ DebugOutput(list ITEMS) {
         final+=llList2String(ITEMS,i)+" ";
     }
     llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
+    if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
 }
 
 integer g_bDebugOn = FALSE;
@@ -52,7 +83,12 @@ integer KB_CLOCK_SET			   = -34843;
 integer KB_CLOCK_ALARM			   = -34844;
 integer KB_CURFEW_ACTIVE		   = -34845;
 integer KB_CURFEW_INACTIVE		   = -34846;
+integer KB_DEBUG_CURFEW_ON		   = -36003;
+integer KB_DEBUG_CURFEW_OFF		   = -36004;
 
+string	KB_CLOCK_NODUP			   = "nodup";
+
+string  CURFEW_SETUP = "curfew_setup";
 string  CURFEW_ALARM = "curfew_alarm";
 
 //
@@ -64,10 +100,17 @@ integer g_iLeashedRank = 0;
 key     g_kLeashedTo   = NULL_KEY;
 list    g_lCurfew = [0, 0, 0, 0];
 integer g_bRemovalInProgress = FALSE;
+integer g_iTimerService = 0;
+//        1 = removal;
+//        2 = status check
 //
 //    End of common block
 //
 integer g_iSecondsBeforeBoot = 0;
+list    g_lCurfewPeriods = [];    // start and stop times of curfew, list of pairs
+integer CURFEW_START = 0;
+integer CURFEW_STOP = 1;
+integer CURFEW_STRIDE = 2;
 
 integer bool(integer a){
     if(a)return TRUE;
@@ -304,11 +347,71 @@ integer findRegion(string sName) {
     return FALSE;
 }
 
+integer timeNow() {
+    integer iTimeNow = Unix2PST_PDT(llGetUnixTime());
+    return iTimeNow;
+}
+
 alarmFired(integer iSender, integer iNum, string sStr, key kID) {
     if (g_bDebugOn) { DebugOutput(["alarmFired"]); }
-    if (sStr != CURFEW_ALARM) return; // someone else's alarm, we don't care
-    if (g_bDebugOn) { DebugOutput(["alarmFired", "invoking checkStatus"]); }
-    if (!checkStatus()) KickOff();     
+    integer iTimeNow = timeNow();
+    if (sStr == CURFEW_SETUP) { InitCalcs(iTimeNow); checkStatus(iTimeNow); }
+    else if (sStr == CURFEW_ALARM) { checkStatus(iTimeNow); }
+}
+//
+//    Perform initial calculation of the curfew start and stop times. This is triggered by a CURFEW_SETUP alarm.
+//        That alarm is set in state_entry and in on_rez. When the alarm goes off, InitCalcs is invoked (see alarmFired).
+//        InitCalcs will set a CURFEW_ALARM alarm to trigger curfew checks at the start of the next curfew period.
+//
+InitCalcs(integer iTimeNow) {
+    if (g_bDebugOn) { DebugOutput(["InitCalcs", "stopping timer events-1"]); }
+    llSetTimerEvent(0.0);
+    list lTimeNow = Unix2DateTime(iTimeNow);
+    if (g_bDebugOn) { list lTemp = ["InitCalcs 0"] + lTimeNow; DebugOutput(lTemp); }
+    
+    list lStart = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+        llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0];
+    list lStop = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+        llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0];
+        
+    if (g_bDebugOn) { list lTemp = ["InitCalcs 1"] + lStart; DebugOutput(lTemp); }
+    if (g_bDebugOn) { list lTemp = ["InitCalcs 2"] + lStop; DebugOutput(lTemp); }
+    
+    integer iCurfewStart = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+        llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0);
+    integer iCurfewStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+        llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0);
+        
+    if (g_bDebugOn) { DebugOutput(["InitCalcs 3", iCurfewStart, iTimeNow, iCurfewStop]); }
+    
+    g_lCurfewPeriods = [];
+    
+    if (iCurfewStart < iCurfewStop) g_lCurfewPeriods = [iCurfewStart, iCurfewStop];    // Curfew times already in SL time
+    else {
+        integer iStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
+            23, 59, 59);
+        g_lCurfewPeriods = [0, iCurfewStop, iCurfewStop, iStop];
+    }
+    
+    integer iAlarm = 0;
+//    if length = stride -> only one entry and (0) is the next start time
+//    Otherwise -> two entries, first one already passed or inCurfewNow would have been TRUE, so (2) is next
+    if (llGetListLength(g_lCurfewPeriods) == CURFEW_STRIDE) iAlarm = llList2Integer(g_lCurfewPeriods, 0);
+    else iAlarm = llList2Integer(g_lCurfewPeriods, 2);
+        
+    llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
+    llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_ALARM, "alarm_type", "**", "alarm_time", iAlarm]), "");
+}
+
+integer inCurfewNow(integer iTimeNow) {
+    integer iIndex = 0;
+    while (iIndex < llGetListLength(g_lCurfewPeriods)) {
+        integer iCurfewStart = llList2Integer(g_lCurfewPeriods, iIndex + CURFEW_START);
+        integer iCurfewStop = llList2Integer(g_lCurfewPeriods, iIndex + CURFEW_STOP);
+        if (iCurfewStart < iTimeNow && iTimeNow < iCurfewStop) return TRUE;
+        iIndex += CURFEW_STRIDE;
+    }
+    return FALSE;
 }
 
 parseSettings(integer iSender, integer iNum, string sStr, key kID) {
@@ -335,15 +438,18 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
 //                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
                 if ((sValue == "y") || (sValue == "Y")) {
                     g_iCurfewActive = TRUE;
-                    KickOff();
+                    integer iCheckTime = timeNow() + 20;
+                    llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_SETUP, "alarm_type", KB_CLOCK_NODUP, "alarm_time", iCheckTime]), "");
                 } else {
                     g_iCurfewActive = FALSE;
                     if (g_bDebugOn) { DebugOutput(["parseSettings", "stopping timer events-1"]); }
                     llSetTimerEvent(0.0);
+                    llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
                 }
             } else if (sTokenMinor == "curfewtimes") {
                 g_lCurfew = llCSV2List(sValue);
-                KickOff();
+                integer iCheckTime = timeNow() + 20;
+                llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_SETUP, "alarm_type", KB_CLOCK_NODUP, "alarm_time", iCheckTime]), "");
             }
         } 
         else if (sTokenMajor == "leash") {
@@ -371,6 +477,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
                 g_iCurfewActive = FALSE;
                 if (g_bDebugOn) { DebugOutput(["parseSettings", "stopping timer events-2"]); }
                 llSetTimerEvent(0.0);
+                llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
             } else if (sTokenMinor == "curfewtimes"){
                 g_lCurfew = llCSV2List(sValue);
             }
@@ -394,108 +501,61 @@ integer LeashOK() {
     }
     return FALSE;
 }
+//    
+//    If curfew is not active, there's nothing to do.
+//    If the person is leashed by someone with the proper authority, there's nothing to do
+//    If the person is in the home region, there's nothing to do (this may change when proximity works)
+//    
+//    If all of those exceptions fail, meaning curfew is active, the person is loose, and not at home
+//    If the home bookmark exixts, trigger kickoff for the final check
+//
 
-integer checkOK(string sRegion) {
+integer checkStatus(integer iTimeNow) {
+    if (g_bDebugOn) { DebugOutput(["checkStatus - 1 stopping timer events"]); }
+    llSetTimerEvent(0.0);
+//    g_iSecondsBeforeBoot = 0;
 
-/*
-    checkOK is an extension of checkStatus. It handles the actual logic.
-    
-    If curfew is not active, there's nothing to do.
-    If the person is leashed by someone with the proper authority, there's nothing to do
-    If the person is in the home region, there's nothing to do (this may change when proximity works)
-    
-    If all of those exceptions fail, meaning curfew is active, the person is loose, and not at home
-    If the home bookmark exixts, trigger kickoff for the final check
-*/
-
-//    llSetTimerEvent(0.0);
-    if (g_bDebugOn) { DebugOutput(["checkOK ", "g_iCurfewActive " + (string) g_iCurfewActive]); }
-    if (!g_iCurfewActive) return TRUE;
-    if (LeashOK()) return TRUE;
-    if (RegOK(sRegion)) return TRUE;
+    if (!g_iCurfewActive) return TRUE; // curfew not active, done.
+    if (!inCurfewNow(iTimeNow)) return TRUE; // not in curfew now, done
+    if (LeashOK()) return TRUE; // leashed, done
+    if (RegOK(llGetRegionName())) return TRUE; // if region OK (meaning the home region) done
     if ((findOccurrence("Home") >= 0) ||
         (findOccurrence("home") >= 0) ||
         (findOccurrence("DefaultHome") >= 0) ||
         (findOccurrence("defaulthome") >= 0)) {
+        StartHome();
         return FALSE;
     } else {
         llMessageLinked(LINK_SET,NOTIFY,"0"+"DefaultHome and Home bookmarks both missing.", g_kWearer);
-    }
-    return FALSE;
-}
-
-checkMemory(integer iForce) {
-    if (g_bDebugOn) { DebugOutput(["checkMemory", iForce]); }
-    if (iForce) {
-        llMessageLinked(LINK_SET,NOTIFY,"0"+"kbtplim is resetting due to forced input.", g_kWearer);
-        llResetScript();
-    } else {
-        if (llGetFreeMemory() < 6000) {
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"kbtplim is resetting due to minimum available memory.", g_kWearer);
-            llResetScript();
-        }
-    }
-}
-
-integer checkStatus() {
-/*
-    checkOK is an extension of checkStatus. It handles the actual logic to decide whether the wearer is
-        allowed in the region currently occupied
-*/
-    if (g_bDebugOn) { DebugOutput(["checkStatus ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
-    
-    if (checkOK(llGetRegionName())) {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning TRUE"]); }
         return TRUE;
-    } else {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning FALSE"]); }
-        return FALSE;
     }
 }
+
+//checkMemory(integer iForce) {;
+//    if (g_bDebugOn) { DebugOutput(["checkMemory", iForce]); }
+//    if (iForce) {
+//        llMessageLinked(LINK_SET,NOTIFY,"0"+"kbtplim is resetting due to forced input.", g_kWearer);
+//        llResetScript();
+//    } else {
+//        if (llGetFreeMemory() < 6000) {
+//            llMessageLinked(LINK_SET,NOTIFY,"0"+"kbtplim is resetting due to minimum available memory.", g_kWearer);
+//            llResetScript();
+//        }
+//    }
+//}
 
 StartHome() {
-    if (g_bDebugOn) { DebugOutput(["StartHome", g_iSecondsBeforeBoot]); }
+    if (g_bDebugOn) { DebugOutput(["StartHome-1", g_iSecondsBeforeBoot, g_bRemovalInProgress]); }
     llMessageLinked(LINK_SET, KB_CURFEW_ACTIVE, "", "");
-    if (g_iSecondsBeforeBoot == 0) {
-        g_iSecondsBeforeBoot = 30;
-    }
-    if (g_bDebugOn) { DebugOutput(["StartHome ", "seconds left " + (string) g_iSecondsBeforeBoot, "setting timer event 2.0"]); }
-    llSetTimerEvent(5.0);
-}
 
-KickOff() {
-    if (g_bDebugOn) { DebugOutput(["KickOff", "stopping timer events-1"]); }
-    llSetTimerEvent(0.0);
-    integer iTimeNow = Unix2PST_PDT(llGetUnixTime());
-    list lTimeNow = Unix2DateTime(iTimeNow);
-    if (g_bDebugOn) { list lTemp = ["Kickoff 0"] + lTimeNow; DebugOutput(lTemp); }
-    
-    list lStart = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
-        llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0];
-    list lStop = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
-        llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0];
-        
-    if (g_bDebugOn) { list lTemp = ["Kickoff 1"] + lStart; DebugOutput(lTemp); }
-    if (g_bDebugOn) { list lTemp = ["Kickoff 2"] + lStop; DebugOutput(lTemp); }
-    
-    integer iCurfewStart = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
-        llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0);
-    integer iCurfewStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
-        llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0);
-        
-    if (g_bDebugOn) { DebugOutput(["Kickoff3", iCurfewStart, iTimeNow, iCurfewStop]); }
-    if (iCurfewStop < iCurfewStart) iCurfewStop += 86400;
-    if (g_bDebugOn) { DebugOutput(["Kickoff4", iCurfewStart, iTimeNow, iCurfewStop]); }
-    if (iTimeNow >= iCurfewStart && iTimeNow <= iCurfewStop) {
-        StartHome();
+    if (!g_bRemovalInProgress) {
+        g_bRemovalInProgress = TRUE;
+        g_iSecondsBeforeBoot = 30;
+        if (g_bDebugOn) { DebugOutput(["StartHome-2", g_iSecondsBeforeBoot, g_bRemovalInProgress]); }
+        llSetTimerEvent(2.0);
     } else {
-        llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
-        llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_ALARM, "alarm_type", "**", "alarm_time", iCurfewStart]), "");
-        if (g_iSecondsBeforeBoot > 0) {
-            llSetTimerEvent(0.0);
-            if (g_bDebugOn) { DebugOutput(["KickOff", "stopping timer events-2"]); }
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"removal has been stopped.", g_kWearer);
-         }
+        if (g_bDebugOn) { DebugOutput(["StartHome-3", g_iSecondsBeforeBoot, g_bRemovalInProgress]); }
+        llSetTimerEvent(5.0);
     }
 }
 
@@ -507,8 +567,9 @@ default  {
         
         if (iChange & CHANGED_REGION) 
         { 
-            if (g_bDebugOn) { DebugOutput(["changed", "invoking checkStatus"]); }
-            if (!checkStatus()) KickOff(); 
+            if (g_bDebugOn) { DebugOutput(["changed", llGetRegionName(); "invoking checkStatus"]); }
+            integer iTimeNow = timeNow(); 
+            checkStatus(iTimeNow);
         }
     }
 
@@ -522,14 +583,9 @@ default  {
         g_iSecondsBeforeBoot = 0;
         g_bRemovalInProgress = FALSE;
         if (g_bDebugOn) { DebugOutput(["state_entry ", "seconds left " + (string) g_iSecondsBeforeBoot]); } 
-        // sleep a second to allow all scripts to be initialized
-        llSleep(1.5);
         llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "bookmarks", "");
-        if (g_iCurfewActive)
-        { 
-            if (g_bDebugOn) { DebugOutput(["state_entry", "invoking checkStatus"]); }
-            if (!checkStatus()) KickOff(); 
-        }
+        integer iCheckTime = timeNow() + 20;
+        llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_SETUP, "alarm_type", KB_CLOCK_NODUP, "alarm_time", iCheckTime]), "");
     }
 
     on_rez(integer iParam) {
@@ -541,11 +597,10 @@ default  {
         g_iSecondsBeforeBoot = 0;
         g_bRemovalInProgress = FALSE;
         if (g_bDebugOn) { DebugOutput(["on_rez ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
-        if (g_iCurfewActive)
-        { 
-            if (g_bDebugOn) { DebugOutput(["on_rez", "invoking checkStatus"]); }
-            if (!checkStatus()) KickOff(); 
-        }
+        llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "bookmarks", "");
+        integer iCheckTime = timeNow() + 20;
+        
+        llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_SETUP, "alarm_type", KB_CLOCK_NODUP, "alarm_time", iCheckTime]), "");
     }
 
     // listen for linked messages from OC scripts
@@ -556,48 +611,53 @@ default  {
         else if(iNum == RLV_ON) { // rlvon -> we have to turn the menu on again
             g_iRLVOn = TRUE;
         }
-        else if(iNum == LM_SETTING_RESPONSE) {
-            parseSettings(iSender, iNum, sStr, kID);
-        }
-        else if(iNum == LM_SETTING_DELETE) {
-            parseSettings(iSender, iNum, sStr, kID);
-        }
-        else if(iNum == KB_CLOCK_ALARM) {
-            alarmFired(iSender, iNum, sStr, kID);
-        }
+        else if(iNum == LM_SETTING_RESPONSE) parseSettings(iSender, iNum, sStr, kID);
+        else if(iNum == LM_SETTING_DELETE) parseSettings(iSender, iNum, sStr, kID);
+        else if(iNum == KB_CLOCK_ALARM) alarmFired(iSender, iNum, sStr, kID);
+        else if (iNum == KB_DEBUG_CURFEW_ON) SetDebugOn();
+        else if (iNum == KB_DEBUG_CURFEW_OFF) SetDebugOff();
+
     }
     
     timer() {
         if (g_bDebugOn) { DebugOutput(["timer"]); }
         llSetTimerEvent(0.0);
-        if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot, "invoking checkStatus"]); }
+        if (g_bDebugOn) { DebugOutput(["timer-1 ", "seconds left " + (string) g_iSecondsBeforeBoot, "invoking checkStatus"]); }
         string sMsg = "";
-        if (checkStatus()) {
+
+        integer iTimeNow = timeNow();
+        if (checkStatus(iTimeNow)) {
             llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"removal has been stopped.", g_kWearer);
+            if (g_bRemovalInProgress)
+                llMessageLinked(LINK_SET,NOTIFY,"0"+"removal has been stopped.", g_kWearer);
             g_iSecondsBeforeBoot = 0;
-            if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
+            g_bRemovalInProgress = FALSE;
+            if (g_bDebugOn) { DebugOutput(["timer-2 ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
         } else {
-            if (g_iSecondsBeforeBoot > 0) {
-                sMsg = "you are not allowed out after curfew. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
-                g_iSecondsBeforeBoot -= 5;
-                llMessageLinked(LINK_SET,NOTIFY,"0"+sMsg, g_kWearer);
-                llSetTimerEvent(5.0);
-                if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
-            } else {
-                llSetTimerEvent(0.0);
-                g_iSecondsBeforeBoot = 0;
-                if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
-                if (findOccurrence("Home") >= 0) {
-                    llMessageLinked(LINK_SET, CMD_OWNER, "tp Home", g_kWearer);
-                } else if (findOccurrence("home") >= 0) {
-                    llMessageLinked(LINK_SET, CMD_OWNER, "tp home", g_kWearer);
-                } else if (findOccurrence("DefaultHome") >= 0) {
-                    llMessageLinked(LINK_SET, CMD_OWNER, "tp DefaultHome", g_kWearer);
-                } else if (findOccurrence("defaulthome") >= 0) {
-                    llMessageLinked(LINK_SET, CMD_OWNER, "tp defaulthome", g_kWearer);
-                } else { 
-                    llMessageLinked(LINK_SET,NOTIFY,"0"+"TP home failed.", g_kWearer);
+            if (g_bRemovalInProgress) {
+                if (g_iSecondsBeforeBoot > 0) {
+                    sMsg = "you are not allowed out after curfew. you have " + (string) g_iSecondsBeforeBoot + " seconds left.";
+                    g_iSecondsBeforeBoot -= 5;
+                    llMessageLinked(LINK_SET,NOTIFY,"0"+sMsg, g_kWearer);
+//                llSetTimerEvent(5.0);
+                    if (g_bDebugOn) { DebugOutput(["timer-3 ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
+                } else {
+                    llSetTimerEvent(0.0);
+                    g_iSecondsBeforeBoot = 0;
+                    g_bRemovalInProgress = FALSE;
+                    if (g_bDebugOn) { DebugOutput(["timer-4 ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
+                    llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
+                    if (findOccurrence("Home") >= 0) {
+                        llMessageLinked(LINK_SET, CMD_OWNER, "tp Home", g_kWearer);
+                    } else if (findOccurrence("home") >= 0) {
+                        llMessageLinked(LINK_SET, CMD_OWNER, "tp home", g_kWearer);
+                    } else if (findOccurrence("DefaultHome") >= 0) {
+                        llMessageLinked(LINK_SET, CMD_OWNER, "tp DefaultHome", g_kWearer);
+                    } else if (findOccurrence("defaulthome") >= 0) {
+                        llMessageLinked(LINK_SET, CMD_OWNER, "tp defaulthome", g_kWearer);
+                    } else { 
+                        llMessageLinked(LINK_SET,NOTIFY,"0"+"TP home failed.", g_kWearer);
+                    }
                 }
             }
         }

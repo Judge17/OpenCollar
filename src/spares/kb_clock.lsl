@@ -4,17 +4,19 @@
 string  g_sModule = "clock";
 list    g_lInterrupts;
 integer INTERRUPTSTRIDE = 3;
-integer ALARM_ID = 0;
+integer ALARM_ID = 2;
 integer ALARM_TYPE = 1;
-integer ALARM_TIME = 2;
+integer ALARM_TIME = 0;
 
 string  KB_VERSIONMAJOR      = "7";
 string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "3";
+string  KB_DEVSTAGE          = "15";
 
 integer NOTIFY              = 1002;
 
-integer LINK_CMD_DEBUG=1999;
+//integer LINK_CMD_DEBUG=1999;
+integer KB_DEBUG_CLOCK_ON		   = -36001;
+integer KB_DEBUG_CLOCK_OFF		   = -36002;
 
 string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
@@ -29,27 +31,26 @@ DebugOutput(list ITEMS) {
         final+=llList2String(ITEMS,i)+" ";
     }
     llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
+    if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
-SetDebugOn(key kID) {
+SetDebugOn() {
     g_bDebugOn = TRUE;
     g_iDebugLevel = 0;
     g_iDebugCounter = 0;
-    llMessageLinked(LINK_SET,NOTIFY,"0"+"TP debug active.", kID);
 }
 
-SetDebugOff(key kID) {
+SetDebugOff() {
     g_bDebugOn = FALSE;
     g_iDebugLevel = 10;
-    llMessageLinked(LINK_SET,NOTIFY,"0"+"TP debug inactive.", kID);
 }
 
-integer g_iRLVOn         = FALSE; //Assume RLV is off until we hear otherwise
+//integer g_iRLVOn         = FALSE; //Assume RLV is off until we hear otherwise
 
 key     g_kWearer = NULL_KEY;       // key of the current wearer to reset only on owner changes
 
@@ -209,51 +210,81 @@ setAlarm(string sStr) {
     string sAlarmID = xJSONstring(sStr, "alarm_id");
     string sAlarmType = xJSONstring(sStr, "alarm_type");
     integer iAlarmTime = xJSONint(sStr, "alarm_time");
-    integer iInterruptIndex = llListFindList(g_lInterrupts, [sAlarmID]);
-    if (iInterruptIndex != -1) {
-        g_lInterrupts = llListReplaceList(g_lInterrupts, [sAlarmID, sAlarmType, iAlarmTime], iInterruptIndex, iInterruptIndex + INTERRUPTSTRIDE - 1);
+    integer iInterruptIndex = llListFindList(g_lInterrupts, [sAlarmID])  - ALARM_ID; // adjust to start of entry
+    if (g_bDebugOn) { DebugOutput(["setAlarm", sAlarmID, sAlarmType, formatDate(Unix2DateTime(iAlarmTime)), iInterruptIndex, llGetListLength(g_lInterrupts)]); }
+    if (iInterruptIndex >= 0) {
+        g_lInterrupts = llListReplaceList(g_lInterrupts, [iAlarmTime, sAlarmType, sAlarmID], iInterruptIndex, iInterruptIndex + INTERRUPTSTRIDE - 1);
     } else {
-        g_lInterrupts += [sAlarmID, sAlarmType, iAlarmTime];
+        g_lInterrupts += [iAlarmTime, sAlarmType, sAlarmID];
     }
+//
+//    Or: list llListSort( list src, integer stride, integer ascending );
+//        llListSort([1, "C", 3, "A", 2, "B"], 2, TRUE) // returns [1, "C", 2, "B", 3, "A"]
+//
+    if (llGetListLength(g_lInterrupts) > INTERRUPTSTRIDE)
+        g_lInterrupts = llListSort(g_lInterrupts, INTERRUPTSTRIDE, TRUE);
+//
     checkAlarms();
 }
 
-setTimer(integer iTime) {
-    if (g_bDebugOn) { DebugOutput(["setTimer-1", formatDate(Unix2DateTime(iTime)), llGetListLength(g_lInterrupts)]); }
-    integer iLowest = 0;
-    if (llGetListLength(g_lInterrupts) > 0) iLowest = llList2Integer(g_lInterrupts, INTERRUPTSTRIDE - 1);
-    else return;
-    integer iIndex = 0;
-    while (iIndex < llGetListLength(g_lInterrupts)) {
-    if (g_bDebugOn) { DebugOutput(["setTimer-2", iIndex, llGetListLength(g_lInterrupts), iLowest, llList2Integer(g_lInterrupts, iIndex + ALARM_TIME)]); }
-        if (iLowest == 0 || iLowest > llList2Integer(g_lInterrupts, iIndex + ALARM_TIME)) iLowest = llList2Integer(g_lInterrupts, iIndex + ALARM_TIME);
-        iIndex += INTERRUPTSTRIDE;
+setTimer(integer iNow) {
+    llSetTimerEvent(0.0);  // disable timers to start
+    if (g_bDebugOn) { DebugOutput(["setTimer-1", llGetListLength(g_lInterrupts)]); }
+    if (llGetListLength(g_lInterrupts) == 0) { // no pending alarms --> no timer
+        return;
     }
-    if (g_bDebugOn) { DebugOutput(["setTimer-3", iLowest, iTime, iLowest - iTime]); }
-    if (iLowest != 0) {
-        integer iDelay = iLowest - iTime;
+    integer iLowest = llList2Integer(g_lInterrupts, ALARM_TIME); // time from first element in list
+//    integer iIndex = 0;
+//    while (iIndex < llGetListLength(g_lInterrupts)) {
+//        if (g_bDebugOn) { DebugOutput(["setTimer-2", iIndex, llGetListLength(g_lInterrupts), iLowest,llList2Integer(g_lInterrupts, iIndex + ALARM_TIME)]); }
+//        if (iLowest > llList2Integer(g_lInterrupts, iIndex + ALARM_TIME)) iLowest = llList2Integer(g_lInterrupts, iIndex + ALARM_TIME);
+//        iIndex += INTERRUPTSTRIDE;
+//    }
+//    integer iNow = Unix2PST_PDT(llGetUnixTime());
+    if (g_bDebugOn) { DebugOutput(["setTimer-3 lowest, now, delay", iLowest, iNow, iLowest - iNow]); }
+    integer iDelay = iLowest - iNow;
+    if (iDelay > 0) {
         float fDelay = (float) iDelay;
+        if (g_bDebugOn) { DebugOutput(["setTimer-5", iDelay, fDelay]); }
         llSetTimerEvent(fDelay);
+    } else {
+        if (g_bDebugOn) { DebugOutput(["setTimer-6"]); }
+        llSetTimerEvent(2.0); // something odd happened, cause a trigger and alarm check in a few seconds
     }
 }
-
+//
+//    If the list is sorted by ascending order of alarm times, the first element always is the lowest; process it,
+//        delete it, and the new first element now is the lowest. As soon as the lowest element is greater than
+//        the current time, you're done.
+//
 checkAlarms() {
     llSetTimerEvent(0.0);
-    integer iTime = Unix2PST_PDT(llGetUnixTime());
-    integer iIndex = llGetListLength(g_lInterrupts) - INTERRUPTSTRIDE;
-    if (g_bDebugOn) { DebugOutput(["checkAlarms", formatDate(Unix2DateTime(iTime)), iIndex, llGetListLength(g_lInterrupts)]); }
-    while (llGetListLength(g_lInterrupts) > 0) {
-        integer iTest = llList2Integer(g_lInterrupts, iIndex + INTERRUPTSTRIDE - 1);
-        if (iTime < iTest) {
-            if (g_bDebugOn) { DebugOutput(["checkAlarmsComparison", formatDate(Unix2DateTime(iTime)), formatDate(Unix2DateTime(iTest))]); }
-            llMessageLinked(LINK_SET, KB_CLOCK_ALARM, llList2String(g_lInterrupts, iIndex), "");
-            g_lInterrupts = llDeleteSubList(g_lInterrupts, iIndex, iIndex + INTERRUPTSTRIDE - 1);
-            iIndex = llGetListLength(g_lInterrupts) - INTERRUPTSTRIDE;
+    while (checkAlarm(Unix2PST_PDT(llGetUnixTime())));
+    setTimer(Unix2PST_PDT(llGetUnixTime()));
+}
+
+integer checkAlarm(integer iTime) {
+    if (llGetListLength(g_lInterrupts) == 0) return FALSE;
+//
+//    check first and go
+//
+    integer iTest = llList2Integer(g_lInterrupts, ALARM_TIME); // no index offset because we're looking at the first entry
+//    integer iIndex = llGetListLength(g_lInterrupts) - INTERRUPTSTRIDE;
+//    if (g_bDebugOn) { DebugOutput(["checkAlarms - 1 now, index, length", formatDate(Unix2DateTime(iTime)), iIndex, llGetListLength(g_lInterrupts)]); }
+//    while (llGetListLength(g_lInterrupts) > 0 && iIndex >= 0) {
+//        integer iTest = llList2Integer(g_lInterrupts, iIndex + INTERRUPTSTRIDE - 1);
+        if (g_bDebugOn) { DebugOutput(["checkAlarm - 2 now, test", formatDate(Unix2DateTime(iTime)), formatDate(Unix2DateTime(iTest))]); }
+        if (iTime > iTest) { // found an expired timer
+            if (g_bDebugOn) { DebugOutput(["checkAlarm - 3", "iTime > iTest"]); }
+            llMessageLinked(LINK_SET, KB_CLOCK_ALARM, llList2String(g_lInterrupts, ALARM_ID), "");
+            g_lInterrupts = llDeleteSubList(g_lInterrupts, 0, INTERRUPTSTRIDE - 1);
+            return TRUE;
         } else {
-            iIndex -= INTERRUPTSTRIDE;
+//            iIndex -= INTERRUPTSTRIDE;
+            return FALSE;
         }
-    }
-    setTimer(iTime);
+//    }
+//    setTimer();
 }
     
 default  {
@@ -268,7 +299,7 @@ default  {
     }
 
     on_rez(integer iParam) {
-        if (g_bDebugOn) { DebugOutput(["on_rez ", "wearer ",  g_kWearer]); }
+        if (g_bDebugOn) { DebugOutput(["on_rez ", formatVersion(), "wearer ",  g_kWearer]); }
         if(llGetOwner() != g_kWearer) {
             llResetScript();
         }
@@ -276,10 +307,12 @@ default  {
     }
 
     link_message(integer iSender, integer iNum, string sStr, key kID) {
-        if(iNum == KB_CLOCK_SET) {
+        if (iNum == KB_CLOCK_SET) {
             if (g_bDebugOn) { DebugOutput(["link_message", "KB_CLOCK_SET", KB_CLOCK_SET]); }
             setAlarm(sStr);
-        }
+        } 
+        else if (iNum == KB_DEBUG_CLOCK_ON) SetDebugOn();
+        else if (iNum == KB_DEBUG_CLOCK_OFF) SetDebugOff();
     }
     
     timer() {
