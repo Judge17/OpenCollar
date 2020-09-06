@@ -53,6 +53,17 @@ DebugOutput(list ITEMS) {
     if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
 }
 
+SetDebugOn() {
+    g_bDebugOn = TRUE;
+    g_iDebugLevel = 0;
+    g_iDebugCounter = 0;
+}
+
+SetDebugOff() {
+    g_bDebugOn = FALSE;
+    g_iDebugLevel = 10;
+}
+
 integer g_bDebugOn = FALSE;
 integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
@@ -567,7 +578,7 @@ default  {
         
         if (iChange & CHANGED_REGION) 
         { 
-            if (g_bDebugOn) { DebugOutput(["changed", llGetRegionName(); "invoking checkStatus"]); }
+            if (g_bDebugOn) { DebugOutput(["changed", llGetRegionName(), "invoking checkStatus"]); }
             integer iTimeNow = timeNow(); 
             checkStatus(iTimeNow);
         }
