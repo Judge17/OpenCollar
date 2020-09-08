@@ -1,5 +1,5 @@
 
-//K-Bar Version 7.5b
+//K-Bar Version 7.5
 
 // This file is part of OpenCollar.
 // Copyright (c) 2008 - 2017 Nandana Singh, Garvin Twine, Cleo Collins,  
@@ -14,7 +14,7 @@
 //on listen, send submenu link message
 
 string g_sDevStage="";
-string g_sCollarVersion="7.5b"; // in reality: 7.4.1 but since checkversion in this and previous code does not allow for a minor rev number, this is what we have to work with
+string g_sCollarVersion="7.5"; // see kb_status for a better version
 
 integer g_iCaptureIsActive=FALSE; // this is a fix for ensuring proper permissions with capture
 integer g_iLatestVersion=TRUE;

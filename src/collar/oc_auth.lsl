@@ -1,5 +1,5 @@
 
-//K-Bar Version 7.5a
+//K-Bar Version 7.5b
 
 // This file is part of OpenCollar.
 // Copyright (c) 2008 - 2017 Nandana Singh, Garvin Twine, Cleo Collins,  

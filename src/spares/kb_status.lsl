@@ -1,5 +1,14 @@
+// kb_status
 
-string g_sScriptVersion = "7.5c";
+string  KB_VERSIONMAJOR      = "7";
+string  KB_VERSIONMINOR      = "5";
+string  KB_DEVSTAGE          = "2";
+string  g_sScriptVersion = "";
+string  g_sCollarVersion = "not set";
+
+string formatVersion() {
+    return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
 
 DebugOutput(integer iLevel, list ITEMS) {
     if (g_iDebugLevel > iLevel) return;
@@ -11,17 +20,23 @@ DebugOutput(integer iLevel, list ITEMS) {
         final+=llList2String(ITEMS,i)+" ";
     }
     llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
-//    llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+}
+
+SetDebugOn() {
+    g_bDebugOn = TRUE;
+    g_iDebugLevel = 0;
+    g_iDebugCounter = 0;
+}
+
+SetDebugOff() {
+    g_bDebugOn = FALSE;
+    g_iDebugLevel = 10;
 }
 
 integer g_bDebugOn = FALSE;
 integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
-
-string  KB_VERSION = "7.5";
-string  KB_DEVSTAGE = "c";
-string g_sVersionId = "20200806 1645";
 
 string g_sWearerID;
 
@@ -39,6 +54,9 @@ list g_lCollarSettings = [];
 float g_fStartDelay = 0.0;
 integer g_iSettings = 0;
 integer g_iSayings1 = 0;
+integer g_iLineNr = 0;
+key 	g_kVersionID;
+string  g_sTargetCard = ".version";
 
 //integer g_iKBarOptions=0;
 //integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
@@ -268,7 +286,10 @@ LogLevelMenu(key kAv, integer iAuth) {
 }
 
 StatMenu(key kAv, integer iAuth) {
-    string sPrompt = "\n[KBar Status " + KB_VERSION + KB_DEVSTAGE + g_sVersionId + "]; " + (string) llGetFreeMemory() + " bytes free";
+    string sPrompt = "\n[KBar Status " + formatVersion() + " " + (string) llGetFreeMemory() + " bytes free]\n";
+    sPrompt += "Collar version " + g_sCollarVersion + "\n";
+    sPrompt += "\nThis is a K-Bar plugin; for support, wire roan (Silkie Sabra), K-Bar Ranch.\n";
+
     if (g_iSWActive) sPrompt += "\nSafeword enabled"; else sPrompt += "\nSafeword disabled";
 
     list lButtons = []; // ["KickStart"];
@@ -277,9 +298,8 @@ StatMenu(key kAv, integer iAuth) {
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat",FALSE);
 }
 
-
 DebugMenu(key keyID, integer iAuth) {
-    string sPrompt = "\n[KB Status Debug Level (less is more)] "+g_sVersionId + ", " + (string) llGetFreeMemory() + " bytes free.\nCurrent debug level: " + (string) g_iDebugLevel;
+    string sPrompt = "\n[KB Status Debug Level (less is more)] "+ formatVersion() + ", " + (string) llGetFreeMemory() + " bytes free.\nCurrent debug level: " + (string) g_iDebugLevel;
     list lMyButtons = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
     Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "Debug", FALSE);
 }
@@ -403,7 +423,10 @@ default {
         g_iDebugCounter = 0;
         g_lCollarSettings = [];
         g_lHostSettings = [];
+        g_iLineNr = 0;
         InitListen();
+        g_sCollarVersion = "not set";
+        g_kVersionID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
         g_sWearerID = llGetOwner();
         llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
@@ -580,8 +603,25 @@ default {
         InitListen();
         if (g_bDebugOn) DebugOutput(5, ["link_message pinging", KB_HAIL_CHANNEL]);
         llSleep(2.0);
-        llRegionSay(KB_HAIL_CHANNEL, "ping");        
+        llRegionSay(KB_HAIL_CHANNEL, "ping751");        
     }
+    
+    dataserver(key kID, string sData) {
+        if (g_bDebugOn) DebugOutput(0, ["dataserver", sData]);
+        if (kID == g_kVersionID) {
+            if (sData != EOF) {
+                string sWork = llStringTrim(sData, STRING_TRIM);
+                if (sWork != "") {
+                    list lData = llParseString2List(sWork, ["="], []);
+                    if (llGetListLength(lData) > 1) {
+                        if (llList2String(lData, 0) == "version") g_sCollarVersion = llList2String(lData, 1);
+                    } else 
+                        g_kVersionID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
+                }
+            }
+        }
+    }
+
 }
 
 // kb_status

@@ -1,28 +1,61 @@
 
-//K-Bar Version 2020 0722 1330
+//K-Bar Settings Host
 
 //TODO - high level control routine that cycles through the avatar requests
 //	Convert "StartWork" into step one of two
 //	More or less duplicate it for the sayings
 //	Figure out g_kActiveKey timing issue
+	
+string  KB_VERSIONMAJOR      = "7";
+string  KB_VERSIONMINOR      = "5";
+string  KB_DEVSTAGE          = "1";
+string  g_sScriptVersion = "";
 
-string g_sDevStage = "a";
-string 	g_sScriptVersion = "7.5";
+string formatVersion() {
+	return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
+
+DebugOutput(list ITEMS) {
+	++g_iDebugCounter;
+	integer i=0;
+	integer end=llGetListLength(ITEMS);
+	string final;
+	for(i=0;i<end;i++){
+		final+=llList2String(ITEMS,i)+" ";
+	}
+	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
+	if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
+}
+
+SetDebugOn() {
+	g_bDebugOn = TRUE;
+	g_iDebugLevel = 0;
+	g_iDebugCounter = 0;
+}
+
+SetDebugOff() {
+	g_bDebugOn = FALSE;
+	g_iDebugLevel = 10;
+}
+
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
+integer KB_DEBUG_CHANNEL           = -617783;
+integer g_iDebugCounter = 0;
+
 key 	g_kOwner = NULL_KEY;
-integer 	g_iListenHandle = 0;
-integer 	KB_HAIL_CHANNEL = -317783;
+integer g_iListenHandle = 0;
+integer KB_HAIL_CHANNEL = -317783;
 string 	g_sCard = ".settings";
 string 	g_sSplitLine; // to parse lines that were split due to lsl constraints
-integer 	g_iLineNr = 0;
+integer g_iLineNr = 0;
 key 	g_kSettingsID;
 key		g_kSayings1ID;
 string 	g_sTargetName = "";
 string	g_sTargetCard = "";
-integer 	g_bDebugOn = TRUE;
 integer	g_iProcessingPhase = 0;
 integer g_bBlock = FALSE;
 
-string g_sVersion = "";
 string g_sDelimiter = "\\";
 list g_lExceptionTokens = ["texture","glow","shininess","color","intern"];
 list g_lSettings;
@@ -32,22 +65,9 @@ key g_kActiveOwner = NULL_KEY;
 string  g_sMsgPackage = "";
 list g_lMsgPackage = [];
 
-DebugOutput(list ITEMS){
-	++g_iDebugCounter;
-	integer i=0;
-	integer end=llGetListLength(ITEMS);
-	string final;
-	for(i=0;i<end;i++){
-		final+=llList2String(ITEMS,i)+" ";
-	}
-//	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
-	llOwnerSay(llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
-}
-integer g_iDebugCounter = 0;
-
-LoadSaying(string sData, integer iLine) {
+//LoadSaying(string sData, integer iLine) {
 	
-}
+//}
 
 LoadSetting(string sData, integer iLine) {
 	string sID;
@@ -123,7 +143,10 @@ string SuffixTrans(integer iIn) {
 	if (iIn == 3) return "03";
 	return "99";
 }
-
+//
+//	Get the collar owner's name, smush it to all lowercase, eliminate spaces
+//	append a two digit number, processing phase; currently implemented: "00" basic settings, "01" whispers
+//
 CardBaseName() {
 	g_sTargetName = llToLower(llKey2Name(g_kActiveOwner));
 	list lName = llParseString2List(g_sTargetName, [" "], [""]);
@@ -172,7 +195,7 @@ EndRun() {
 }
 
 //
-//	StartWork(key of requesting collar
+//	StartWork
 //
 //		Identify collar's owner
 //		Clear and initialize work areas
@@ -195,6 +218,8 @@ StartWork() {
 		return;
 	} else {
 		DeleteKey(g_kActiveKey);
+		g_sMsgPackage = "";
+		g_lMsgPackage = [];
 	}
 }
 
@@ -290,13 +315,14 @@ SendSayings() {
 default
 {
 	state_entry() {
+		llOwnerSay(llGetScriptName() + " " + formatVersion() + " starting");
 		if (g_bDebugOn) DebugOutput(["state_entry"]);
 		g_lRequests = [];
 		g_kActiveKey = NULL_KEY;
 		if (g_iListenHandle != 0) { llListenRemove(g_iListenHandle); g_iListenHandle = 0; g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", ""); }
 		else g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
-		g_sVersion = g_sScriptVersion;
-		g_sVersion += g_sDevStage;
+//		g_sVersion = g_sScriptVersion;
+//		g_sVersion += g_sDevStage;
 // if (g_kWearer == NULL_KEY) {
 // g_kWearer = llGetOwner();
 // g_sWearer = (string) g_kWearer;
@@ -317,8 +343,9 @@ default
 		else g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
 	}
 
-	link_message(integer iSender, integer iNum, string sStr, key kID) {
-	}
+//	link_message(integer iSender, integer iNum, string sStr, key kID) {
+//	}
+	
 //
 //	Listen for a ping from the collar
 //
@@ -327,11 +354,13 @@ default
 //	
 	listen(integer iChannel, string sName, key kId, string sMessage) {
 		if (g_bDebugOn) DebugOutput(["listen"]);
-		llOwnerSay((string) llGetOwnerKey(kId));
-		llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
-		g_lRequests += [kId];
-		if (g_bDebugOn) DebugOutput(["listen", llGetListLength(g_lRequests), g_kActiveKey, kId, iChannel, llList2Key(g_lRequests, 1)]);
-		StartWork();
+		if (sMessage == "ping751") { // ignore requests not meant for us
+			string sNotify = sMessage + " " + (string) llGetOwnerKey(kId) + " " + llKey2Name(llGetOwnerKey(kId));
+			llOwnerSay(sNotify);
+			g_lRequests += [kId];
+			if (g_bDebugOn) DebugOutput(["listen", llGetListLength(g_lRequests), g_kActiveKey, kId, iChannel, llList2Key(g_lRequests, 1)]);
+			StartWork();
+		}
 //		if (g_kActiveKey == NULL_KEY)
 //			StartWork(llList2Key(g_lRequests, 0)); 
 	}
