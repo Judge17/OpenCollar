@@ -27,7 +27,7 @@ key     KBAROWNER = ""; // will be used later for spy
 //integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
 integer g_iKBarDebug=0;
 key     g_kKBarDebug = NULL_KEY;
-string  g_sKBarVersion="7.5c";
+string  g_sKBarVersion="7.5.1";
 string  g_sKBarTarget="";
 key     g_kVersionReader;
 integer LINK_KB_VERS_REQ = -75301;
@@ -37,7 +37,7 @@ integer KB_KBSYNC_KICKSTART = -34717;
 //string  KB_DEVSTAGE = g_sDevStage;
 list    KB_SCRIPT_STATUS = [];
 
-key     KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
+//key     KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
 key    SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
 
 DebugOutput(key kID, list ITEMS) {
@@ -205,7 +205,7 @@ string g_sGlobalToken = "global_";
 
 integer g_iWaitUpdate;
 integer g_iWaitRebuild;
-
+/*
 integer compareVersions(string v1, string v2) { //compares two symantic version strings, true if v1 >= v2
     // For a collar running a non-release build (one with g_sDevStage set to not null) return TRUE 
     if(g_sDevStage!= ""){
@@ -231,7 +231,7 @@ integer compareVersions(string v1, string v2) { //compares two symantic version 
     }
     return v1a > v2a;
 }
-
+*/
 Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth, string sName) {
     key kMenuID = llGenerateKey();
     llMessageLinked(LINK_SET, DIALOG, (string)kID + "|" + sPrompt + "|" + (string)iPage + "|" + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kMenuID);
