@@ -11,6 +11,16 @@ Licensed under the GPLv2. See LICENSE for full details.
 https://github.com/OpenCollarTeam/OpenCollar
 */
 
+string  g_sModule = "relay";
+string  KB_VERSIONMAJOR      = "7";
+string  KB_VERSIONMINOR      = "5";
+string  KB_DEVSTAGE          = "1";
+//string  g_sScriptVersion = "";
+
+string formatVersion() {
+    return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
+
 string g_sParentMenu = "RLV";
 string g_sSubMenu = "Relay";
 
@@ -118,6 +128,7 @@ Menu(key kID, integer iAuth) {
         HelplessChecks();
     }
     string sPrompt = "\n[Relay App]\n\nNote: Wearer checkbox will allow or disallow wearer changes to relay\n\n";
+    sPrompt += formatVersion() + "\n";
     list lButtons = [Checkbox(bool((g_iMode==0)), "OFF"), Checkbox(bool((g_iMode==MODE_ASK)),"Ask"), Checkbox(bool((g_iMode==MODE_AUTO)),"Auto"), Checkbox(g_iWearer, "Wearer")];
     if(Source){
         sPrompt += "Source: "+llKey2Name(Source);
