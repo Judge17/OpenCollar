@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a9";
+string  KB_DEVSTAGE          = "1a902";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -19,7 +19,7 @@ DebugOutput(integer iLevel, list ITEMS) {
     for(i=0;i<end;i++){
         final+=llList2String(ITEMS,i)+" ";
     }
-    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + (string) g_iDebugCounter + " " + final);
+    llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
 }
 
 SetDebugOn() {
@@ -33,8 +33,8 @@ SetDebugOff() {
     g_iDebugLevel = 10;
 }
 
-integer g_bDebugOn = FALSE;
-integer g_iDebugLevel = 10;
+integer g_bDebugOn = TRUE;
+integer g_iDebugLevel = 0;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 integer g_iPingCounter = 0;
@@ -419,7 +419,6 @@ InitListen() {
 }
 
 InitVariables() {
-    g_kWearer = llGetOwner();
     g_iDebugCounter = 0;
     g_iPingCounter = 0;
     g_lCollarSettings = [];
@@ -430,7 +429,6 @@ InitVariables() {
     g_bGotSettings = FALSE;
     g_bGotSayings = FALSE;
     g_sCollarVersion = "not set";
-    g_kVersionID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
 }
 
 MergeInputSettingsToMandatory(list lInput) {
@@ -475,12 +473,14 @@ DeleteListen() {
 
 default {
     on_rez(integer iParam){
+        if (g_bDebugOn) DebugOutput(5, ["default", "on_rez", iParam]);
         if(llGetOwner()!=g_kWearer) llResetScript();
+        state init_version;
     }
     state_entry()
     {
+        if (g_bDebugOn) DebugOutput(5, ["default", "state_entry"]);
         if(llGetStartParameter()!=0)state inUpdate;
-        SetDebugOff();
         g_kWearer = llGetOwner();
         state init_version;
     }
@@ -491,22 +491,31 @@ state init_version {
 //    if the on_rez event is raised while we are in this state, just stop and let default take over; default will switch back to us, and we'll pick back up at state-entry
 //
     on_rez(integer iParam){
+        if (g_bDebugOn) DebugOutput(5, ["init_version", "on_rez", iParam]);
         if(llGetOwner()!=g_kWearer) llResetScript();
         state default;
     }
     
     state_entry() {
+        if (g_bDebugOn) DebugOutput(5, ["init_version", "state_entry"]);
         InitVariables();
+        if (llGetInventoryKey(g_sTargetCard) == NULL_KEY) { 
+            if (g_bDebugOn) DebugOutput(0, [g_sTargetCard, "not found"]); 
+            state init_params; 
+        }
+
+        g_kVersionID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
         llSetTimerEvent(30.0);
     }
 
     timer() {
+        if (g_bDebugOn) DebugOutput(5, ["init_version", "timer"]);
         llSetTimerEvent(0.0);
         state init_params;
     }
     
     dataserver(key kID, string sData) {
-        if (g_bDebugOn) DebugOutput(0, ["dataserver", sData]);
+        if (g_bDebugOn) DebugOutput(0, ["init_version", "dataserver", kID, sData]);
         if (kID == g_kVersionID) {
             if (sData != EOF) {
                 string sWork = llStringTrim(sData, STRING_TRIM);
@@ -530,13 +539,14 @@ state init_params {
 //    if the on_rez event is raised while we are in this state, just stop and let default take over; default will switch back to us, and we'll pick back up at state-entry
 //
     on_rez(integer iParam){
-        if(llGetOwner()!=g_kWearer) llResetScript();
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "on_rez", iParam]);
         state default;
     }
     
     state_entry() {
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry"]);
         InitListen();
-        if (g_bDebugOn) DebugOutput(5, ["link_message pinging", KB_HAIL_CHANNEL]);
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", "link_message pinging", KB_HAIL_CHANNEL]);
         llSleep(2.0);
         llRegionSay(KB_HAIL_CHANNEL, "ping801");        
         g_iPingCounter = 0;
@@ -545,10 +555,11 @@ state init_params {
     }
     
     timer() {
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "timer"]);
         llSetTimerEvent(0.0);
         ++g_iPingCounter;
-        if (g_bDebugOn) DebugOutput(5, ["link_message pinging", KB_HAIL_CHANNEL]);
-        llRegionSay(KB_HAIL_CHANNEL, "ping751");     
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "timer", "link_message pinging", KB_HAIL_CHANNEL]);
+        llRegionSay(KB_HAIL_CHANNEL, "ping801");     
         g_fStartDelay = (float) (15*g_iPingCounter);
         llSetTimerEvent(g_fStartDelay);
     }
@@ -568,7 +579,8 @@ state init_params {
 //
 //
     listen(integer iChannel, string sName, key kId, string sMessage) {
-        if (g_bDebugOn) DebugOutput(5, ["listen heard", sName, (string) kId, sMessage]);
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "listen"]);
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "listen", "listen heard", sName, (string) kId, sMessage]);
         llSetTimerEvent(0.0);
         list lHostSettings = llParseString2List(sMessage, ["%%"], [""]);
         string sFirst = llList2String(lHostSettings, 0);
@@ -579,32 +591,32 @@ state init_params {
         sLineID = llList2String(lTemp, 0);
         if (llGetListLength(lTemp) > 1) iLineID = llList2Integer(lTemp, 1);
         if (sLineID == "kbhostline" || sLineID == "kbhostaction") {
-            if (g_bDebugOn) { list lTemp = ["settings from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
+            if (g_bDebugOn) { list lTemp = ["init_params", "listen", "settings from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
             list lOutputSettings = llDeleteSubList(lHostSettings, 0, 1);
             MergeInputSettingsToMandatory(lOutputSettings);
             if (sLineID == "kbhostaction") {
-                if (g_bDebugOn) { list lTemp = ["settings ready for output"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
+                if (g_bDebugOn) { list lTemp = ["init_params", "listen", "settings ready for output"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
                 g_bGotSettings = TRUE;
             }
         } else if (sLineID == "kbnosettings") {
-            if (g_bDebugOn) { list lTemp = ["no settings found"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
+            if (g_bDebugOn) { list lTemp = ["init_params", "listen", "no settings found"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
             g_bGotSettings = TRUE;
         } else if (sLineID == "kbsayings1line" || sLineID == "kbsayings1action") {
-            if (g_bDebugOn) { list lTemp = ["sayings 1 from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
+            if (g_bDebugOn) { list lTemp = ["init_params", "listen", "sayings 1 from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
             list lOutputSayings = llParseString2List(sMessage, ["%%"], [""]);
             MergeInputSayings1ToMandatory(lOutputSayings);
             if (sLineID == "kbsayings1action") {
-                if (g_bDebugOn) { list lTemp = ["sayings1 ready for output"] + g_lSayings1; DebugOutput(5, lTemp); }
+                if (g_bDebugOn) { list lTemp = ["init_params", "listen", "sayings1 ready for output"] + g_lSayings1; DebugOutput(5, lTemp); }
                 g_bGotSayings = TRUE;
             }
         } else if (sLineID == "kbnosayings") {
-            if (g_bDebugOn) { list lTemp = ["no sayings1 found"] + g_lSayings1; DebugOutput(5, lTemp); }
+            if (g_bDebugOn) { list lTemp = ["init_params", "listen", "no sayings1 found"] + g_lSayings1; DebugOutput(5, lTemp); }
             g_bGotSayings = TRUE;
         } else if (sLineID == "Notify") {
             // TODO: process 'no xx card' messages
         }
         if (g_bGotSettings && g_bGotSayings) {
-            DebugOutput(4, ["settings and sayings fetched"]);
+            DebugOutput(4, ["init_params", "listen", "settings and sayings fetched"]);
         }
     }
 }
