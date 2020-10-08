@@ -1,8 +1,8 @@
-// kb_status
+// kb_sync
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a909";
+string  KB_DEVSTAGE          = "1a901";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -45,11 +45,11 @@ key g_kGroup = "";
 integer g_iGroupEnabled = FALSE;
 
 string g_sParentMenu = "Apps";
-string g_sSubMenu = "KBStatus";
+string g_sSubMenu = "KBSync";
 integer g_iRunawayDisable=0;
 integer g_iSWActive = 1;
 integer KB_HAIL_CHANNEL = -317783;
-integer g_bPrepareToSend = FALSE;
+//integer g_bPrepareToSend = FALSE;
 list g_lCollarSettings = [];
 list g_lMandatoryValues = [];
 list g_lSayings1 = [];
@@ -71,7 +71,7 @@ integer g_iLogLevel = 0; // minimal logging
 //key     g_kLeashedTo   = NULL_KEY;
 //string  g_sWearerName;
 
-string  g_sSlaveMessage = "";
+//string  g_sSlaveMessage = "";
 /*
 integer KB_KBSYNC_KICKSTART        = -34717;
 integer KB_NOTICE_LEASHED          = -34691;
@@ -276,10 +276,10 @@ HandleSettings(string sStr) {
         }
     }
 }
-*/
+
 HandleDeletes(string sStr) {
 
-/*
+
 DelSetting(string sToken) { // we'll only ever delete user settings
     sToken = llToLower(sToken);
     integer i = llGetListLength(g_lSettings) - 1;
@@ -296,7 +296,7 @@ DelSetting(string sToken) { // we'll only ever delete user settings
     i = llListFindList(g_lSettings, [sToken]);
     if (~i) g_lSettings = llDeleteSubList(g_lSettings, i, i + 1);
 }
-*/
+
 
     if (!g_bPrepareToSend) return;
     list lParams = llParseString2List(sStr, ["_"],[]);
@@ -310,7 +310,7 @@ DelSetting(string sToken) { // we'll only ever delete user settings
     integer iDx = llListFindList(g_lCollarSettings, [sStr]);
     if (iDx >= 0) g_lCollarSettings = llDeleteSubList(g_lCollarSettings, iDx, iDx);
 }
-/*
+
 ConfirmMenu(key kAv, integer iAuth) {
     string sPrompt = "\n[Confirmation]";
     sPrompt += "\nYou are about to permit the Judge to change your protection status if he pleases.";
@@ -735,20 +735,14 @@ state gather_settings {
 }
 
 state sync_settings {
-//
-//    if the on_rez event is raised while we are in this state, just stop and let default take over; default will switch back to us, and we'll pick back up at state-entry
-//
+
     on_rez(integer iParam){
         if (g_bDebugOn) DebugOutput(5, ["sync_settings", "on_rez", iParam]);
-        state default;
+//        state default;
     }
     
     state_entry() {
         if (g_bDebugOn) DebugOutput(5, ["sync_settings", "state_entry"]);
-        g_lCollarSettings = [];
-        g_bGatherStarted = FALSE;
-        g_fStartDelay = 60.0;
-        llSetTimerEvent(g_fStartDelay);
     }
     
     link_message(integer iSender,integer iNum,string sStr,key kID){
@@ -963,4 +957,4 @@ state inUpdate {
 }
 
 
-// kb_status
+// kb_sync
