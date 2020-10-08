@@ -23,7 +23,8 @@ DebugOutput(list ITEMS) {
 	for(i=0;i<end;i++){
 		final+=llList2String(ITEMS,i)+" ";
 	}
-	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
+//	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
+	llOwnerSay(llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
 	if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
 }
 
@@ -38,8 +39,8 @@ SetDebugOff() {
 	g_iDebugLevel = 10;
 }
 
-integer g_bDebugOn = FALSE;
-integer g_iDebugLevel = 10;
+integer g_bDebugOn = TRUE;
+integer g_iDebugLevel = 0;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
@@ -179,10 +180,13 @@ StartRun() {
 				EndRun();
 			}
 		} else {
+			llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card");
+			if (g_bDebugOn) DebugOutput(["StartRun - e", g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card"]);
 			EndRun();
 		}
 	} else {
 		llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card");
+		if (g_bDebugOn) DebugOutput(["StartRun - f", g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card"]);
 		// send 'no card' notification here
 		EndRun();
 	}
@@ -329,15 +333,24 @@ SendSayings() {
 		if (g_bDebugOn) DebugOutput(g_lMsgPackage);
 }
 
+InitListen() {
+	if (g_bDebugOn) DebugOutput(["InitListen Entry", g_iListenHandle]);
+	if (g_iListenHandle != 0) { 
+		llListenRemove(g_iListenHandle); 
+		g_iListenHandle = 0; 
+		g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", ""); 
+	} else g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
+	if (g_bDebugOn) DebugOutput(["InitListen Exit", g_iListenHandle]);
+}
+
 default
 {
 	state_entry() {
-		llOwnerSay(llGetScriptName() + " " + formatVersion() + " starting");
+		llOwnerSay(llGetScriptName() + " " + formatVersion() + " starting, debug = " + (string) g_bDebugOn);
 		if (g_bDebugOn) DebugOutput(["state_entry"]);
 		g_lRequests = [];
 		g_kActiveKey = NULL_KEY;
-		if (g_iListenHandle != 0) { llListenRemove(g_iListenHandle); g_iListenHandle = 0; g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", ""); }
-		else g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
+		InitListen();
 //		g_sVersion = g_sScriptVersion;
 //		g_sVersion += g_sDevStage;
 // if (g_kWearer == NULL_KEY) {
@@ -356,8 +369,7 @@ default
 	on_rez(integer iParam) {
 		if (g_bDebugOn) DebugOutput(["on_rez"]);
 		if (g_kOwner != llGetOwner()) llResetScript();
-		if (g_iListenHandle != 0) { llListenRemove(g_iListenHandle); g_iListenHandle = 0; g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", ""); }
-		else g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
+		InitListen();
 	}
 
 //	link_message(integer iSender, integer iNum, string sStr, key kID) {
@@ -370,8 +382,8 @@ default
 //		Add it to the request list for processing in due time
 //	
 	listen(integer iChannel, string sName, key kId, string sMessage) {
-		if (g_bDebugOn) DebugOutput(["listen"]);
-		if (sMessage == "ping751" || sMessage == "ping801") { // ignore requests not meant for us
+		if (g_bDebugOn) DebugOutput(["listen", iChannel, sName, kId, sMessage]);
+		if (sMessage == "ping801") { // ignore requests not meant for us
 			g_sPing = sMessage;
 			string sNotify = sMessage + " " + (string) llGetOwnerKey(kId) + " " + llKey2Name(llGetOwnerKey(kId));
 			llOwnerSay(sNotify);

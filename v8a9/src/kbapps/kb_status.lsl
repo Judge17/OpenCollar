@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a902";
+string  KB_DEVSTAGE          = "1a906";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -50,7 +50,6 @@ integer g_iRunawayDisable=0;
 integer g_iSWActive = 1;
 integer KB_HAIL_CHANNEL = -317783;
 integer g_bPrepareToSend = FALSE;
-list g_lHostSettings = [];
 list g_lCollarSettings = [];
 list g_lMandatoryValues = [];
 list g_lSayings1 = [];
@@ -201,29 +200,45 @@ SetDebugLevel(string sLevel) {
     else g_bDebugOn = TRUE;
     if (g_bDebugOn) {DebugOutput(0, ["Debug Level", g_iDebugLevel, "Debug Status", g_bDebugOn]); }
 }
-/*
-string TranslateButtons(string sInput) {
-    list lTranslation=[
-        "KBar ☑", "kbar on",
-        "KBar ☐", "kbar off",
-        "guest", "kbarstat 0",
-        "protect", "kbarstat 1",
-        "slave", "kbarstat 2",
-        "StatLock ☑", "statlock on",
-        "StatLock ☐", "statlock off",
-        "Safeword ☑", "safeword on",
-        "Safeword ☐", "safeword off",
-        "Diagnose", "diagnose",
-        "LogLevel", "loglevel",
-        "KickStart", "kickstart"
-    ];
-    integer buttonIndex=llListFindList(lTranslation,[sInput]);
-    string sOutput = sInput;
-    if (~buttonIndex) sOutput = llList2String(lTranslation,buttonIndex+1);
-    return sOutput;
+
+// Get Group or Token, 0=Group, 1=Token
+string SplitToken(string sIn, integer iSlot) {
+    integer i = llSubStringIndex(sIn, "_");
+    if (!iSlot) return llGetSubString(sIn, 0, i - 1);
+    return llGetSubString(sIn, i + 1, -1);
 }
-*/
+
+// To add new entries at the end of Groupings
+integer GroupIndex(string sToken) {
+    sToken = llToLower(sToken);
+    string sGroup = SplitToken(sToken, 0);
+    integer i = llGetListLength(g_lCollarSettings) - 1;
+    // start from the end to find last instance, +2 to get behind the value
+    for (; ~i ; i -= 2) {
+        if (SplitToken(llList2String(g_lCollarSettings, i - 1), 0) == sGroup) return i + 1;
+    }
+    return -1;
+}
+
+list SetSetting(string sToken, string sValue) {
+    sToken = llToLower(sToken);
+    integer idx = llListFindList(g_lCollarSettings, [sToken]);
+    if (~idx) return llListReplaceList(g_lCollarSettings, [sValue], idx + 1, idx + 1);
+    idx = GroupIndex(sToken);
+    if (~idx) return llListInsertList(g_lCollarSettings, [sToken, sValue], idx);
+    return g_lCollarSettings + [sToken, sValue];
+}
+
+DelSetting(string sToken) {
+    sToken = llToLower(sToken);
+    integer i = llGetListLength(g_lCollarSettings) - 1;
+    i = llListFindList(g_lCollarSettings, [sToken]);
+    if (~i) g_lCollarSettings = llDeleteSubList(g_lCollarSettings, i, i + 1);
+}
+
+/*
 HandleSettings(string sStr) {
+
     if (!g_bPrepareToSend) return;
 
     integer iDx = llListFindList(g_lCollarSettings, [sStr]);
@@ -260,8 +275,28 @@ HandleSettings(string sStr) {
         }
     }
 }
-
+*/
 HandleDeletes(string sStr) {
+
+/*
+DelSetting(string sToken) { // we'll only ever delete user settings
+    sToken = llToLower(sToken);
+    integer i = llGetListLength(g_lSettings) - 1;
+    if(sToken == "intern_weld")DeleteWeldFlag();
+    if (SplitToken(sToken, 1) == "all") {
+        sToken = SplitToken(sToken, 0);
+      //  string sVar;
+        for (; ~i; i -= 2) {
+            if (SplitToken(llList2String(g_lSettings, i - 1), 0) == sToken)
+                g_lSettings = llDeleteSubList(g_lSettings, i - 1, i);
+        }
+        return;
+    }
+    i = llListFindList(g_lSettings, [sToken]);
+    if (~i) g_lSettings = llDeleteSubList(g_lSettings, i, i + 1);
+}
+*/
+
     if (!g_bPrepareToSend) return;
     list lParams = llParseString2List(sStr, ["_"],[]);
     string sToken = llList2String(lParams,0);
@@ -418,11 +453,16 @@ InitListen() {
     if (g_iListenHandle == 0) g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
 }
 
+DeleteListen() {
+    if (g_bDebugOn) DebugOutput(5, ["DeleteListen", g_iListenHandle, KB_HAIL_CHANNEL]);
+    if (g_iListenHandle != 0) { llListenRemove(g_iListenHandle); g_iListenHandle = 0; }
+}
+
+
 InitVariables() {
     g_iDebugCounter = 0;
     g_iPingCounter = 0;
     g_lCollarSettings = [];
-    g_lHostSettings = [];
     g_lMandatoryValues = [];
     g_lSayings1 = [];
     g_iLineNr = 0;
@@ -571,6 +611,8 @@ state init_params {
 //
 //    Starting in 8.0.1a9, 'kbnosettings' indicates that no mandatory settings values were found for this collar
 //
+//    Notify = No 00 Card means the same thing
+//
 //    kb_settings_host also collects the sayings used in kb_programmer; they are also sent as a string list delimited by '%%'
 //
 //
@@ -586,10 +628,11 @@ state init_params {
         string sFirst = llList2String(lHostSettings, 0);
         string sEndFlag = "kbhostaction=done";
         string sLineID = "";
+        string sLineVal = "";
         integer iLineID = 0;
         list lTemp = llParseString2List(sFirst, ["="], [""]);
         sLineID = llList2String(lTemp, 0);
-        if (llGetListLength(lTemp) > 1) iLineID = llList2Integer(lTemp, 1);
+        if (llGetListLength(lTemp) > 1) { sLineVal = llList2String(lTemp, 1); iLineID = llList2Integer(lTemp, 1); }
         if (sLineID == "kbhostline" || sLineID == "kbhostaction") {
             if (g_bDebugOn) { list lTemp = ["init_params", "listen", "settings from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
             list lOutputSettings = llDeleteSubList(lHostSettings, 0, 1);
@@ -600,6 +643,7 @@ state init_params {
             }
         } else if (sLineID == "kbnosettings") {
             if (g_bDebugOn) { list lTemp = ["init_params", "listen", "no settings found"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
+            g_lMandatoryValues = [];
             g_bGotSettings = TRUE;
         } else if (sLineID == "kbsayings1line" || sLineID == "kbsayings1action") {
             if (g_bDebugOn) { list lTemp = ["init_params", "listen", "sayings 1 from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
@@ -611,16 +655,66 @@ state init_params {
             }
         } else if (sLineID == "kbnosayings") {
             if (g_bDebugOn) { list lTemp = ["init_params", "listen", "no sayings1 found"] + g_lSayings1; DebugOutput(5, lTemp); }
+            g_lSayings1 = [];
             g_bGotSayings = TRUE;
         } else if (sLineID == "Notify") {
             // TODO: process 'no xx card' messages
+            if (g_bDebugOn) { list lTemp = ["init_params", "listen"] + llParseString2List(sFirst, [" "], [""]); DebugOutput(3, lTemp); }
+            list lTemp = llParseString2List(sLineVal, [" "], [""]);
+            string sCardNr = llList2String(lTemp, 1);
+            integer iCardNr = (integer) sCardNr;
+            if (iCardNr == 0) {
+                g_lMandatoryValues = [];
+                g_bGotSettings = TRUE;                
+            } else if (iCardNr == 1) {
+                g_lSayings1 = [];
+                g_bGotSayings = TRUE;                
+            }
         }
         if (g_bGotSettings && g_bGotSayings) {
             DebugOutput(4, ["init_params", "listen", "settings and sayings fetched"]);
+            llSetTimerEvent(0.0);
+            DeleteListen();
+            state gather_settings;
         }
     }
 }
 
+state gather_settings {
+//
+//    if the on_rez event is raised while we are in this state, just stop and let default take over; default will switch back to us, and we'll pick back up at state-entry
+//
+    on_rez(integer iParam){
+        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "on_rez", iParam]);
+        state default;
+    }
+    
+    state_entry() {
+        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "state_entry"]);
+        g_lCollarSettings = [];
+        g_fStartDelay = 60.0;
+        llSetTimerEvent(g_fStartDelay);
+    }
+    
+    link_message(integer iSender,integer iNum,string sStr,key kID){
+        if (iNum == LM_SETTING_RESPONSE) {
+            if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_response", iSender, iNum, sStr, kID]);
+            list lTmp = llParseString2List(sStr, ["="], []);
+            string sTok = llList2String(lTmp, 0);
+            string sVal = llList2String(lTmp, 1);
+            g_lCollarSettings = SetSetting(sTok, sVal);            
+        } else if(iNum == LM_SETTING_EMPTY) {
+            if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_empty", iSender, iNum, sStr, kID]);
+        }
+    }
+    
+    timer() {
+        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "timer"]);
+        llSetTimerEvent(0.0);
+        llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", g_kWearer);
+    }
+    
+}
 /*
 default {
     on_rez(integer iParam) {
