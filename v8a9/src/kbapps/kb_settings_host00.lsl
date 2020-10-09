@@ -8,7 +8,7 @@
 	
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a901";
+string  KB_DEVSTAGE          = "1a900";
 string  g_sScriptVersion = "";
 
 string formatVersion() {
@@ -47,6 +47,8 @@ integer g_iDebugCounter = 0;
 key 	g_kOwner = NULL_KEY;
 integer g_iListenHandle = 0;
 integer KB_HAIL_CHANNEL = -317783;
+integer KB_HAIL_CHANNEL00 = -317784;
+/*
 string 	g_sCard = ".settings";
 string 	g_sSplitLine; // to parse lines that were split due to lsl constraints
 integer g_iLineNr = 0;
@@ -60,13 +62,17 @@ integer g_bBlock = FALSE;
 string g_sDelimiter = "\\";
 list g_lExceptionTokens = ["texture","glow","shininess","color","intern"];
 list g_lSettings;
+*/
 list g_lRequests;
+
 key g_kActiveKey = NULL_KEY;
+/*
 key g_kActiveOwner = NULL_KEY;
 string  g_sMsgPackage = "";
 list g_lMsgPackage = [];
+*/
 string g_sPing = "";
-
+/*
 //LoadSaying(string sData, integer iLine) {
 	
 //}
@@ -150,7 +156,7 @@ string SuffixTrans(integer iIn) {
 //	append a two digit number, processing phase; currently implemented: "00" basic settings, "01" whispers
 //
 CardBaseName() {
-	g_sTargetName = llToLower(llKey2Name(g_kActiveOwner));
+	g_sTargetName = llToLower(llKey2Name(g_kActiveOwner)) + "00";
 	list lName = llParseString2List(g_sTargetName, [" "], [""]);
 	string sTargetName = llStringTrim(llList2String(lName, 0), STRING_TRIM) + llStringTrim(llList2String(lName, 1), STRING_TRIM);
 	g_sTargetCard = sTargetName + SuffixTrans(g_iProcessingPhase);	
@@ -333,19 +339,22 @@ SendSayings() {
 		if (g_bDebugOn) DebugOutput(g_lMsgPackage);
 		llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, sEndFlag);
 }
-
+*/
 InitListen() {
 	if (g_bDebugOn) DebugOutput(["InitListen Entry", g_iListenHandle]);
 	if (g_iListenHandle != 0) { 
 		llListenRemove(g_iListenHandle); 
 		g_iListenHandle = 0; 
-		g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", ""); 
-	} else g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
+		g_iListenHandle = llListen(KB_HAIL_CHANNEL00, "", "", ""); 
+	} else g_iListenHandle = llListen(KB_HAIL_CHANNEL00, "", "", "");
 	if (g_bDebugOn) DebugOutput(["InitListen Exit", g_iListenHandle]);
 }
 
-default
-{
+default {
+}
+
+
+read_settings {
 	state_entry() {
 		llOwnerSay(llGetScriptName() + " " + formatVersion() + " starting, debug = " + (string) g_bDebugOn);
 		if (g_bDebugOn) DebugOutput(["state_entry"]);
@@ -390,12 +399,12 @@ default
 			llOwnerSay(sNotify);
 			g_lRequests += [kId];
 			if (g_bDebugOn) DebugOutput(["listen", llGetListLength(g_lRequests), g_kActiveKey, kId, iChannel, llList2Key(g_lRequests, 1)]);
-			StartWork();
+//			StartWork();
 		}
 //		if (g_kActiveKey == NULL_KEY)
 //			StartWork(llList2Key(g_lRequests, 0)); 
 	}
-	
+/*	
 	dataserver(key kID, string sData) {
 		if (g_bDebugOn) DebugOutput(["dataserver", g_iProcessingPhase, sData, g_iLineNr]);
 		if (kID == g_kSettingsID) {
@@ -435,7 +444,7 @@ default
 			}
 		}
 	}
-	
+*/	
 	changed(integer iChange) {
 		if (iChange & (CHANGED_OWNER || CHANGED_INVENTORY)) llResetScript();
 	}

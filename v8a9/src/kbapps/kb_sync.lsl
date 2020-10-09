@@ -492,6 +492,10 @@ MergeInputSettingsToMandatory(list lInput) {
     }
 }
 
+MergeMandatorySettings() {
+    
+}
+
 MergeInputSayings1ToMandatory(list lInput) {
     integer iIdx = 0;
     integer iLimit = llGetListLength(lInput);
@@ -520,7 +524,7 @@ default {
     }
     state_entry()
     {
-        if (g_bDebugOn) DebugOutput(5, ["default", "state_entry"]);
+        if (g_bDebugOn) DebugOutput(5, ["default", "state_entry", llGetFreeMemory(), "bytes free"]);
         if(llGetStartParameter()!=0)state inUpdate;
         g_kWearer = llGetOwner();
         state init_version;
@@ -538,7 +542,7 @@ state init_version {
     }
     
     state_entry() {
-        if (g_bDebugOn) DebugOutput(5, ["init_version", "state_entry"]);
+        if (g_bDebugOn) DebugOutput(5, ["init_version", "state_entry", llGetFreeMemory(), "bytes free"]);
         InitVariables();
         if (llGetInventoryKey(g_sTargetCard) == NULL_KEY) { 
             if (g_bDebugOn) DebugOutput(0, [g_sTargetCard, "not found"]); 
@@ -585,13 +589,13 @@ state init_params {
     }
     
     state_entry() {
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry"]);
+        if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", llGetFreeMemory(), "bytes free"]);
         InitListen();
         if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", "link_message pinging", KB_HAIL_CHANNEL]);
         llSleep(2.0);
         llRegionSay(KB_HAIL_CHANNEL, "ping801");        
         g_iPingCounter = 0;
-        g_fStartDelay = 15.0;
+        g_fStartDelay = 45.0;
         llSetTimerEvent(g_fStartDelay);
     }
     
@@ -601,7 +605,7 @@ state init_params {
         ++g_iPingCounter;
         if (g_bDebugOn) DebugOutput(5, ["init_params", "timer", "link_message pinging", KB_HAIL_CHANNEL]);
         llRegionSay(KB_HAIL_CHANNEL, "ping801");     
-        g_fStartDelay = (float) (15*g_iPingCounter);
+        g_fStartDelay = (float) (45*g_iPingCounter);
         llSetTimerEvent(g_fStartDelay);
     }
 //
@@ -693,7 +697,7 @@ state gather_settings {
     }
     
     state_entry() {
-        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "state_entry"]);
+        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "state_entry", llGetFreeMemory(), "bytes free"]);
         g_lCollarSettings = [];
         g_bGatherStarted = FALSE;
         g_fStartDelay = 60.0;
@@ -738,11 +742,11 @@ state sync_settings {
 
     on_rez(integer iParam){
         if (g_bDebugOn) DebugOutput(5, ["sync_settings", "on_rez", iParam]);
-//        state default;
+        state default;
     }
     
     state_entry() {
-        if (g_bDebugOn) DebugOutput(5, ["sync_settings", "state_entry"]);
+        if (g_bDebugOn) DebugOutput(5, ["sync_settings", "state_entry", llGetFreeMemory(), "bytes free"]);
     }
     
     link_message(integer iSender,integer iNum,string sStr,key kID){
