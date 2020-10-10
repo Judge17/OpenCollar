@@ -1,5 +1,5 @@
 
-//K-Bar Settings Host
+//K-Bar Settings Host00
 
 //TODO - high level control routine that cycles through the avatar requests
 //	Convert "StartWork" into step one of two
@@ -48,35 +48,35 @@ key 	g_kOwner = NULL_KEY;
 integer g_iListenHandle = 0;
 integer KB_HAIL_CHANNEL = -317783;
 integer KB_HAIL_CHANNEL00 = -317784;
-/*
-string 	g_sCard = ".settings";
+
+//string 	g_sCard = ".settings";
 string 	g_sSplitLine; // to parse lines that were split due to lsl constraints
 integer g_iLineNr = 0;
 key 	g_kSettingsID;
-key		g_kSayings1ID;
+//key		g_kSayings1ID;
 string 	g_sTargetName = "";
 string	g_sTargetCard = "";
-integer	g_iProcessingPhase = 0;
+//integer	g_iProcessingPhase = 0;
 integer g_bBlock = FALSE;
 
 string g_sDelimiter = "\\";
 list g_lExceptionTokens = ["texture","glow","shininess","color","intern"];
 list g_lSettings;
-*/
+
 list g_lRequests;
 
 key g_kActiveKey = NULL_KEY;
-/*
+
 key g_kActiveOwner = NULL_KEY;
 string  g_sMsgPackage = "";
 list g_lMsgPackage = [];
-*/
+
 string g_sPing = "";
 /*
 //LoadSaying(string sData, integer iLine) {
 	
 //}
-
+*/
 LoadSetting(string sData, integer iLine) {
 	string sID;
 	string sToken;
@@ -143,7 +143,7 @@ string SplitToken(string sIn, integer iSlot) {
 	if (!iSlot) return llGetSubString(sIn, 0, i - 1);
 	return llGetSubString(sIn, i + 1, -1);
 }
-
+/*
 string SuffixTrans(integer iIn) {
 	if (iIn == 0) return "00";
 	if (iIn == 1) return "01";
@@ -151,15 +151,15 @@ string SuffixTrans(integer iIn) {
 	if (iIn == 3) return "03";
 	return "99";
 }
+*/
 //
-//	Get the collar owner's name, smush it to all lowercase, eliminate spaces
-//	append a two digit number, processing phase; currently implemented: "00" basic settings, "01" whispers
+//	Get the collar owner's name, smush it to all lowercase, eliminate spaces, append "00" for basic settings
 //
 CardBaseName() {
-	g_sTargetName = llToLower(llKey2Name(g_kActiveOwner)) + "00";
+	g_sTargetName = llToLower(llKey2Name(g_kActiveOwner));
 	list lName = llParseString2List(g_sTargetName, [" "], [""]);
 	string sTargetName = llStringTrim(llList2String(lName, 0), STRING_TRIM) + llStringTrim(llList2String(lName, 1), STRING_TRIM);
-	g_sTargetCard = sTargetName + SuffixTrans(g_iProcessingPhase);	
+	g_sTargetCard = sTargetName + "00";	
 	if (g_bDebugOn) DebugOutput(["CardBaseName", g_sTargetCard, g_kActiveKey]);
 }
 
@@ -167,7 +167,7 @@ StartRun() {
 	CardBaseName();
 	g_sMsgPackage = "";
 	g_lMsgPackage = [];
-	if (g_bDebugOn) DebugOutput(["StartRun - a", g_iProcessingPhase, llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName, g_sTargetCard]);
+	if (g_bDebugOn) DebugOutput(["StartRun - a", llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName, g_sTargetCard]);
 	if (g_bDebugOn) DebugOutput(["StartRun - b", g_kActiveKey, g_sTargetName, g_kActiveKey]);
 	if (g_sTargetCard != "") {
 		key kKey = llGetInventoryKey(g_sTargetCard);
@@ -175,24 +175,16 @@ StartRun() {
 		if (kKey != NULL_KEY) {
 			if (g_bDebugOn) DebugOutput(["StartRun - d", g_kActiveKey, g_sTargetCard, g_kActiveKey]);
 			g_iLineNr = 0;
-			if (g_iProcessingPhase == 0) {
-				g_kSettingsID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
-				return;
-			} else if (g_iProcessingPhase == 1) {
-				g_lMsgPackage = [];
-				g_kSayings1ID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
-				return;
-			} else {
-				EndRun();
-			}
+			g_kSettingsID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
+//			return;
 		} else {
-			llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card");
-			if (g_bDebugOn) DebugOutput(["StartRun - e", g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card"]);
+			llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No 00 Card");
+			if (g_bDebugOn) DebugOutput(["StartRun - e", g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No 00 Card"]);
 			EndRun();
 		}
 	} else {
-		llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card");
-		if (g_bDebugOn) DebugOutput(["StartRun - f", g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No " + SuffixTrans(g_iProcessingPhase) + " Card"]);
+		llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No 00 Card");
+		if (g_bDebugOn) DebugOutput(["StartRun - f", g_kActiveKey, KB_HAIL_CHANNEL, "Notify=No 00 Card"]);
 		// send 'no card' notification here
 		EndRun();
 	}
@@ -200,8 +192,8 @@ StartRun() {
 
 EndRun() {
 	g_iLineNr = 0;
-	++g_iProcessingPhase;
-	if (g_bDebugOn) DebugOutput(["EndRun - a", g_iProcessingPhase, llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName, g_sTargetCard]);
+//	++g_iProcessingPhase;
+	if (g_bDebugOn) DebugOutput(["EndRun - a", llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName, g_sTargetCard]);
 	StartWork();
 }
 
@@ -215,27 +207,17 @@ EndRun() {
 //		If there isn't, clear out the work areas, abandon that collar key, and try again
 //
 StartWork() {
-	if (g_bDebugOn) DebugOutput(["StartWork - a", g_iProcessingPhase, llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName, g_sTargetCard]);
-	if (g_iProcessingPhase == 0) {
-		if (llGetListLength(g_lRequests) > 0) {
-			g_kActiveKey = llList2Key(g_lRequests, 0);
-			g_kActiveOwner = llGetOwnerKey(g_kActiveKey);
-			if (g_bDebugOn) DebugOutput(["StartWork - b", g_iProcessingPhase, llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName, g_sTargetCard]);
-			StartRun();
-		}
-		return;
-	} else if (g_iProcessingPhase == 1) {
+	if (g_bDebugOn) DebugOutput(["StartWork - a", llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName]);
+	if (llGetListLength(g_lRequests) > 0) {
+		g_kActiveKey = llList2Key(g_lRequests, 0);
+		g_kActiveOwner = llGetOwnerKey(g_kActiveKey);
+		if (g_bDebugOn) DebugOutput(["StartWork - b", llGetListLength(g_lRequests), g_kActiveKey, g_sTargetName]);
 		StartRun();
-		return;
-	} else {
-		DeleteKey(g_kActiveKey);
-		g_sMsgPackage = "";
-		g_lMsgPackage = [];
 	}
 }
 
 DeleteKey(key kTarget) {
-	g_iProcessingPhase = 0;
+//	g_iProcessingPhase = 0;
 	g_bBlock = FALSE;
 	integer iDx = llListFindList(g_lRequests, [kTarget]);
 	if (g_bDebugOn) DebugOutput(["DeleteKey", llGetListLength(g_lRequests), kTarget, iDx]);
@@ -290,7 +272,7 @@ SendValues() {
 	if (g_bDebugOn) DebugOutput(["SendValues Exit", llGetListLength(g_lRequests), g_kActiveKey]);
 	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
 }
-
+/*
 SendSayings() {
 	//	if (g_bDebugOn) DebugOutput(["SendValues Start", llGetListLength(g_lRequests), g_kActiveKey]);
 	//	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
@@ -351,10 +333,6 @@ InitListen() {
 }
 
 default {
-}
-
-
-read_settings {
 	state_entry() {
 		llOwnerSay(llGetScriptName() + " " + formatVersion() + " starting, debug = " + (string) g_bDebugOn);
 		if (g_bDebugOn) DebugOutput(["state_entry"]);
@@ -404,9 +382,9 @@ read_settings {
 //		if (g_kActiveKey == NULL_KEY)
 //			StartWork(llList2Key(g_lRequests, 0)); 
 	}
-/*	
+
 	dataserver(key kID, string sData) {
-		if (g_bDebugOn) DebugOutput(["dataserver", g_iProcessingPhase, sData, g_iLineNr]);
+		if (g_bDebugOn) DebugOutput(["dataserver", sData, g_iLineNr]);
 		if (kID == g_kSettingsID) {
 			if (sData != EOF) {
 				LoadSetting(sData,++g_iLineNr);
@@ -421,33 +399,12 @@ read_settings {
 //				if (g_iProcessingPhase == 1) SendValues();
 //				else (SendSayings());
 			}
-		} else if (kID == g_kSayings1ID) {
-			if (g_bDebugOn) DebugOutput(["dataserver", g_iProcessingPhase, sData, g_iLineNr]);
-			if (sData != EOF) {
-				sData = llStringTrim(sData, STRING_TRIM);
-				if (llStringLength(sData) > 0) {
-					g_lMsgPackage += [sData];
-					++g_iLineNr;
-				}
-				g_kSayings1ID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
-			} else {
-				sData = llStringTrim(sData, STRING_TRIM);
-				if (llStringLength(sData) > 0) {
-					g_lMsgPackage += [sData];
-				}
-				SendSayings();
-				EndRun();
-//				else LoadSaying(sData,g_iLineNr);
-//				llSetTimerEvent(1.0);
-//				if (g_iProcessingPhase == 1) SendValues();
-//				else (SendSayings());
-			}
 		}
 	}
-*/	
+
 	changed(integer iChange) {
 		if (iChange & (CHANGED_OWNER || CHANGED_INVENTORY)) llResetScript();
 	}
 }
 
-// kb_settings_host
+// kb_settings_host00
