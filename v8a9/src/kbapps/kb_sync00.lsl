@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a908";
+string  KB_DEVSTAGE          = "1a911";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -33,8 +33,8 @@ SetDebugOff() {
     g_iDebugLevel = 10;
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 integer g_iPingCounter = 0;
@@ -207,12 +207,12 @@ integer FindMajorMinor(list lInput, string sInput) {
 }
 
 InitListen() {
-    if (g_bDebugOn) DebugOutput(5, ["InitListen", g_iListenHandle, KB_HAIL_CHANNEL00]);
+    // if (g_bDebugOn) DebugOutput(5, ["InitListen", g_iListenHandle, KB_HAIL_CHANNEL00]);
     if (g_iListenHandle == 0) g_iListenHandle = llListen(KB_HAIL_CHANNEL00, "", "", "");
 }
 
 DeleteListen() {
-    if (g_bDebugOn) DebugOutput(5, ["DeleteListen", g_iListenHandle, KB_HAIL_CHANNEL00]);
+    // if (g_bDebugOn) DebugOutput(5, ["DeleteListen", g_iListenHandle, KB_HAIL_CHANNEL00]);
     if (g_iListenHandle != 0) { llListenRemove(g_iListenHandle); g_iListenHandle = 0; }
 }
 
@@ -235,17 +235,20 @@ integer MergeInputSettingsToMandatory(list lInput) {
     integer iMandIdx = 0;
     while (iIdx < iLimit) {
         string sWork = llList2String(lInput, iIdx);
-        if (g_bDebugOn) { DebugOutput(0, ["MergeInputSettingsToMandatory in loop", iIdx, iLimit, sWork]); }
+//        if (g_bDebugOn) { DebugOutput(0, ["MergeInputSettingsToMandatory in loop", iIdx, iLimit, sWork]); }
         list lParams = llParseString2List(sWork, ["="], []); // now [0] = "major_minor" and [1] = "value"
-        if (g_bDebugOn) { list lTmp = ["MergeInputSettingsToMandatory"] + lParams; DebugOutput(0, lTmp); }
+        // if (g_bDebugOn) { list lTmp = ["MergeInputSettingsToMandatory"] + lParams; DebugOutput(0, lTmp); }
         string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
+//        if (g_bDebugOn) { list lTmp = ["MergeInputSettingsToMandatory"] + [sToken] + lParams + g_lMandatoryValues; DebugOutput(0, lTmp); }
         if (sToken == "kbhostaction") return FALSE;
-        string sValue = llList2String(lParams, 1); // now sValue = "value"
-        integer iMandPtr = FindMajorMinor(g_lMandatoryValues, sToken);  // see if this collar major_minor entry already exists in the host set
-        if (iMandPtr < 0) g_lMandatoryValues += [sToken, sValue];
-        else {
-            list lTemp = [sToken, sValue];
-            g_lMandatoryValues = llListReplaceList(g_lMandatoryValues, lTemp, iMandPtr, iMandPtr + 1);
+        if (sToken != "kbhostline") {
+            string sValue = llList2String(lParams, 1); // now sValue = "value"
+            integer iMandPtr = FindMajorMinor(g_lMandatoryValues, sToken);  // see if this collar major_minor entry already exists in the host set
+            if (iMandPtr < 0) g_lMandatoryValues += [sToken, sValue];
+            else {
+                list lTemp = [sToken, sValue];
+                g_lMandatoryValues = llListReplaceList(g_lMandatoryValues, lTemp, iMandPtr, iMandPtr + 1);
+            }
         }
         ++iIdx;
     }
@@ -258,48 +261,48 @@ integer MergeInputSettingsToMandatory(list lInput) {
 //
 
 MergeMandatorySettings() {
-    if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-1"] + [g_bMergeInProgress]; DebugOutput(0, lTmp); }
+    // if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-1"] + [g_bMergeInProgress]; DebugOutput(0, lTmp); }
     g_bMergeInProgress = TRUE;
     integer iMandLen = llGetListLength(g_lMandatoryValues);
-    if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-2"] + [iMandLen]; DebugOutput(0, lTmp); }
+//    if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-2"] + [iMandLen]; DebugOutput(0, lTmp); }
     if (iMandLen == 0) return;
     integer iMandIdx = 0;
     integer iCollarIdx = 0;
     while (iMandIdx < iMandLen) {
-        if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-3"] + [iMandIdx, iMandLen]; DebugOutput(0, lTmp); }
+        // if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-3"] + [iMandIdx, iMandLen]; DebugOutput(0, lTmp); }
         string sMandToken = llList2String(g_lMandatoryValues, iMandIdx);
         integer iCollarPtr = llListFindList(g_lCollarSettings, [sMandToken]);
         if (iCollarPtr >= 0) {
             string sMandValue = llList2String(g_lMandatoryValues, iMandIdx + 1);
             string sCollarValue = llList2String(g_lCollarSettings, iCollarPtr + 1);
-            if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-4"] + [sMandValue, sCollarValue]; DebugOutput(0, lTmp); }
+//            if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-4"] + [sMandToken, sMandValue, sCollarValue]; DebugOutput(0, lTmp); }
             if (sMandValue != sCollarValue) {
-                if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-5"] + [sMandToken + "=" + sMandValue]; DebugOutput(0, lTmp); }
-//                llMessageLinked(LINK_SET, LM_SETTING_SAVE, sMandToken + "=" + sMandValue, "");
+//                if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-5"] + [sMandToken + "=" + sMandValue]; DebugOutput(0, lTmp); }
+                llMessageLinked(LINK_SET, LM_SETTING_SAVE, sMandToken + "=" + sMandValue, "");
             }
         }
         iMandIdx+=2;
     }
     g_bMergeInProgress = FALSE;
-    if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-6"] + [g_bMergeInProgress]; DebugOutput(0, lTmp); }
+    // if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-6"] + [g_bMergeInProgress]; DebugOutput(0, lTmp); }
 }
 
 default {
     on_rez(integer iParam){
-        if (g_bDebugOn) DebugOutput(5, ["default", "on_rez", iParam]);
+        // if (g_bDebugOn) DebugOutput(5, ["default", "on_rez", iParam]);
         if(llGetOwner()!=g_kWearer) llResetScript();
         state init_version;
     }
     state_entry()
     {
-        if (g_bDebugOn) DebugOutput(5, ["default", "state_entry", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["default", "state_entry", llGetFreeMemory(), "bytes free"]);
         if(llGetStartParameter()!=0)state inUpdate;
         g_kWearer = llGetOwner();
         state init_version;
     }
     state_exit()
     {
-        if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
     }
 }
 
@@ -308,16 +311,16 @@ state init_version {
 //    if the on_rez event is raised while we are in this state, just stop and let default take over; default will switch back to us, and we'll pick back up at state-entry
 //
     on_rez(integer iParam){
-        if (g_bDebugOn) DebugOutput(5, ["init_version", "on_rez", iParam]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_version", "on_rez", iParam]);
         if(llGetOwner()!=g_kWearer) llResetScript();
         state default;
     }
     
     state_entry() {
-        if (g_bDebugOn) DebugOutput(5, ["init_version", "state_entry", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_version", "state_entry", llGetFreeMemory(), "bytes free"]);
         InitVariables();
         if (llGetInventoryKey(g_sTargetCard) == NULL_KEY) { 
-            if (g_bDebugOn) DebugOutput(0, [g_sTargetCard, "not found"]); 
+            // if (g_bDebugOn) DebugOutput(0, [g_sTargetCard, "not found"]); 
             state init_params; 
         }
 
@@ -326,14 +329,14 @@ state init_version {
     }
 
     timer() {
-        if (g_bDebugOn) DebugOutput(5, ["init_version", "timer"]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_version", "timer"]);
         llSetTimerEvent(0.0);
         llMessageLinked(LINK_SET, KB_COLLAR_VERSION, "not set", "");
         state init_params;
     }
     
     dataserver(key kID, string sData) {
-        if (g_bDebugOn) DebugOutput(0, ["init_version", "dataserver", kID, g_kVersionID, sData]);
+        // if (g_bDebugOn) DebugOutput(0, ["init_version", "dataserver", kID, g_kVersionID, sData]);
         if (kID == g_kVersionID) {
             if (sData != EOF) {
                 string sWork = llStringTrim(sData, STRING_TRIM);
@@ -360,7 +363,7 @@ state init_version {
     state_exit()
     {
         llSetTimerEvent(0.0);
-        if (g_bDebugOn) DebugOutput(5, ["init_version", "state_exit", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_version", "state_exit", llGetFreeMemory(), "bytes free"]);
     }
 }
 
@@ -369,14 +372,14 @@ state init_params {
 //    if the on_rez event is raised while we are in this state, just stop and let default take over; default will switch back to us, and we'll pick back up at state-entry
 //
     on_rez(integer iParam){
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "on_rez", iParam]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "on_rez", iParam]);
         state default;
     }
     
     state_entry() {
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", llGetFreeMemory(), "bytes free"]);
         InitListen();
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", "link_message pinging", KB_HAIL_CHANNEL00]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", "link_message pinging", KB_HAIL_CHANNEL00]);
 //        llSleep(2.0);
         llRegionSay(KB_HAIL_CHANNEL00, "ping801");        
         g_iPingCounter = 0;
@@ -385,10 +388,10 @@ state init_params {
     }
     
     timer() {
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "timer"]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "timer"]);
         llSetTimerEvent(0.0);
         ++g_iPingCounter;
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "timer", "link_message pinging", KB_HAIL_CHANNEL00]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "timer", "link_message pinging", KB_HAIL_CHANNEL00]);
         llRegionSay(KB_HAIL_CHANNEL00, "ping801");     
         g_fStartDelay = (float) (45*g_iPingCounter);
         llSetTimerEvent(g_fStartDelay);
@@ -405,8 +408,8 @@ state init_params {
 //
 //
     listen(integer iChannel, string sName, key kId, string sMessage) {
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "listen"]);
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "listen-1", "listen heard", sName, (string) kId, sMessage]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "listen"]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "listen-1", "listen heard", sName, (string) kId, sMessage]);
         llSetTimerEvent(0.0);
         list lHostSettings = llParseString2List(sMessage, ["%%"], [""]);
         string sFirst = llList2String(lHostSettings, 0);
@@ -418,22 +421,22 @@ state init_params {
         sLineID = llList2String(lTemp, 0);
         if (llGetListLength(lTemp) > 1) { sLineVal = llList2String(lTemp, 1); iLineID = llList2Integer(lTemp, 1); }
         if (sLineID == "kbhostline" || sLineID == "kbhostaction") {
-            if (g_bDebugOn) { list lTemp = ["init_params", "listen-2", "settings from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
-            list lOutputSettings = llDeleteSubList(lHostSettings, 0, 1);
-            if (MergeInputSettingsToMandatory(lOutputSettings)) {
+//            if (g_bDebugOn) { list lTemp = ["init_params", "listen-2", "settings from kb_settings_host"] + lHostSettings; DebugOutput(3, lTemp); }
+//            list lOutputSettings = llDeleteSubList(lHostSettings, 0, 1);
+            if (MergeInputSettingsToMandatory(lHostSettings)) {
                 if (sLineID == "kbhostaction") {
-                    if (g_bDebugOn) { list lTemp = ["init_params", "listen-3", "settings ready for output"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
+                    // if (g_bDebugOn) { list lTemp = ["init_params", "listen-3", "settings ready for output"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
                     g_bGotSettings = TRUE;
                 } 
             } else {
                 g_bGotSettings = TRUE;
             }
         } else if (sLineID == "kbnosettings") {
-            if (g_bDebugOn) { list lTemp = ["init_params", "listen-4", "no settings found"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
+            // if (g_bDebugOn) { list lTemp = ["init_params", "listen-4", "no settings found"] + g_lMandatoryValues; DebugOutput(5, lTemp); }
             g_lMandatoryValues = [];
             g_bGotSettings = TRUE;
         } else if (sLineID == "Notify") {
-            if (g_bDebugOn) { list lTemp = ["init_params", "listen-5"] + llParseString2List(sFirst, [" "], [""]); DebugOutput(3, lTemp); }
+            // if (g_bDebugOn) { list lTemp = ["init_params", "listen-5"] + llParseString2List(sFirst, [" "], [""]); DebugOutput(3, lTemp); }
             list lTemp = llParseString2List(sLineVal, [" "], [""]);
             string sCardNr = llList2String(lTemp, 1);
             integer iCardNr = (integer) sCardNr;
@@ -443,11 +446,11 @@ state init_params {
             }
         }
         if (g_bGotSettings) {
-            DebugOutput(4, ["init_params", "listen-6", "settings fetched"]);
+//            DebugOutput(4, ["init_params", "listen-6", "settings fetched"]);
             llSetTimerEvent(0.0);
             DeleteListen();
-            list lTmp = ["init_params", "listen", "mandatory settings"] + g_lMandatoryValues;
-            DebugOutput(4, lTmp);            
+//            list lTmp = ["init_params", "listen", "mandatory settings"] + g_lMandatoryValues;
+//            DebugOutput(4, lTmp);            
             state gather_settings;
         }
     }
@@ -455,7 +458,7 @@ state init_params {
     state_exit()
     {
         llSetTimerEvent(0.0);
-        if (g_bDebugOn) DebugOutput(5, ["init_params", "state_exit", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["init_params", "state_exit", llGetFreeMemory(), "bytes free"]);
     }
 }
 
@@ -464,12 +467,12 @@ state gather_settings {
 //    if the on_rez event is raised while we are in this state, just stop and let default take over; default will switch back to us, and we'll pick back up at state-entry
 //
     on_rez(integer iParam){
-        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "on_rez", iParam]);
+        // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "on_rez", iParam]);
         state default;
     }
     
     state_entry() {
-        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "state_entry", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "state_entry", llGetFreeMemory(), "bytes free"]);
         g_lCollarSettings = [];
         g_bGatherStarted = FALSE;
         g_fStartDelay = 60.0;
@@ -478,28 +481,25 @@ state gather_settings {
     
     link_message(integer iSender,integer iNum,string sStr,key kID){
         if (iNum == LM_SETTING_RESPONSE) {
-            if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_response", iSender, iNum, sStr, kID]);
+            // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_response", iSender, iNum, sStr, kID]);
             if (sStr == "settings=sent" && g_bGatherStarted) {
-                if (g_bDebugOn) {
-                    list lTmp = ["gather_settings", "link_message", "gathered settings"] + g_lCollarSettings;
-                    DebugOutput(5, lTmp);
-                    llSetTimerEvent(0.0);
-                    state sync_settings;
-                }
+//                if (g_bDebugOn) { list lTmp = ["gather_settings", "link_message", "gathered settings"] + g_lCollarSettings; DebugOutput(5, lTmp); }
+                llSetTimerEvent(0.0);
+                state sync_settings;
             }
             list lTmp = llParseString2List(sStr, ["="], []);
             string sTok = llList2String(lTmp, 0);
             string sVal = llList2String(lTmp, 1);
             g_lCollarSettings = SetSetting(sTok, sVal);            
         } else if(iNum == LM_SETTING_EMPTY) {
-            if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_empty", iSender, iNum, sStr, kID]);
+            // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_empty", iSender, iNum, sStr, kID]);
             string sTok = sStr;
             g_lCollarSettings = SetSetting(sTok, "null");            
         }
     }
     
     timer() {
-        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "timer", g_bGatherStarted]);
+//        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "timer", g_bGatherStarted]);
         if (g_bGatherStarted) {
             llSetTimerEvent(0.0);
             state sync_settings;
@@ -511,7 +511,7 @@ state gather_settings {
     state_exit()
     {
         llSetTimerEvent(0.0);
-        if (g_bDebugOn) DebugOutput(5, ["gather_settings", "state_exit", llGetFreeMemory(), "bytes free"]);
+        // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "state_exit", llGetFreeMemory(), "bytes free"]);
     }
     
 }
@@ -522,25 +522,25 @@ state sync_settings {
 //
 
     on_rez(integer iParam){
-        if (g_bDebugOn) DebugOutput(5, ["sync_settings", "on_rez", iParam]);
+        // if (g_bDebugOn) DebugOutput(5, ["sync_settings", "on_rez", iParam]);
         state default;
     }
     
     state_entry() {
-        if (g_bDebugOn) { list lTmp = ["sync_settings", "state_entry", llGetFreeMemory(), "bytes free", "Mandatory:"] + g_lMandatoryValues; DebugOutput(0, lTmp); }
+        // if (g_bDebugOn) { list lTmp = ["sync_settings", "state_entry", llGetFreeMemory(), "bytes free", "Mandatory:"] + g_lMandatoryValues; DebugOutput(0, lTmp); }
         MergeMandatorySettings();
     }
     
     link_message(integer iSender,integer iNum,string sStr,key kID){
         if (iNum == LM_SETTING_RESPONSE) {
-            if (g_bDebugOn) DebugOutput(5, ["sync_settings", "link_message", "setting_response", iSender, iNum, sStr, kID]);
+            // if (g_bDebugOn) DebugOutput(5, ["sync_settings", "link_message", "setting_response", iSender, iNum, sStr, kID]);
             list lTmp = llParseString2List(sStr, ["="], []);
             string sTok = llList2String(lTmp, 0);
             string sVal = llList2String(lTmp, 1);
             g_lCollarSettings = SetSetting(sTok, sVal);
             if (g_bMergeInProgress) llSetTimerEvent(5.0); else MergeMandatorySettings();
         } else if(iNum == LM_SETTING_EMPTY) {
-            if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_empty", iSender, iNum, sStr, kID]);
+            // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_empty", iSender, iNum, sStr, kID]);
             string sTok = sStr;
             g_lCollarSettings = SetSetting(sTok, "null");            
             if (g_bMergeInProgress) llSetTimerEvent(5.0); else MergeMandatorySettings();
@@ -548,200 +548,14 @@ state sync_settings {
     }
     
     timer() {
-        if (g_bDebugOn) DebugOutput(5, ["sync_settings", "timer", g_bMergeInProgress]);
+        // if (g_bDebugOn) DebugOutput(5, ["sync_settings", "timer", g_bMergeInProgress]);
         if (!g_bMergeInProgress) {
             llSetTimerEvent(0.0);
             MergeMandatorySettings();
         }
     }
 }
-    
-/*
-default {
-    on_rez(integer iParam) {
-//        llResetScript();
-        g_iDebugCounter = 0;
-        g_lCollarSettings = [];
-        g_lHostSettings = [];
-        g_iLineNr = 0;
-        InitListen();
-        g_sCollarVersion = "not set";
-        g_kVersionID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
-        g_kWearer = llGetOwner();
-        llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
-        g_bPrepareToSend = TRUE; // only once per rez
-        g_fStartDelay = 15.0; 
-        llSetTimerEvent(g_fStartDelay);
-    }
 
-    state_entry() {
-        if (llGetStartParameter()==825) llSetRemoteScriptAccessPin(0);
-        g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
-        g_kWearer = llGetOwner();
-        llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
-    }
-
-    link_message(integer iSender, integer iNum, string sStr, key kID) {
-        if(iNum == MENUNAME_REQUEST && sStr == g_sParentMenu) {
-            llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        }
-        else if (iNum >= CMD_OWNER && iNum <= CMD_EVERYONE) UserCommand(iNum, sStr, kID, FALSE);
-        else if (iNum == LM_SETTING_RESPONSE) {
-            if (sStr == "settings=sent" && g_bPrepareToSend) {
-                if (g_bDebugOn) DebugOutput(5, ["link_message", sStr, g_fStartDelay]);
-                llSetTimerEvent(0.0);
-                if (g_fStartDelay > 5.0) { g_fStartDelay -= 1.0; llSetTimerEvent(g_fStartDelay); }
-                else { g_fStartDelay = 5.0; llSetTimerEvent(g_fStartDelay); }
-            } else {
-                HandleSettings(sStr);
-            }
-        } else if( iNum == LM_SETTING_DELETE) {
-            list lParams = llParseString2List(sStr, ["_"],[]);
-            string sToken = llList2String(lParams,0);
-            string sVariable = llList2String(lParams,1);
-            if(sToken=="capture") {
-                if(sVariable=="isActive")g_iCaptureIsActive=FALSE;
-            }
-        } else if (iNum == DIALOG_RESPONSE) {
-            HandleMenus(sStr, kID);
-        } else if (iNum == DIALOG_TIMEOUT) {
-            integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
-            g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-        } else if (iNum == LOADPIN && sStr == llGetScriptName()) {
-            integer iPin = (integer)llFrand(99999.0)+1;
-            llSetRemoteScriptAccessPin(iPin);
-            llMessageLinked(iSender, LOADPIN, (string)iPin+"@"+llGetScriptName(),llGetKey());
-        }
-        else if (iNum == REBOOT && sStr == "reboot") llResetScript();
-        else if(iNum == LINK_CMD_DEBUG) {
-            integer onlyver=0;
-            if(sStr == "ver")onlyver=1;
-            llInstantMessage(kID, llGetScriptName() +" SCRIPT VERSION: "+g_sScriptVersion);
-            if(onlyver)return; // basically this command was: <prefix> versions
-        }
-    }
-
-    listen(integer iChannel, string sName, key kId, string sMessage) {
-        g_bPrepareToSend = FALSE;
-        if (g_bDebugOn) DebugOutput(5, ["listen heard", sName, (string) kId, sMessage]);
-//        llOwnerSay("heard "+ sName + " " + (string) kId);
-//        llOwnerSay((string) llGetOwnerKey(kId));
-//        llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
-        g_lHostSettings = llParseString2List(sMessage, ["%%"], [""]);
-        string sFirst = llList2String(g_lHostSettings, 0);
-        list lTemp = llParseString2List(sFirst, ["="], [""]);
-        string sLineID = llList2String(lTemp, 0);
-        integer iLineID = llList2Integer(lTemp, 1);
-        if (sLineID == "kbhostline" || sLineID == "kbhostaction") {
-            if (g_bDebugOn) { list lTemp = ["settings from kb_settings_host"] + g_lHostSettings; DebugOutput(3, lTemp); }
-//        if (g_bDebugOn) DebugOutput(3, g_lHostSettings);
-//        g_lHostSettings += lSettings;
-            list lOutputSettings = [];
-            integer iCollarPtr = 0;
-//
-//        Need to step through collar settings
-//            anything in the collar set that's not in the host set gets included as-is in the output set
-//            if the host set and collar set both address the same variable with different values, the host set wins
-//            anything in the host set, whether corrected or not, goes to the output set
-//
-
-            integer iCollarIdx = 0;
-            integer iCollarLen = llGetListLength(g_lCollarSettings);
-            while (iCollarIdx < iCollarLen) {
-                string sWork = llList2String(g_lCollarSettings, iCollarIdx);
-                if (g_bDebugOn) { DebugOutput(0, ["in loop", iCollarIdx, iCollarLen, sWork]); }
-                list lParams = llParseString2List(sWork, ["="], []); // now [0] = "major_minor" and [1] = "value"
-                string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-                string sValue = llList2String(lParams, 1); // now sValue = "value"
-                integer iHostPtr = FindMajorMinor(g_lHostSettings, sToken);  // see if this collar major_minor entry already exists in the host set
-                if (iHostPtr > 0) {  // if it does, see if its value is different
-                    string sCandidate = llList2String(g_lHostSettings, iHostPtr); // extract the host setting string
-                    lParams = llParseString2List(sCandidate, ["="], []); // split it into candidate pieces
-                    string sCandToken = llList2String(lParams, 0); // now SCandToken = "major_minor"
-                    string sCandValue = llList2String(lParams, 1); // now sCandValue = "value"
-                    if (llToLower(sValue) == llToLower(sCandValue)) {
-                        lOutputSettings += [sWork]; // if they're the same, just move the entry to the output list
-                    } else {
-                        sWork = sCandToken + "=" + sCandValue; // if they're different, use the one from kb_settings_host
-                        lOutputSettings += [sWork];
-                    }
-                } else {
-                    lOutputSettings += [sWork]; // if there's no matching entry, just move the entry to the output list
-                }
-                ++iCollarIdx;
-            }        
-            integer iHostIdx = 0;
-            integer iHostLen = llGetListLength(g_lHostSettings);
-            while (iHostIdx < iHostLen) {
-                string sHostSetting = llList2String(g_lHostSettings, iHostIdx);
-                list lParams = llParseString2List(sHostSetting, ["="], []); // now [0] = "major_minor" and [1] = "value"
-                string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-                if (sToken != "kbhostline" && sToken != "kbhostaction") {
-                    integer iExists = llListFindList(lOutputSettings, [sHostSetting]);
-                    if (g_bDebugOn) DebugOutput(3, ["final check", sHostSetting, iExists]);
-                    if (iExists < 0) lOutputSettings += [sHostSetting];
-                }
-                ++iHostIdx;
-            }
-
-            if (g_bDebugOn) DebugOutput(5, ["settings ready for output"]);
-            if (g_bDebugOn) DebugOutput(5, lOutputSettings);
-
-            while (llGetListLength(lOutputSettings) > 0) {
-                string sCurrent = llList2String(lOutputSettings, 0);
-//                list lCurrent = llParseString2List(sCurrent, ["="], [""]);
-//                if (llList2String(lCurrent, 0) == "kbhostline") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
-//                else if (llList2String(lCurrent, 0) == "kbhostaction") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
-//                else { 
-                    llMessageLinked(LINK_SET, LM_SETTING_SAVE, sCurrent, "");
-                    if (g_bDebugOn) DebugOutput(5, ["sent", LINK_SET, LM_SETTING_SAVE, sCurrent]);
-                    lOutputSettings = llDeleteSubList(lOutputSettings, 0, 0);
-//                }
-            }
-        } else if (sLineID == "kbsayings1line" || sLineID == "kbsayings1action") {
-            if (g_bDebugOn) { list lTemp = ["sayings 1 from kb_settings_host"] + g_lHostSettings; DebugOutput(3, lTemp); }
-            integer iHostIdx = 1;
-            integer iHostLen = llGetListLength(g_lHostSettings);
-            string sPackage = "";
-            while (iHostIdx < iHostLen) {
-//                sPackage = "";
-                string sHostSaying = llList2String(g_lHostSettings, iHostIdx);
-                integer iCalcLength = llStringLength(sPackage) + llStringLength("%%") + llStringLength(sHostSaying);
-                if (iCalcLength < 1024) {
-                    sPackage += "%%";
-                    sPackage += sHostSaying;
-                } else {
-                    if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message-1 sending", sPackage]);
-                    llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
-                    sPackage = sHostSaying;
-                }
-                ++iHostIdx;
-            }
-            if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message-2 sending", sPackage]);
-            if (llStringLength(sPackage) > 0) llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
-        } else if (sLineID == "Notify") {
-            // TODO: process 'no xx card' messages
-        }
-//        DeleteListen();
-    }
-    
-    changed(integer iChange) {
-        if (iChange & CHANGED_OWNER) llResetScript();
-//
-//        if (iChange & CHANGED_REGION) {
-//            if (g_iProfiled){
-//                llScriptProfiler(1);
-//                Debug("profiling restarted");
-//            }
-//        }
-//
-    }
-//
-//}
-
-*/
 state inUpdate {
     link_message(integer iSender, integer iNum, string sStr, key kID) {
         if(iNum == REBOOT)llResetScript();
