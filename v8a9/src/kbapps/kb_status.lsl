@@ -55,8 +55,8 @@ float g_fStartDelay = 0.0;
 integer g_iSettings = 0;
 integer g_iSayings1 = 0;
 integer g_iLineNr = 0;
-key 	g_kVersionID;
-string  g_sTargetCard = ".version";
+//key 	g_kVersionID;
+//string  g_sTargetCard = ".version";
 
 //integer g_iKBarOptions=0;
 //integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
@@ -471,7 +471,8 @@ default {
             llMessageLinked(iSender, LOADPIN, (string)iPin+"@"+llGetScriptName(),llGetKey());
         }
         else if (iNum == REBOOT && sStr == "reboot") llResetScript();
-        else if(iNum == LINK_CMD_DEBUG) {
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == LINK_CMD_DEBUG) {
             integer onlyver=0;
             if(sStr == "ver")onlyver=1;
             llInstantMessage(kID, llGetScriptName() +" SCRIPT VERSION: "+g_sScriptVersion);
