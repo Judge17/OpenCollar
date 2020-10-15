@@ -1,5 +1,6 @@
 /*
-K-Bar Version 8.0
+
+K-Bar Titler
 
 This file is a part of OpenCollar.
 Copyright 2020
@@ -18,18 +19,10 @@ https://github.com/OpenCollarTeam/OpenCollar
 
 string g_sParentMenu = "Apps";
 string g_sSubMenu = "Titler";
-string g_sVersion = "8.0"; // leave unmodified if not changed at all after release, otherwise change to next version number
-
-DebugOutput(key kID, list ITEMS){
-    integer i=0;
-    integer end=llGetListLength(ITEMS);
-    string final;
-    for(i=0;i<end;i++){
-        final+=llList2String(ITEMS,i)+" ";
-    }
-    llInstantMessage(kID, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
-}
-
+string g_sVersion = "7.5"; // leave unmodified if not changed at all after release, otherwise change to next version number
+//
+//    Start of KBar Mod
+//
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
 string  KB_DEVSTAGE          = "a901";
@@ -37,10 +30,21 @@ string  KB_DEVSTAGE          = "a901";
 string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
 }
-
+//
+//    End of KBar Mod
+//
+DebugOutput(key kID, list ITEMS){
+    integer i=0;
+    integer end=llGetListLength(ITEMS);
+    string final;
+    for(i=0;i<end;i++){
+        final+=llList2String(ITEMS,i)+" ";
+    }
+    llInstantMessage(kID, llGetScriptName() +" "+final);
+}
 integer LINK_CMD_DEBUG=1999;
-//integer g_iNoB64=FALSE; // Use base64 by default
-//integer g_iWasUpgraded=FALSE; // This will not harm anything if set to true after being upgraded. However, it should eventually be set to false again
+integer g_iNoB64=FALSE; // Use base64 by default
+integer g_iWasUpgraded=FALSE; // This will not harm anything if set to true after being upgraded. However, it should eventually be set to false again
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
 integer CMD_OWNER = 500;
@@ -51,12 +55,6 @@ integer CMD_WEARER = 503;
 //integer CMD_RLV_RELAY = 507;
 //integer CMD_SAFEWORD = 510;
 //integer CMD_RELAY_SAFEWORD = 511;
-
-integer TIMEOUT_READY = 30497;
-integer TIMEOUT_REGISTER = 30498;
-integer TIMEOUT_FIRED = 30499;
-list g_lSettingsReqs = [];
-
 
 integer NOTIFY = 1002;
 integer REBOOT = -1000;
@@ -101,8 +99,27 @@ Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPa
     else g_lMenuIDs += [kID, kMenuID, sName];
 }
 
+// KBar Mod
+
+string BuildTitle(string sFront, string sBack) {
+    if (sFront == "") return sBack;
+    else return sFront + "\n" + sBack;
+}
+
+string  g_sText = "";
+string  g_sSlaveName = "";
+string  g_sKbarTitle = "";
+
+// KBar Mod end
+
 Menu(key kID, integer iAuth) {
-    string sPrompt = "\n[Titler]";
+// KBar Mod
+//    string sPrompt = "\n[Titler]";
+    string sPrompt = "\n[Titler]\tKBar Ranch Version " + formatVersion() + "\n\n\tCurrent Title: " + g_sTitle ;
+        sPrompt +="\n\tName: " + g_sSlaveName + " KBar Title: " + g_sKbarTitle ;
+        sPrompt += "\n\tAvailable memory " + (string) llGetFreeMemory();
+// KBar Mod end
+
     list lButtons = ["UP","DOWN", "Set Title", "Color", Checkbox(g_iShow, "Show")];
     Dialog(kID, sPrompt, lButtons, [UPMENU], 0, iAuth, "Menu~Titler");
 }
@@ -155,7 +172,6 @@ UserCommand(integer iNum, string sStr, key kID) {
                 g_iOffset--;
                 if(g_iOffset<0)g_iOffset=0;
                 Save();
-/*
             }else if(sChangevalue == "plain"){
                 g_iNoB64 = ! g_iNoB64;
                 Save();
@@ -170,7 +186,6 @@ UserCommand(integer iNum, string sStr, key kID) {
                     llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_plain", "");
                 }
                 llMessageLinked(LINK_SET, NOTIFY, ToggleMsg, kID);
-*/
             } else if(sChangevalue == "title"){
                 g_sTitle = llDumpList2String(llList2List(llParseString2List(sStr,[" "],[]), 2,-1)," ");
                 UserCommand(iNum, "title "+g_sTitle, kID);
@@ -184,10 +199,15 @@ Save(){
     else llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_show","");
     
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_offset="+(string)g_iOffset, "");
-    
+//
+//    Start of KBar Mod
+//   
 //    if(!g_iNoB64)
 //        llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+llStringToBase64(g_sTitle), "");
 //    else
+//
+//    End of KBar Mod
+//
         llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+g_sTitle, "");
     
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_color="+(string)g_vColor,"");
@@ -251,11 +271,15 @@ default
         g_kWearer = llGetOwner();
         
         NukeOtherText();
-        //llOwnerSay((string)llGetUsedMemory());
     }
     timer(){
         // calculate offset
         if(g_iShow){
+            g_sText = "";
+            g_sText = BuildTitle(g_sText, g_sSlaveName);
+            g_sText = BuildTitle(g_sText, g_sKbarTitle);
+            g_sText = BuildTitle(g_sText, g_sTitle);                 
+
             string offsets = "";
             integer i=0;
             for(i=0;i<g_iOffset;i++){
@@ -374,8 +398,8 @@ default
             list lSettings = llParseString2List(sStr, ["_","="],[]);
             
             
-            integer ind = llListFindList(g_lSettingsReqs, [llList2String(lSettings,0)+"_"+llList2String(lSettings,1)]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+//            integer ind = llListFindList(g_lSettingsReqs, [llList2String(lSettings,0)+"_"+llList2String(lSettings,1)]);
+//            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
             
             if(llList2String(lSettings,0)=="global"){
@@ -385,6 +409,7 @@ default
                     g_lCheckboxes = llCSV2List(llList2String(lSettings,2));
                 }
             } else if(llList2String(lSettings,0) == "titler"){
+                llOwnerSay("oc_titler link_message LM_SETTINGS_RESPONSE " + sStr);
                 integer curPrim=g_iTextPrim;
                 ScanFloatText();
                 
@@ -395,6 +420,9 @@ default
                 }else if(llList2String(lSettings,1) == "offset"){
                     g_iOffset=(integer)llList2String(lSettings,2);
                 }else if(llList2String(lSettings,1) == "title"){
+//
+//    Start of KBar Mod
+//
 //                    if(!g_iNoB64)
 //                        g_sTitle = llBase64ToString(llList2String(lSettings,2)); // We can't really check if this is a base64 string
 //                    else
@@ -405,16 +433,25 @@ default
 //                        if(!g_iNoB64)
 //                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+llStringToBase64(g_sTitle), "");
 //                        else
-                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+g_sTitle, "");
+//                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_title="+g_sTitle, "");
 //                        g_iWasUpgraded=FALSE;
-                    }
+//                    }
+//
+//    End of KBar Mod
+//
+
                 } else if(llList2String(lSettings,1)=="color"){
                     g_vColor=(vector)llList2String(lSettings,2);
-/*
+// KBar Mod
+                } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
+                    g_sSlaveName = llList2String(lSettings,2); 
+                } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
+                    g_sKbarTitle = llList2String(lSettings,2); 
+// KBar Mod end
                 } else if(llList2String(lSettings,1) == "on"){
                     // this was definitely a upgrade. Re-request!
                     g_iWasUpgraded=TRUE;
-                    llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
+//                    llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
                     
                     llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_auth", "");
                     llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_on", "");
@@ -424,38 +461,27 @@ default
                     llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_show="+(string)g_iShow, "");
                 } else if(llList2String(lSettings,1) == "plain"){
                     g_iNoB64 = TRUE;
-                    llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
-*/
+// KBar Mod
+//                llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
+// KBar Mod end
                 }
                 Titler();
             }
-        } else if(iNum == TIMEOUT_READY)
-        {
-//            g_lSettingsReqs = ["global_locked", "global_checkboxes", "titler_plain", "titler_on", "titler_color", "titler_title", "titler_offset", "titler_show"];
-            g_lSettingsReqs = ["global_locked", "global_checkboxes", "titler_color", "titler_title", "titler_offset", "titler_show"];
-            llMessageLinked(LINK_SET, TIMEOUT_REGISTER, "2", "titler~settings");
-        } else if(iNum == TIMEOUT_FIRED)
-        {
-            if(llGetListLength(g_lSettingsReqs)>0){
-                llMessageLinked(LINK_SET, TIMEOUT_REGISTER, "2", "titler~settings");
-                llMessageLinked(LINK_SET, LM_SETTING_REQUEST, llList2String(g_lSettingsReqs,0),"");
-            }
-        
-        }else if(iNum == LM_SETTING_EMPTY){
-            
-            integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
-            
         } else if(iNum == LM_SETTING_DELETE){
-            list lPar = llParseString2List(sStr, ["_"],[]);
-            string sToken = llList2String(lPar,0);
-            string sVar = llList2String(lPar,1);
-            
-            integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
-            
-            if(sToken=="global")
-                if(sVar == "locked") g_iLocked=FALSE;
+            // This is recieved back from settings when a setting is deleted
+            list lSettings = llParseString2List(sStr, ["_"],[]);
+            if(llList2String(lSettings,0)=="global") {
+                if(llList2String(lSettings,1) == "locked") { 
+                    g_iLocked=FALSE;
+// KBar Mod
+                } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
+                    g_sSlaveName = ""; 
+                } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
+                    g_sKbarTitle = ""; 
+                }
+            }
+// KBar Mod end
+
         } else if(iNum == LINK_CMD_DEBUG){
             // send data
             if(sStr == "ver"){
