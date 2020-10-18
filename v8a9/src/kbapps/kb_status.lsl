@@ -2,11 +2,11 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a901";
+string  KB_DEVSTAGE          = "a909";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
-string formatVersion() {
+string formatVersion() { 
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
 }
 
@@ -29,8 +29,8 @@ SetDebugOn() {
 }
 
 SetDebugOff() {
-    g_bDebugOn = FALSE;
-    g_iDebugLevel = 10;
+    g_bDebugOn = TRUE;
+    g_iDebugLevel = 0;
 }
 
 integer g_bDebugOn = FALSE;
@@ -48,34 +48,16 @@ string g_sSubMenu = "KBStatus";
 integer g_iRunawayDisable=0;
 integer g_iSWActive = 1;
 integer KB_HAIL_CHANNEL = -317783;
-integer g_bPrepareToSend = FALSE;
 list g_lHostSettings = [];
 list g_lCollarSettings = [];
 float g_fStartDelay = 0.0;
 integer g_iSettings = 0;
 integer g_iSayings1 = 0;
 integer g_iLineNr = 0;
-//key 	g_kVersionID;
-//string  g_sTargetCard = ".version";
-
-//integer g_iKBarOptions=0;
-//integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
-//integer g_iLockStatus=1; // disallow status changes
 integer g_iLogLevel = 0; // minimal logging
-//integer g_iLeashedRank = 0;
-//key     g_kLeashedTo   = NULL_KEY;
-//string  g_sWearerName;
-
 string  g_sSlaveMessage = "";
-/*
-integer KB_KBSYNC_KICKSTART        = -34717;
-integer KB_NOTICE_LEASHED          = -34691;
-integer KB_NOTICE_UNLEASHED        = -34692;
-
-string g_sDrop = "f364b699-fb35-1640-d40b-ba59bdd5f7b7";
-*/
-key KURT_KEY   = "4986014c-2eaa-4c39-a423-04e1819b0fbf";
-key SILKIE_KEY = "1a828b4e-6345-4bb3-8d41-f93e6621ba25";
+string  g_sSlaveName = "";
+string  g_sKBarTitle = "";
 
 //MESSAGE MAP
 integer CMD_ZERO = 0;
@@ -119,19 +101,11 @@ integer DIALOG_TIMEOUT = -9002;
 integer SENSORDIALOG = -9003;
 //integer FIND_AGENT = -9005;
 integer KB_LOG_REPORT_STATUS       = -34721;
+integer KB_COLLAR_VERSION           = -34847;
 integer LINK_KB_VERS_REQ = -75301;
 integer LINK_KB_VERS_RESP = -75302;
-//integer LINK_SAYING1               = -75336;
-//integer CLEAR_SAYING1			   = -75337;
-//integer SAYING1_CLEARED			   = -75337;
-
-/*
-//added for attachment auth (garvin)
-integer AUTH_REQUEST = 600;
-integer AUTH_REPLY = 601;
-*/
 string UPMENU = "BACK";
-integer g_iCaptureIsActive=FALSE; // If this flag is set, then auth will deny access to it's menus
+//integer g_iCaptureIsActive=FALSE; // If this flag is set, then auth will deny access to it's menus
 //integer g_iOpenAccess; // 0: disabled, 1: openaccess
 //integer g_iLimitRange=1; // 0: disabled, 1: limited
 //integer g_iOwnSelf; // self-owned wearers
@@ -143,6 +117,7 @@ integer g_iListenHandle = 0;
 
 string g_sSettingToken = "auth_";
 string g_sGlobalToken = "global_";
+string g_sTitlerToken = "titler_";
 
 key g_kLeashedTo = NULL_KEY; 
 integer g_iLeashedRank = 0;
@@ -157,19 +132,13 @@ string Checkbox(integer iValue, string sLabel) {
     return llList2String(g_lCheckboxes, bool(iValue))+" "+sLabel;
 }
 
-Dialog(string sID, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth, string sName, integer iSensor) {
+Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth, string sName) {
     key kMenuID = llGenerateKey();
-    if (iSensor)
-        llMessageLinked(LINK_SET, SENSORDIALOG, sID +"|"+sPrompt+"|0|``"+(string)AGENT+"`10`"+(string)PI+"`"+llList2String(lChoices,0)+"|"+llDumpList2String(lUtilityButtons, "`")+"|" + (string)iAuth, kMenuID);
-    else
-        llMessageLinked(LINK_SET, DIALOG, sID + "|" + sPrompt + "|" + (string)iPage + "|" + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kMenuID);
+    llMessageLinked(LINK_SET, DIALOG, (string)kID + "|" + sPrompt + "|" + (string)iPage + "|" + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kMenuID);
 
-    integer iIndex = llListFindList(g_lMenuIDs, [sID]);
-    if (~iIndex) { //we've alread given a menu to this user.  overwrite their entry
-        g_lMenuIDs = llListReplaceList(g_lMenuIDs, [sID, kMenuID, sName], iIndex, iIndex + g_iMenuStride - 1);
-    } else { //we've not already given this user a menu. append to list
-        g_lMenuIDs += [sID, kMenuID, sName];
-    }
+    integer iIndex = llListFindList(g_lMenuIDs, [kID]);
+    if (~iIndex) g_lMenuIDs = llListReplaceList(g_lMenuIDs, [kID, kMenuID, sName], iIndex, iIndex + g_iMenuStride - 1);
+    else g_lMenuIDs += [kID, kMenuID, sName];
 }
 
 SetSWActive(integer iNew, integer iSave) {
@@ -194,30 +163,8 @@ SetDebugLevel(string sLevel) {
     else g_bDebugOn = TRUE;
     if (g_bDebugOn) {DebugOutput(0, ["Debug Level", g_iDebugLevel, "Debug Status", g_bDebugOn]); }
 }
-/*
-string TranslateButtons(string sInput) {
-    list lTranslation=[
-        "KBar ☑", "kbar on",
-        "KBar ☐", "kbar off",
-        "guest", "kbarstat 0",
-        "protect", "kbarstat 1",
-        "slave", "kbarstat 2",
-        "StatLock ☑", "statlock on",
-        "StatLock ☐", "statlock off",
-        "Safeword ☑", "safeword on",
-        "Safeword ☐", "safeword off",
-        "Diagnose", "diagnose",
-        "LogLevel", "loglevel",
-        "KickStart", "kickstart"
-    ];
-    integer buttonIndex=llListFindList(lTranslation,[sInput]);
-    string sOutput = sInput;
-    if (~buttonIndex) sOutput = llList2String(lTranslation,buttonIndex+1);
-    return sOutput;
-}
-*/
+
 HandleSettings(string sStr) {
-    if (!g_bPrepareToSend) return;
 
     integer iDx = llListFindList(g_lCollarSettings, [sStr]);
     if (iDx < 0) {
@@ -230,32 +177,25 @@ HandleSettings(string sStr) {
     string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
     string sValue = llList2String(lParams, 1); // now sValue = "value"
     integer i = llSubStringIndex(sToken, "_");
+    if (g_bDebugOn) DebugOutput(3, ["HandleSettings-2", llToLower(llGetSubString(sToken, 0, i)), llToLower(g_sGlobalToken), llToLower(g_sTitlerToken)]);
     if (llToLower(llGetSubString(sToken, 0, i)) == llToLower(g_sGlobalToken)) { // if "major_" = "global_"
         sToken = llGetSubString(sToken, i + 1, -1);
+        if (g_bDebugOn) DebugOutput(3, ["HandleSettings-3", sToken, sValue]);
         if (sToken == "slavemsg") g_sSlaveMessage = sValue;
         else if (sToken == "loglevel") SetLogLevel((integer) sValue, FALSE, (key) g_sWearerID);
         else if (sToken == "swactive") SetSWActive((integer) sValue, FALSE);
         else if(sToken == "checkboxes"){
             g_lCheckboxes = llCSV2List(sValue);
         }
-//    } else if(llGetSubString(sToken,0,i)=="capture_") { // if "major_" = "capture_"
-//        if(llGetSubString(sToken,i+1,-1)=="isActive") {
-//            g_iCaptureIsActive=TRUE;
-//        }
-//    } else if(llGetSubString(sToken,0,i)=="leash_") {
-//        if (g_bDebugOn) DebugOutput(3, [sStr, sToken]);
-//        if(llGetSubString(sToken,i+1,-1)=="leashedto") {
-//            list lLeashed = llParseString2List(sValue, [","], []);
-//            if (llList2Integer(lLeashed, 2) > 0) {å
-//                g_kLeashedTo = llList2Key(lLeashed, 0); 
-//                g_iLeashedRank = llList2Integer(lLeashed, 1);
-//            }
-//        }
+    } else if (llToLower(llGetSubString(sToken, 0, i)) == llToLower(g_sTitlerToken)) { // if "major_" = "titler_" 
+        sToken = llGetSubString(sToken, i + 1, -1);
+        if (g_bDebugOn) DebugOutput(3, ["HandleSettings-4", sToken, sValue]);
+        if (sToken == "slavename") g_sSlaveName = sValue;
+        else if (sToken == "kbartitle") g_sKBarTitle = sValue;
     }
 }
 
 HandleDeletes(string sStr) {
-    if (!g_bPrepareToSend) return;
     list lParams = llParseString2List(sStr, ["_"],[]);
     string sToken = llList2String(lParams,0);
     string sVariable = llList2String(lParams,1);
@@ -265,24 +205,20 @@ HandleDeletes(string sStr) {
         if (sToken == "slavemsg") g_sSlaveMessage = "";
         else if (sToken == "loglevel") SetLogLevel(FALSE, FALSE, (key) g_sWearerID);
         else if (sToken == "swactive") SetSWActive(FALSE, FALSE);
+    } else if (llToLower(llGetSubString(sToken, i + 1, -1)) == llToLower(g_sTitlerToken)) { // if "major_" = "titler_" 
+        sToken = llGetSubString(sToken, i + 1, -1);
+        if (sToken == "slavename") g_sSlaveName = "";
+        else if (sToken == "kbartitle") g_sKBarTitle = "";
     }
 }
-/*
-ConfirmMenu(key kAv, integer iAuth) {
-    string sPrompt = "\n[Confirmation]";
-    sPrompt += "\nYou are about to permit the Judge to change your protection status if he pleases.";
-    sPrompt += "\nIf you do only he can change you back.";
-    sPrompt += "\nPlease confirm your choice or cancel now (you can come back anytime to grant permission).";
-    list lButtons = ["Confirm", "Cancel"];
-    Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Confirm",FALSE);
-}
-*/
+
 LogLevelMenu(key kAv, integer iAuth) {
     string sPrompt = "\n[Logging Level]";
     sPrompt += "\nSelect a log leve between 0 and 9.";
     sPrompt += "\n0 means minimum logging, 9 means maximum, other numbers somewhere in between";
     list lButtons = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-    Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "LogLevel",FALSE);
+    Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "LogLevel");
+    
 }
 
 StatMenu(key kAv, integer iAuth) {
@@ -291,17 +227,21 @@ StatMenu(key kAv, integer iAuth) {
     sPrompt += "\nThis is a K-Bar plugin; for support, wire roan (Silkie Sabra), K-Bar Ranch.\n";
 
     if (g_iSWActive) sPrompt += "\nSafeword enabled"; else sPrompt += "\nSafeword disabled";
+    sPrompt += "\nKBar Title: " + g_sKBarTitle;
+    sPrompt += "\nSlave Name: " + g_sSlaveName;
+    sPrompt += "\nLogin Message: " + g_sSlaveMessage; 
 
     list lButtons = []; // ["KickStart"];
-    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", "Kickstart", Checkbox(g_iSWActive, "Safeword")];
+//    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", "Kickstart", Checkbox(g_iSWActive, "Safeword")];
+    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["KBarTitle", "SlaveName", "SlaveMessage", Checkbox(g_iSWActive, "Safeword")];
 
-    Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat",FALSE);
+    Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat");
 }
 
 DebugMenu(key keyID, integer iAuth) {
     string sPrompt = "\n[KB Status Debug Level (less is more)] "+ formatVersion() + ", " + (string) llGetFreeMemory() + " bytes free.\nCurrent debug level: " + (string) g_iDebugLevel;
     list lMyButtons = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-    Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "Debug", FALSE);
+    Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "Debug");
 }
 
 HandleMenus(string sStr, key kID) {
@@ -316,14 +256,15 @@ HandleMenus(string sStr, key kID) {
         g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
         //Debug(sMessage);
         if (sMenu == "Stat") {
-//llOwnerSay("link_message " + sMessage);
             if (sMessage == UPMENU)
                 llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
             else if (llToLower(sMessage) == "debug") DebugMenu(kAv, iAuth);
             else {
                 if (llToLower(sMessage) == llToLower(Checkbox(TRUE, "Safeword"))) UserCommand(iAuth, "safeword on", kAv, TRUE);
                 else if (llToLower(sMessage) == llToLower(Checkbox(FALSE, "Safeword"))) UserCommand(iAuth, "safeword off", kAv, TRUE);
-                else if (llToLower(sMessage) == "Kickstart") llResetScript();
+                else if (llToLower(sMessage) == "slavename") Dialog(kAv, "What is the slave's name?", [], [], 0, iAuth, "Textbox~Name");
+                else if (llToLower(sMessage) == "slavemessage") Dialog(kAv, "What message at login?", [], [], 0, iAuth, "Textbox~Msg");
+                else if (llToLower(sMessage) == "kbartitle") Dialog(kAv, "What is the KBar Title?", [], [], 0, iAuth, "Textbox~KBTitle");
             }
         } else if (sMenu == "Debug") {
             SetDebugLevel(sMessage);
@@ -331,12 +272,23 @@ HandleMenus(string sStr, key kID) {
         } else if (sMenu == "LogLevel") {
             SetLogLevel((integer) sMessage, TRUE, kID);
             StatMenu(kAv, iAuth);
+        } else if (sMenu == "Textbox~Name") {
+            g_sSlaveName = sMessage;
+            SaveAndResend(g_sTitlerToken + "SlaveName", sMessage);
+            StatMenu(kAv, iAuth);
+        } else if (sMenu == "Textbox~Msg") {
+            g_sSlaveMessage = sMessage;
+            SaveAndResend(g_sGlobalToken + "SlaveMsg", sMessage);
+            StatMenu(kAv, iAuth);
+        } else if (sMenu == "Textbox~KBTitle") {
+            g_sKBarTitle = sMessage;
+            SaveAndResend(g_sTitlerToken + "KBarTitle", sMessage);
+            StatMenu(kAv, iAuth);
         }
     }
 }
 
 UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum: auth value, sStr: user command, kID: avatar id
-//llOwnerSay ("UserCommand("+(string)iNum+","+sStr+","+(string)kID+")");
     string sMessage = llToLower(sStr);
     list lParams = llParseString2List(sStr, [" "], []);
     string sCommand = llToLower(llList2String(lParams, 0));
@@ -357,7 +309,6 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to safeword function",kID);
         if (iRemenu) StatMenu(kID, iNum);
     } else if (sCommand == "loglevel") {
-//        llMessageLinked(LINK_SET, LINK_KB_VERS_REQ, "", kID);
         if ((iNum == CMD_OWNER) || g_bDebugOn) {
             LogLevelMenu(kID, iNum);
         }
@@ -375,70 +326,24 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
 }
 
 SaveAndResend(string sToken, string sValue) {
-//    llMessageLinked(LINK_SET, LM_SETTING_RESPONSE, sToken+"="+sValue,""); //// LEGACY OPTION. New scripts will hear LM_SETTING_SAVE
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, sToken+"="+sValue,"");
 }
 
 DeleteAndResend(string sToken) {
-//    llMessageLinked(LINK_SET, LM_SETTING_RESPONSE, sToken+"=",""); //// LEGACY OPTION. New scripts will hear LM_SETTING_DELETE
     llMessageLinked(LINK_SET, LM_SETTING_DELETE, sToken,"");
 }
-/*
-//
-//    FindMajorMinor (major_minor being searched)
-//
-//    Step through the settings sent by kb_settings_host to see if the input major_minor pair is there
-//        If it is, return its index; if it's not, return -1
-//
 
-integer FindMajorMinor(string sInput) {
-    integer iHostIdx = 0;
-    integer iHostLen = llGetListLength(g_lHostSettings);
-   
-    while (iHostIdx < iHostLen) {
-        list lParams = llParseString2List(llList2String(g_lHostSettings, iHostIdx), ["="], []); 
-        // now [0] = "major_minor" and [1] = "value"
-        string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-        string sValue = llList2String(lParams, 1); // now sValue = "value"
-        if (llToLower(sToken) == llToLower(sInput)) return iHostIdx;
-        ++iHostIdx;
-    }
-    return -1;
-}
-
-InitListen() {
-    if (g_bDebugOn) DebugOutput(5, ["InitListen", g_iListenHandle, KB_HAIL_CHANNEL]);
-    if (g_iListenHandle == 0) g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
-}
-*/
-/*
-DeleteListen() {
-    llListenRemove(g_iListenHandle);
-    g_iListenHandle = 0;
-    if (g_bDebugOn) DebugOutput(5, ["DeleteListen", g_iListenHandle, KB_HAIL_CHANNEL]);
-}
-*/
 default {
     on_rez(integer iParam) {
-//        llResetScript();
         g_iDebugCounter = 0;
-//        g_lCollarSettings = [];
-//        g_lHostSettings = [];
-//        g_iLineNr = 0;
-//        InitListen();
         g_sCollarVersion = "not set";
-//        g_kVersionID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
         g_sWearerID = llGetOwner();
         llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
-//        g_bPrepareToSend = TRUE; // only once per rez
-//        g_fStartDelay = 15.0; 
-//        llSetTimerEvent(g_fStartDelay);
     }
 
     state_entry() {
         if (llGetStartParameter()==825) llSetRemoteScriptAccessPin(0);
-//        g_iListenHandle = llListen(KB_HAIL_CHANNEL, "", "", "");
         g_sWearerID = llGetOwner();
         llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
@@ -450,14 +355,7 @@ default {
         }
         else if (iNum >= CMD_OWNER && iNum <= CMD_EVERYONE) UserCommand(iNum, sStr, kID, FALSE);
         else if (iNum == LM_SETTING_RESPONSE) {
-//            if (sStr == "settings=sent" && g_bPrepareToSend) {
-//                if (g_bDebugOn) DebugOutput(5, ["link_message", sStr, g_fStartDelay]);
-//                llSetTimerEvent(0.0);
-//                if (g_fStartDelay > 5.0) { g_fStartDelay -= 1.0; llSetTimerEvent(g_fStartDelay); }
-//                else { g_fStartDelay = 5.0; llSetTimerEvent(g_fStartDelay); }
-//            } else {
-                HandleSettings(sStr);
-//            }
+            HandleSettings(sStr);
         } else if((iNum == LM_SETTING_DELETE) || (iNum == LM_SETTING_EMPTY)) {
             HandleDeletes(sStr);
         } else if (iNum == DIALOG_RESPONSE) {
@@ -479,148 +377,10 @@ default {
             if(onlyver)return; // basically this command was: <prefix> versions
         }
     }
-/*
-    listen(integer iChannel, string sName, key kId, string sMessage) {
-        g_bPrepareToSend = FALSE;
-        if (g_bDebugOn) DebugOutput(5, ["listen heard", sName, (string) kId, sMessage]);
-//        llOwnerSay("heard "+ sName + " " + (string) kId);
-//        llOwnerSay((string) llGetOwnerKey(kId));
-//        llOwnerSay(llKey2Name(llGetOwnerKey(kId)));
-        g_lHostSettings = llParseString2List(sMessage, ["%%"], [""]);
-        string sFirst = llList2String(g_lHostSettings, 0);
-        list lTemp = llParseString2List(sFirst, ["="], [""]);
-        string sLineID = llList2String(lTemp, 0);
-        integer iLineID = llList2Integer(lTemp, 1);
-        if (sLineID == "kbhostline" || sLineID == "kbhostaction") {
-            if (g_bDebugOn) { list lTemp = ["settings from kb_settings_host"] + g_lHostSettings; DebugOutput(3, lTemp); }
-//        if (g_bDebugOn) DebugOutput(3, g_lHostSettings);
-//        g_lHostSettings += lSettings;
-            list lOutputSettings = [];
-            integer iCollarPtr = 0;
-//
-//        Need to step through collar settings
-//            anything in the collar set that's not in the host set gets included as-is in the output set
-//            if the host set and collar set both address the same variable with different values, the host set wins
-//            anything in the host set, whether corrected or not, goes to the output set
-//
 
-            integer iCollarIdx = 0;
-            integer iCollarLen = llGetListLength(g_lCollarSettings);
-            while (iCollarIdx < iCollarLen) {
-                string sWork = llList2String(g_lCollarSettings, iCollarIdx);
-                if (g_bDebugOn) { DebugOutput(0, ["in loop", iCollarIdx, iCollarLen, sWork]); }
-                list lParams = llParseString2List(sWork, ["="], []); // now [0] = "major_minor" and [1] = "value"
-                string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-                string sValue = llList2String(lParams, 1); // now sValue = "value"
-                integer iHostPtr = FindMajorMinor(sToken);  // see if this collar major_minor entry already exists in the host set
-                if (iHostPtr > 0) {  // if it does, see if its value is different
-                    string sCandidate = llList2String(g_lHostSettings, iHostPtr); // extract the host setting string
-                    lParams = llParseString2List(sCandidate, ["="], []); // split it into candidate pieces
-                    string sCandToken = llList2String(lParams, 0); // now SCandToken = "major_minor"
-                    string sCandValue = llList2String(lParams, 1); // now sCandValue = "value"
-                    if (llToLower(sValue) == llToLower(sCandValue)) {
-                        lOutputSettings += [sWork]; // if they're the same, just move the entry to the output list
-                    } else {
-                        sWork = sCandToken + "=" + sCandValue; // if they're different, use the one from kb_settings_host
-                        lOutputSettings += [sWork];
-                    }
-                } else {
-                    lOutputSettings += [sWork]; // if there's no matching entry, just move the entry to the output list
-                }
-                ++iCollarIdx;
-            }        
-            integer iHostIdx = 0;
-            integer iHostLen = llGetListLength(g_lHostSettings);
-            while (iHostIdx < iHostLen) {
-                string sHostSetting = llList2String(g_lHostSettings, iHostIdx);
-                list lParams = llParseString2List(sHostSetting, ["="], []); // now [0] = "major_minor" and [1] = "value"
-                string sToken = llList2String(lParams, 0); // now SToken = "major_minor"
-                if (sToken != "kbhostline" && sToken != "kbhostaction") {
-                    integer iExists = llListFindList(lOutputSettings, [sHostSetting]);
-                    if (g_bDebugOn) DebugOutput(3, ["final check", sHostSetting, iExists]);
-                    if (iExists < 0) lOutputSettings += [sHostSetting];
-                }
-                ++iHostIdx;
-            }
-
-            if (g_bDebugOn) DebugOutput(5, ["settings ready for output"]);
-            if (g_bDebugOn) DebugOutput(5, lOutputSettings);
-
-            while (llGetListLength(lOutputSettings) > 0) {
-                string sCurrent = llList2String(lOutputSettings, 0);
-//                list lCurrent = llParseString2List(sCurrent, ["="], [""]);
-//                if (llList2String(lCurrent, 0) == "kbhostline") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
-//                else if (llList2String(lCurrent, 0) == "kbhostaction") g_lHostSettings = llDeleteSubList(g_lHostSettings, 0, 0);
-//                else { 
-                    llMessageLinked(LINK_SET, LM_SETTING_SAVE, sCurrent, "");
-                    if (g_bDebugOn) DebugOutput(5, ["sent", LINK_SET, LM_SETTING_SAVE, sCurrent]);
-                    lOutputSettings = llDeleteSubList(lOutputSettings, 0, 0);
-//                }
-            }
-        } else if (sLineID == "kbsayings1line" || sLineID == "kbsayings1action") {
-            if (g_bDebugOn) { list lTemp = ["sayings 1 from kb_settings_host"] + g_lHostSettings; DebugOutput(3, lTemp); }
-            integer iHostIdx = 1;
-            integer iHostLen = llGetListLength(g_lHostSettings);
-            string sPackage = "";
-            while (iHostIdx < iHostLen) {
-//                sPackage = "";
-                string sHostSaying = llList2String(g_lHostSettings, iHostIdx);
-                integer iCalcLength = llStringLength(sPackage) + llStringLength("%%") + llStringLength(sHostSaying);
-                if (iCalcLength < 1024) {
-                    sPackage += "%%";
-                    sPackage += sHostSaying;
-                } else {
-                    if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message-1 sending", sPackage]);
-                    llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
-                    sPackage = sHostSaying;
-                }
-                ++iHostIdx;
-            }
-            if (g_bDebugOn) DebugOutput(5, ["kbsayings1 link_message-2 sending", sPackage]);
-            if (llStringLength(sPackage) > 0) llMessageLinked(LINK_SET, LINK_SAYING1, sPackage, "");
-        } else if (sLineID == "Notify") {
-            // TODO: process 'no xx card' messages
-        }
-//        DeleteListen();
-    }
-*/    
     changed(integer iChange) {
         if (iChange & CHANGED_OWNER) llResetScript();
-/*
-        if (iChange & CHANGED_REGION) {
-            if (g_iProfiled){
-                llScriptProfiler(1);
-                Debug("profiling restarted");
-            }
-        }
-*/
-
     }
-/*
-    timer() {
-        llSetTimerEvent(0.0);
-        InitListen();
-        if (g_bDebugOn) DebugOutput(5, ["link_message pinging", KB_HAIL_CHANNEL]);
-        llSleep(2.0);
-        llRegionSay(KB_HAIL_CHANNEL, "ping751");        
-    }
-    
-    dataserver(key kID, string sData) {
-        if (g_bDebugOn) DebugOutput(0, ["dataserver", sData]);
-        if (kID == g_kVersionID) {
-            if (sData != EOF) {
-                string sWork = llStringTrim(sData, STRING_TRIM);
-                if (sWork != "") {
-                    list lData = llParseString2List(sWork, ["="], []);
-                    if (llGetListLength(lData) > 1) {
-                        if (llList2String(lData, 0) == "version") g_sCollarVersion = llList2String(lData, 1);
-                    } else 
-                        g_kVersionID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
-                }
-            }
-        }
-    }
-*/
 }
 
 // kb_status

@@ -8,7 +8,9 @@
 // Licensed under the GPLv2.  See LICENSE for full details. 
 string g_sScriptVersion = "8.0";
 integer LINK_CMD_DEBUG=1999;
-
+//
+// KBar Mod
+//
 integer g_iDebugCounter = 0;
 
 DebugOutput(key kID, list ITEMS){
@@ -23,12 +25,17 @@ DebugOutput(key kID, list ITEMS){
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a9";
+string  KB_DEVSTAGE          = "a901";
 
 string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
 }
+string g_sCollarVersion = "not set";
 
+integer KB_COLLAR_VERSION		   = -34847;
+//
+// KBar Mod End
+//
 string g_sAppVersion = "1.3";
 
 string  g_sSubMenu              = "Bookmarks"; // Name of the submenu
@@ -115,7 +122,13 @@ Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer i
 }
 
 DoMenu(key keyID, integer iAuth) {
+//
+// KBar Mod
+//
     string sPrompt = "\n[Bookmarks]\tKB."+formatVersion() + ", " + (string) llGetFreeMemory() + " bytes free.";
+//
+// KBar Mod End
+//
     list lMyButtons = PLUGIN_BUTTONS + g_lDestinations + g_lVolatile_Destinations;
     Dialog(keyID, sPrompt, lMyButtons, [UPMENU], 0, iAuth, "bookmarks");
 }
@@ -145,13 +158,25 @@ UserCommand(integer iNum, string sStr, key kID) {
     // So commands can accept a value
     if (sStr == "reset") {
         // it is a request for a reset
+//
+//    KBar Mod
+//
 //        if(iNum == CMD_WEARER || iNum == CMD_OWNER)
         if(iNum == CMD_OWNER)
+//
+//    KBar Mod End
+//
             //only owner and wearer may reset
             llResetScript();
     } else if (sStr == "rm bookmarks") {
+//
+//    KBar Mod
+//
 //        if (kID!=g_kWearer && iNum!=CMD_OWNER) llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to uninstall bookmarks",kID);
         if (iNum!=CMD_OWNER) llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to uninstall bookmarks",kID);
+//
+//    KBar Mod End
+//
         else Dialog(kID,"\nDo you really want to uninstall the "+g_sSubMenu+" App?", ["Yes","No","Cancel"], [], 0, iNum,"rmbookmarks");
     } else if(sStr == PLUGIN_CHAT_CMD || llToLower(sStr) == "menu " + PLUGIN_CHAT_CMD_ALT || llToLower(sStr) == PLUGIN_CHAT_CMD_ALT) {
         // an authorized user requested the plugin menu by typing the menus chat command
@@ -559,6 +584,13 @@ default {
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex +3);  //remove stride from g_lMenuIDs
         } else if (iNum == REBOOT && sStr == "reboot") llResetScript();
+//
+// KBar Mod
+//
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+//
+// KBar Mod End
+//
         else if(iNum == LINK_CMD_DEBUG){
             integer onlyver=0;
             if(sStr == "ver")onlyver=1;
