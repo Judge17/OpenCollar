@@ -43,7 +43,14 @@ DebugOutput(key kID, list ITEMS){
     llInstantMessage(kID, llGetScriptName() +" "+final);
 }
 integer LINK_CMD_DEBUG=1999;
-integer g_iNoB64=FALSE; // Use base64 by default
+//
+//    KBar Mod
+//
+//integer g_iNoB64=FALSE; // Use base64 by default
+integer g_iNoB64=TRUE; // Use base64 by default
+//
+//    End of KBar Mod
+//
 integer g_iWasUpgraded=FALSE; // This will not harm anything if set to true after being upgraded. However, it should eventually be set to false again
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
@@ -90,6 +97,7 @@ list g_lCheckboxes=["⬜","⬛"];
 string Checkbox(integer iValue, string sLabel) {
     return llList2String(g_lCheckboxes, bool(iValue))+" "+sLabel;
 }
+
 Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth, string sName) {
     key kMenuID = llGenerateKey();
     llMessageLinked(LINK_SET, DIALOG, (string)kID + "|" + sPrompt + "|" + (string)iPage + "|" + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kMenuID);
@@ -285,7 +293,14 @@ default
             for(i=0;i<g_iOffset;i++){
                 offsets+=" \n";
             }
-            llSetLinkPrimitiveParams(g_iTextPrim, [PRIM_TEXT, g_sTitle+offsets, g_vColor, 1]);
+//
+//    Start of KBar Mod
+//   
+//            llSetLinkPrimitiveParams(g_iTextPrim, [PRIM_TEXT, g_sTitle+offsets, g_vColor, 1]);
+            llSetLinkPrimitiveParams(g_iTextPrim, [PRIM_TEXT, g_sText+offsets, g_vColor, 1]);
+//
+//    Start of KBar Mod
+//   
         }else llSetLinkPrimitiveParams(g_iTextPrim, [PRIM_TEXT, "", ZERO_VECTOR, 0]);
         llSetTimerEvent(0);
     }
