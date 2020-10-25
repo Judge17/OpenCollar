@@ -88,6 +88,9 @@ integer KB_CLOCK_ALARM			   = -34844;
 integer KB_CURFEW_ACTIVE		   = -34845;
 integer KB_CURFEW_INACTIVE		   = -34846;
 integer KB_COLLAR_VERSION		   = -34847;
+integer KB_READY_SAYINGS		   = -34848;
+integer KB_SEND_SAYINGS			   = -34849;
+integer KB_SET_SAYING			   = -34850;
 
 integer KB_DEBUG_CLOCK_ON		   = -36001;
 integer KB_DEBUG_CLOCK_OFF		   = -36002;

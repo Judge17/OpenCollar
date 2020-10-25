@@ -8,7 +8,7 @@
 	
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a905";
+string  KB_DEVSTAGE          = "1a906";
 string  g_sScriptVersion = "";
 
 string formatVersion() {
@@ -360,13 +360,15 @@ default {
 	}
 
 	dataserver(key kID, string sData) {
-		if (g_bDebugOn) DebugOutput(["dataserver", sData, g_iLineNr]);
+		if (g_bDebugOn) DebugOutput(["dataserver-1", sData]);
 		if (kID == g_kSayingsID) {
 			if (sData != EOF) {
 				LoadSaying(sData,++g_iLineNr);
+				if (g_bDebugOn) DebugOutput(["dataserver-2", sData, g_iLineNr]);
 //				else LoadSaying(sData,++g_iLineNr);
 				g_kSayingsID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
 			} else {
+				if (g_bDebugOn) DebugOutput(["dataserver-3", g_iLineNr]);
 				LoadSaying(sData,g_iLineNr);
 				SendSayings();
 				EndRun();
