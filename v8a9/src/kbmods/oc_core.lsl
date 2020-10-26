@@ -31,13 +31,21 @@ integer g_iChannel=1;
 string g_sPrefix;
 
 integer g_iNotifyInfo=FALSE;
-
 string MajorMinor(){
     list lTmp = llParseString2List(COLLAR_VERSION,["."],[]);
     return llList2String(lTmp,0)+"."+llList2String(lTmp,1);
 }
 
+
 string g_sSafeword="RED";
+//
+//    KBar Mod
+//
+integer g_bSafeword = TRUE;
+//
+//    KBar Mod End
+//
+
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
 integer CMD_OWNER = 500;
@@ -73,7 +81,7 @@ integer RLV_ON = 6101; // send to inform plugins that RLV is enabled now, no mes
 integer TIMEOUT_READY = 30497;
 integer TIMEOUT_REGISTER = 30498;
 integer TIMEOUT_FIRED = 30499;
-
+list g_lSettingsReqs = [];
 
 
 integer DIALOG = -9000;
@@ -656,6 +664,24 @@ state active
                     }
                 } else if(sVar == "safeword"){
                     g_sSafeword = sVal;
+//
+//    KBar Mod                        
+//        Due lines below commented out                        
+//
+//                    if(g_sSafeword == "0"){
+//                        llMessageLinked(LINK_SET, CMD_OWNER, "safeword-disabled","");
+//
+//    KBar Mod End
+//                        
+                } else if(sVar == "swactive") {
+                    g_bSafeword = (integer) sVal;
+                    if(!g_bSafeword){
+                        llMessageLinked(LINK_SET, CMD_OWNER, "safeword-disabled","");
+                    }
+//
+//    KBar Mod End                      
+//                        
+
                 } else if(sVar == "prefix"){
                     g_sPrefix = sVal;
                 } else if(sVar == "channel"){
@@ -718,13 +744,26 @@ state active
                 }
                 else if(sVar == "safeword"){
                     g_sSafeword = "RED";
-                    llMessageLinked(LINK_SET, CMD_OWNER, "safeword-enable","");
+//
+//    KBar Mod
+//        Line below commented out
+//
+//                    llMessageLinked(LINK_SET, CMD_OWNER, "safeword-enable","");
                 } else if(sVar == "prefix"){
                     // revert to default calculation
                     g_sPrefix = llGetSubString(llKey2Name(g_kWearer),0,1);
                 } else if(sVar = "channel"){
                     g_iChannel = 1;
-                }
+//
+//    KBar Mod
+//
+                } else if(sVar = "swactive"){
+                    g_bSafeword = 1;
+                    llMessageLinked(LINK_SET, CMD_OWNER, "safeword-enable","");
+//
+//    KBar Mod End
+//
+               }
             } else if(sToken == "auth"){
                 if(sVar == "group"){
                     g_kGroup="";

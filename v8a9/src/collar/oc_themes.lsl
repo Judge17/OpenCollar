@@ -328,7 +328,7 @@ UserCommand(integer iNum, string sStr, key kID, integer reMenu) {
                 else if (sCommand == "hide")  iCurrentlyShown = 0;
                 else if (sCommand == "stealth") iCurrentlyShown = g_iCollarHidden;
                 if (sElement == g_sDeviceType) g_iCollarHidden = !iCurrentlyShown;  //toggle whole collar visibility
-
+                llMessageLinked(LINK_SET,LM_SETTING_SAVE, "intern_visibility="+(string)iCurrentlyShown, "");// This token will only store the hidden state for apps like bell which need to know whether to toggle
                 //do the actual hiding and re/de-glowing of elements
                 integer iLinkCount = llGetNumberOfPrims()+1;
                 while (iLinkCount-- > 1) {
@@ -522,7 +522,35 @@ UserCommand(integer iNum, string sStr, key kID, integer reMenu) {
     }
 }
 
-default {
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
+default
+{
+    on_rez(integer iNum){
+        llResetScript();
+    }
+    state_entry(){
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
+    link_message(integer iSender, integer iNum, string sStr, key kID){
+        if(iNum == REBOOT){
+            if(sStr == "reboot"){
+                llResetScript();
+            }
+        } else if(iNum == READY){
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP){
+            state active;
+        }
+    }
+}
+state active
+{
+    on_rez(integer t){
+        llResetScript();
+    }
+    
     state_entry() {
         if (
             llGetInventoryType(g_sThemesCard) != INVENTORY_NOTECARD &&

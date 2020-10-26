@@ -34,9 +34,6 @@ integer ACTION_BLOCK = 32;
 
 integer API_CHANNEL = 0x60b97b5e;
 
-integer STATE_MANAGER = 7003;
-integer STATE_MANAGER_REPLY = 7004;
-
 integer g_iLastGranted;
 key g_kLastGranted;
 string g_sLastGranted;
@@ -45,7 +42,7 @@ integer TIMEOUT_READY = 30497;
 integer TIMEOUT_REGISTER = 30498;
 integer TIMEOUT_FIRED = 30499;
 
-list g_lSettingsReqs = [];
+
 
 integer RLV_CMD = 6000;
 integer RLV_REFRESH = 6001;//RLV plugins should reinstate their restrictions upon receiving this message.
@@ -177,26 +174,37 @@ DoListeners(){
 }
 integer g_iRunaway=TRUE;
 RunawayMenu(key kID, integer iAuth){
-    string sPrompt = "\n[Runaway]\n\nAre you sure you want to runaway from all owners?\n\n* This action will reset your owners list, trusted list, and your blocked avatars list.";
-    list lButtons = ["Yes", "No"];
-    
-    if(iAuth == CMD_OWNER){
-        sPrompt+="\n\nAs the owner you have the abliity to disable or enable runaway.";
-        if(g_iRunaway)lButtons+=["Disable"];
-        else lButtons += ["Enable"];
+    if(iAuth == CMD_OWNER || iAuth==CMD_WEARER){
+        string sPrompt = "\n[Runaway]\n\nAre you sure you want to runaway from all owners?\n\n* This action will reset your owners list, trusted list, and your blocked avatars list.";
+        list lButtons = ["Yes", "No"];
+        
+        if(iAuth == CMD_OWNER){
+            sPrompt+="\n\nAs the owner you have the abliity to disable or enable runaway.";
+            if(g_iRunaway)lButtons+=["Disable"];
+            else lButtons += ["Enable"];
+        } else if(iAuth == CMD_WEARER){
+            if(g_iRunaway){
+                sPrompt += "\n\nAs the wearer, you can choose to disable your ability to runaway, this action cannot be reversed by you";
+                lButtons += ["Disable"];
+            }
+        }
+        Dialog(kID, sPrompt, lButtons, [], 0, iAuth, "RunawayMenu");
+    } else {
+        llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS% to runaway, or the runaway settings menu", kID);
+        llMessageLinked(LINK_SET,iAuth,"menu Access", kID);
     }
-    Dialog(kID, sPrompt, lButtons, [], 0, iAuth, "RunawayMenu");
 }
 
 WearerConfirmListUpdate(key kID, string sReason)
 {
-    g_kMenuUser=kID;
+    key g_kAdder = g_kMenuUser;
+    //g_kMenuUser=kID;
     // This should only be triggered if the wearer is being affected by a sensitive action
     Dialog(g_kWearer, "\n[Access]\n\nsecondlife:///app/agent/"+(string)kID+"/about wants change your access level.\n\nChange that will occur: "+sReason+"\n\nYou may grant or deny this action.", [], ["Allow", "Disallow"], 0, CMD_WEARER, "WearerConfirmation");
 }
 
 integer g_iGrantedConsent=FALSE;
-
+integer g_iRunawayMode = -1;
 UpdateLists(key kID, key kIssuer){
     //llOwnerSay(llDumpList2String([kID, kIssuer, g_kMenuUser, g_iMode, g_iGrantedConsent], ", "));
     integer iMode = g_iMode;
@@ -300,12 +308,10 @@ UserCommand(integer iAuth, string sCmd, key kID){
             llLoadURL(kID, "Want to open our website for further help?", "https://opencollar.cc");
         }
     }
-    if(iAuth == CMD_WEARER || kID==g_kWearer && iAuth != CMD_OWNER){
-        if(llToLower(sCmd) == "run" || llToLower(sCmd) == "menu run" || llToLower(sCmd) == "runaway"){
-            RunawayMenu(kID, iAuth);
-        }
+    if((llToLower(sCmd) == "menu runaway" || llToLower(sCmd) == "runaway") && g_iRunawayMode!=2){
+        g_iRunawayMode=0;
+        RunawayMenu(kID,iAuth);
     }
-    
     
     if(iAuth == CMD_OWNER){
         if(sCmd == "safeword-disable")g_iSafewordDisable=TRUE;
@@ -355,27 +361,31 @@ UserCommand(integer iAuth, string sCmd, key kID){
             }else {
                 UpdateLists((key)sID, kID);
             }
-        } else if(llToLower(sCmd) == "menu run" && kID != g_kWearer){
-            RunawayMenu(kID,iAuth);
-        }
+        } 
     }
     if (iAuth <CMD_OWNER || iAuth>CMD_EVERYONE) return;
     if (iAuth == CMD_OWNER && sCmd == "runaway") {
-        // trigger runaway sequence
-        
-        llMessageLinked(LINK_SET, NOTIFY_OWNERS, "0Runaway completed on %WEARERNAME%'s collar", kID);
-        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "AUTH_owner","");
-        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "AUTH_trust","");
-        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "AUTH_block","");
-        llMessageLinked(LINK_SET, NOTIFY, "0Runaway complete", g_kWearer);
-        return;
+        // trigger runaway sequence if approval was given
+        if(g_iRunawayMode == 2){
+            g_iRunawayMode=-1;
+            llMessageLinked(LINK_SET, NOTIFY_OWNERS, "Runaway completed on %WEARERNAME%'s collar", kID);
+            llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_owner","");
+            llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_trust","");
+            llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_block","");
+            llMessageLinked(LINK_SET, NOTIFY, "0Runaway complete", g_kWearer);
+            return;
+        }
+            
     }
     
     if(llToLower(sCmd) == "menu addons" || llToLower(sCmd)=="addons"){
         AddonsMenu(kID, iAuth);
     }
      if(sCmd == "print auth"){
-        PrintAccess(kID);
+         if(iAuth == CMD_OWNER || iAuth == CMD_TRUSTED || iAuth == CMD_WEARER)
+            PrintAccess(kID);
+        else
+            llMessageLinked(LINK_SET,NOTIFY, "0%NOACCESS% to printing access lists!", kID);
     }
 }
  
@@ -418,10 +428,37 @@ SayToAddon(string pkt, integer iNum, string sStr, key kID){
 SayToAddonX(key k, string pkt, integer iNum, string sStr, key kID){
     llRegionSayTo(k, API_CHANNEL, llList2Json(JSON_OBJECT, ["addon_name", "OpenCollar", "pkt_type", pkt, "iNum", iNum, "sMsg", sStr, "kID", kID]));
 }
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
 default
 {
+    on_rez(integer iNum){
+        llResetScript();
+    }
     state_entry(){
-        if(llGetStartParameter()!=0)state inUpdate;
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
+    link_message(integer iSender, integer iNum, string sStr, key kID){
+        if(iNum == REBOOT){
+            if(sStr == "reboot"){
+                llResetScript();
+            }
+        } else if(iNum == READY){
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP){
+            state active;
+        }
+    }
+}
+state active
+{
+    on_rez(integer iNum){
+        llResetScript();
+    }
+    
+    state_entry(){
+        if(llGetStartParameter()!=0)llResetScript();
         g_kWearer = llGetOwner();
         g_sPrefix = llToLower(llGetSubString(llKey2Name(llGetOwner()),0,1));
         // make the API Channel be per user
@@ -445,7 +482,7 @@ default
             llSetScriptState("oc_states",TRUE);
         }
         
-        if(llGetTime()>=120){
+        if(llGetTime()>=60){
             // flush the alive addons and ping all addons
             llResetTime();
             list lTmp = llList2ListStrided(g_lAddons, 0,-1,2);
@@ -455,13 +492,17 @@ default
             
             for(i=0;i<end;i++){
                 SayToAddonX(llList2Key(g_lAddons,i), "ping", 0, "","");
+                //llWhisper(0, "Sending ping signal to addon: "+llList2String(g_lAddons,i));
                 //llRegionSayTo(llList2Key(g_lAddons, i), API_CHANNEL, llList2Json(JSON_OBJECT, ["pkt_type", "ping"]));
+                llResetTime();
             }
             end = llGetListLength(lTmp);
             for(i=0;i<end;i++){
                 if(llListFindList(g_lAliveAddons, [llList2Key(lTmp, i)])==-1){
                     // addon has died, remove from list.
+                    //llSay(0, "Removing dead addon: "+llList2String(lTmp,i));
                     g_lAddons = llDeleteSubList(g_lAddons, llListFindList(g_lAddons, [llList2Key(lTmp,i)]), llListFindList(g_lAddons, [llList2Key(lTmp,i)])+1);
+                    
                 }
             }
             g_lAliveAddons = [];
@@ -478,34 +519,41 @@ default
             // Addon key will be placed in a temporary list that will be cleared once the timer checks over all the information.
             string PacketType = llJsonGetValue(m,["pkt_type"]);
             
-            if(PacketType=="pong"){
+            if(PacketType=="pong" && llJsonGetValue(m,["kID"])==(string)llGetOwner()){
+                //llSay(0, "Alive signal seen from addon: "+(string)i);
                 if(llListFindList(g_lAliveAddons,[i])==-1) g_lAliveAddons+=i;
                 return;
             } else if(PacketType == "from_collar")return; // We should never listen to another collar's LMs, wearer should not be wearing more than one anyway.
             else if(PacketType == "online"){
                 // this is a initial handshake
-                
-                integer isAddonBridge = (integer)llJsonGetValue(m,["bridge"]);
-                if(isAddonBridge && llGetOwnerKey(i) != g_kWearer)return; // flat out deny API access to bridges not owned by the wearer because they will not include a addon name, therefore can't be controlled
-                // begin to pass stuff to link messages!
-                // first- Check if a pairing was done with this addon, if not ask the user for confirmation, add it to Addons, and then move on
-                
-                if(llListFindList(g_lAddons, [i])==-1 && llGetOwnerKey(i)!=g_kWearer && !isAddonBridge){
-                    g_kAddonPending = i;
-                    g_sAddonName = llJsonGetValue(m,["addon_name"]);
-                    Dialog(g_kWearer, "[ADDON]\n\nAn object named: "+n+"\nAddon Name: "+g_sAddonName+"\nOwned by: secondlife:///app/agent/"+(string)llGetOwnerKey(i)+"/about\n\nHas requested internal collar access. Grant it?", ["Yes", "No"],[],0,CMD_WEARER,"addon~add");
-                    return;
-                }else if(llListFindList(g_lAddons, [i])==-1 && llGetOwnerKey(i) == g_kWearer && !isAddonBridge){
-                    // Add the addon and be done with
-                    g_lAddons += [i, llJsonGetValue(m,["addon_name"])];
-                    SayToAddon("approved", 0, "", "");
+                if(llJsonGetValue(m,["kID"])==(string)llGetOwner()){
+                    integer isAddonBridge = (integer)llJsonGetValue(m,["bridge"]);
+                    if(isAddonBridge && llGetOwnerKey(i) != g_kWearer)return; // flat out deny API access to bridges not owned by the wearer because they will not include a addon name, therefore can't be controlled
+                    // begin to pass stuff to link messages!
+                    // first- Check if a pairing was done with this addon, if not ask the user for confirmation, add it to Addons, and then move on
+                    
+                    if(llListFindList(g_lAddons, [i])==-1 && llGetOwnerKey(i)!=g_kWearer && !isAddonBridge){
+                        g_kAddonPending = i;
+                        g_sAddonName = llJsonGetValue(m,["addon_name"]);
+                        Dialog(g_kWearer, "[ADDON]\n\nAn object named: "+n+"\nAddon Name: "+g_sAddonName+"\nOwned by: secondlife:///app/agent/"+(string)llGetOwnerKey(i)+"/about\n\nHas requested internal collar access. Grant it?", ["Yes", "No"],[],0,CMD_WEARER,"addon~add");
+                        return;
+                    }else if(llListFindList(g_lAddons, [i])==-1 && llGetOwnerKey(i) == g_kWearer && !isAddonBridge){
+                        // Add the addon and be done with
+                        g_lAddons += [i, llJsonGetValue(m,["addon_name"])];
+                        g_lAliveAddons += [i];
+                        SayToAddon("approved", 0, "", "");
+                    }
                 }
             } else if(PacketType == "offline"){
                 // unpair
-                integer iPos = llListFindList(g_lAddons, [i]);
-                if(iPos==-1)return;
-                else{
-                    g_lAddons = llDeleteSubList(g_lAddons, iPos, iPos+1);
+                if(llJsonGetValue(m,["kID"])==(string)llGetOwner()){
+                    integer iPos = llListFindList(g_lAddons, [i]);
+                    if(iPos==-1)return;
+                    else{
+                        g_lAddons = llDeleteSubList(g_lAddons, iPos, iPos+1);
+                        iPos = llListFindList(g_lAliveAddons,[i]);
+                        if(iPos!=-1)g_lAliveAddons = llDeleteSubList(g_lAliveAddons, iPos,iPos);
+                    }
                 }
             }
             else if(PacketType == "from_addon"){
@@ -584,8 +632,8 @@ default
             string sVar = llList2String(lPar,1);
             string sVal = llList2String(lPar,2);
             
-            integer ind = llListFindList(g_lSettingsReqs, [sToken+"_"+sVar]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+            //integer ind = llListFindList(g_lSettingsReqs, [sToken+"_"+sVar]);
+            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
             if(sToken == "auth"){
                 if(sVar == "owner"){
@@ -618,12 +666,14 @@ default
                     g_sPrefix = sVal;
                 } else if(sVar == "safeword"){
                     g_sSafeword = sVal;
+                } else if(sVar == "safeworddisable"){
+                    g_iSafewordDisable=1;
                 }
             }
         }else if(iNum == LM_SETTING_EMPTY){
             
-            integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+            //integer ind = llListFindList(g_lSettingsReqs, [sStr]);
+            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
         } else if(iNum == LM_SETTING_DELETE){
             
@@ -632,8 +682,8 @@ default
             string sVar = llList2String(lPar,1);
             string sVal = llList2String(lPar,2);
             
-            integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+            //integer ind = llListFindList(g_lSettingsReqs, [sStr]);
+            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
             if(sToken == "auth"){
                 if(sVar == "owner"){
@@ -662,23 +712,15 @@ default
                     g_sPrefix = llToLower(llGetSubString(llKey2Name(llGetOwner()),0,1));
                 } else if(sVar == "safeword"){
                     g_sSafeword = "RED";
+                } else if(sVar == "safeworddisable"){
+                    g_iSafewordDisable=0;
                 }
             }
         } else if(iNum == REBOOT){
             if(sStr=="reboot"){
                 llResetScript();
             }
-        } else if(iNum == TIMEOUT_READY)
-        {
-            g_lSettingsReqs = ["auth_owner", "auth_trust", "auth_block", "auth_public", "auth_group", "auth_limitrange", "auth_tempowner", "auth_runawaydisable", "global_channel", "global_prefix", "global_safeword"];
-            llMessageLinked(LINK_SET, TIMEOUT_REGISTER, "2", "api~settings");
-        } else if(iNum == TIMEOUT_FIRED)
-        {
-            if(llGetListLength(g_lSettingsReqs)>0){
-                llMessageLinked(LINK_SET, TIMEOUT_REGISTER, "2", "api~settings");
-                llMessageLinked(LINK_SET, LM_SETTING_REQUEST, llList2String(g_lSettingsReqs,0),"");
-            }
-        }
+        } 
         else if(iNum == DIALOG_RESPONSE){
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             if(iMenuIndex!=-1){
@@ -701,7 +743,7 @@ default
                         //UpdateLists((key)sMsg);
                         g_kTry = (key)sMsg;
                         if(!(g_iMode&ACTION_BLOCK))
-                            Dialog(g_kTry, "OpenCollar\n\n"+SLURL(g_kTry)+" is trying to add you to an access list, do you agree?", ["Yes", "No"], [], 0, CMD_NOACCESS, "scan~confirm");
+                            Dialog(g_kTry, "OpenCollar\n\n"+SLURL(kAv)+" is trying to add you to an access list, do you agree?", ["Yes", "No"], [], 0, CMD_NOACCESS, "scan~confirm");
                         else UpdateLists((key)sMsg, g_kMenuUser);
                     }
                 } else if(sMenu == "WearerConfirmation"){
@@ -745,20 +787,23 @@ default
                         // Yes
                         SayToAddonX(g_kAddonPending, "approved", 0, "", "");
                         g_lAddons += [g_kAddonPending, g_sAddonName];
+                        g_lAliveAddons += [g_kAddonPending];
                     }
                 } else if(sMenu == "RunawayMenu"){
                     if(sMsg == "Enable" && iAuth == CMD_OWNER){
                         g_iRunaway=TRUE;
-                        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "AUTH=runawaydisable","");
+                        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "AUTH_runawaydisable","");
                     } else if(sMsg == "Disable"){
                         g_iRunaway=FALSE;
-                        llMessageLinked(LINK_SET, LM_SETTING_SAVE, "AUTH=runawaydisable~0", "");
+                        llMessageLinked(LINK_SET, LM_SETTING_SAVE, "AUTH_runawaydisable=0", "");
                     } else if(sMsg == "No"){
                         // return
+                        g_iRunawayMode=-1;
                         return;
                     } else if(sMsg == "Yes"){
                         // trigger runaway
-                        llMessageLinked(LINK_SET, NOTIFY_OWNERS, "0%WEARERNAME% has runaway.", "");
+                        g_iRunawayMode=2;
+                        llMessageLinked(LINK_SET, NOTIFY_OWNERS, "%WEARERNAME% has runaway.", "");
                         llMessageLinked(LINK_SET, CMD_OWNER, "runaway", g_kWearer);
                         llMessageLinked(LINK_SET, CMD_SAFEWORD, "safeword", "");
                         llMessageLinked(LINK_SET, CMD_OWNER, "clear", g_kWearer);
@@ -769,7 +814,7 @@ default
             if(g_kGroup=="")llOwnerSay("@setgroup=y");
             else llOwnerSay("@setgroup:"+(string)g_kGroup+"=force;setgroup=n");
         } else if(iNum == -99999){
-            if(sStr == "update_active")state inUpdate;
+            if(sStr == "update_active")llResetScript();
         }
     }
     sensor(integer iNum){
@@ -794,16 +839,5 @@ default
         if(!(g_iMode&ACTION_SCANNER))return;
         
         Dialog(g_kMenuUser, "OpenCollar\nAdd Menu", [], [">Wearer<", UPMENU], 0, g_iCurrentAuth, "scan~add");
-    }
-}
-
-
-state inUpdate
-{
-    link_message(integer iSender, integer iNum, string sStr, key kID){
-        if(iNum == REBOOT)llResetScript();
-    }
-    on_rez(integer iNum){
-        llResetScript();
     }
 }
