@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a909";
+string  KB_DEVSTAGE          = "a101";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -39,6 +39,7 @@ integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
 string g_sWearerID;
+key g_kWearer;
 
 key g_kGroup = "";
 integer g_iGroupEnabled = FALSE;
@@ -333,20 +334,54 @@ DeleteAndResend(string sToken) {
     llMessageLinked(LINK_SET, LM_SETTING_DELETE, sToken,"");
 }
 
-default {
-    on_rez(integer iParam) {
-        g_iDebugCounter = 0;
-        g_sCollarVersion = "not set";
-        g_sWearerID = llGetOwner();
-        llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
-    }
+MenuResponse() {
+//    llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
+    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+}
 
-    state_entry() {
-        if (llGetStartParameter()==825) llSetRemoteScriptAccessPin(0);
-        g_sWearerID = llGetOwner();
-        llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+Init() {
+    g_iDebugCounter = 0;
+    g_sCollarVersion = "not set";
+    g_sWearerID = llGetOwner();
+}
+
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
+default
+{
+    on_rez(integer iNum){
+        llResetScript();
+    }
+    
+    state_entry(){
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
+    
+    link_message(integer iSender, integer iNum, string sStr, key kID) {
+        if(iNum == REBOOT) {
+            if(sStr == "reboot") {
+                llResetScript();
+            }
+        } else if(iNum == READY) {
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP) {
+            state active;
+        }
+    }
+}
+
+state active
+{
+    state_entry()
+    {
+        g_kWearer = llGetOwner();
+        Init();
+    }
+    on_rez(integer i) {
+        if(llGetOwner()!=g_kWearer) llResetScript();
+        Init();
+        MenuResponse();
     }
 
     link_message(integer iSender, integer iNum, string sStr, key kID) {

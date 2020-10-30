@@ -193,6 +193,49 @@ string DebugParse(list ITEMS) {
 	return llGetScriptName()+" "+KB_VERSION+KB_DEVSTAGE+" " +final;
 }
 
+	integer ALIVE = -55;
+	integer READY = -56;
+	integer STARTUP = -57;
+	default
+	{
+		on_rez(integer iNum){
+			llResetScript();
+		}
+		state_entry(){
+			llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+		}
+		link_message(integer iSender, integer iNum, string sStr, key kID){
+			if(iNum == REBOOT){
+				if(sStr == "reboot"){
+					llResetScript();
+				}
+			} else if(iNum == READY){
+				llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+			} else if(iNum == STARTUP){
+				state active;
+			}
+		}
+	}
+	state active
+	{
+		state_entry()
+		{
+			g_kWearer = llGetOwner();
+			llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "global_locked","");
+		}
+		on_rez(integer i) {
+			if(llGetOwner()!=g_kWearer) llResetScript();
+			if (Source) {
+				llOwnerSay("@detach=n"); // no escaping before we are sure the former source really is not active anymore
+				g_iResit_status = 0;
+				llSetTimerEvent(30);
+				llRegionSayTo(Source, RLV_RELAY_CHANNEL, "ping,"+(string)Source+",ping,ping");
+				
+			}else llResetScript();
+		}
+
+
+
 /*
 ---------------KBar Modification ----------------------------------------
 | 
