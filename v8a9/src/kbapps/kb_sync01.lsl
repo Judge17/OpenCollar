@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a909";
+string  KB_DEVSTAGE          = "1a101";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -64,10 +64,14 @@ integer LINK_CMD_DEBUG = 1999;
 integer REBOOT              = -1000;
 integer LINK_UPDATE = -10;
 
+integer NOTIFY = 1002;
+
 integer KB_COLLAR_VERSION		   = -34847;
 integer KB_READY_SAYINGS		   = -34848;
 integer KB_SEND_SAYINGS			   = -34849;
 integer KB_SET_SAYING			   = -34850;
+integer KB_REQUEST_VERSION         = -34591;
+
 
 integer g_iListenHandle = 0;
 
@@ -83,11 +87,14 @@ DeleteListen() {
 
 
 InitVariables() {
+    g_kWearer == llGetOwner();
     g_iDebugCounter = 0;
     g_iPingCounter = 0;
     g_lSayings = [];
-    g_iLineNr = 0;
+    g_lHostSayings = [];
     g_bGotSayings = FALSE;
+    g_fStartDelay = 15.0;
+    g_iLineNr - 0;
     g_sCollarVersion = "not set";
 }
 
@@ -124,21 +131,34 @@ MergeInputSayings() {
     }
 }
 
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
+
 default {
-    on_rez(integer iParam){
-        if (g_bDebugOn) DebugOutput(5, ["default", "on_rez", iParam]);
-        if(llGetOwner()!=g_kWearer) llResetScript();
-        state init_params;
+    on_rez(integer iNum){
+        llResetScript();
     }
-    
+
     state_entry()
     {
         if (g_bDebugOn) DebugOutput(5, ["default", "state_entry", llGetFreeMemory(), "bytes free"]);
-        if(llGetStartParameter()!=0)state inUpdate;
-        g_kWearer = llGetOwner();
-        state init_params;
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
     }
-    
+        
+    link_message(integer iSender, integer iNum, string sStr, key kID) {
+        if(iNum == REBOOT) {
+            if(sStr == "reboot") {
+                llResetScript();
+            }
+        } else if(iNum == READY) llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        else if(iNum == STARTUP) state init_params;
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+                llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
+
+    }
+
     state_exit()
     {
         if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
@@ -156,22 +176,17 @@ state init_params {
     
     state_entry() {
         if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", llGetFreeMemory(), "bytes free"]);
+        InitVariables();
         InitListen();
         if (g_bDebugOn) DebugOutput(5, ["init_params", "state_entry", "link_message pinging", KB_HAIL_CHANNEL01]);
-//        llSleep(2.0);
-        g_lSayings = [];
-        g_lHostSayings = [];
-        g_bGotSayings = FALSE;
         llRegionSay(KB_HAIL_CHANNEL01, "ping801");        
-        g_iPingCounter = 0;
-        g_fStartDelay = 15.0;
         llSetTimerEvent(g_fStartDelay);
     }
     
     link_message(integer iSender,integer iNum,string sStr,key kID) {
-        if (iNum == KB_COLLAR_VERSION) {
-            g_sCollarVersion = sStr;
-        }
+        if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
     }
     
     timer() {
@@ -229,7 +244,6 @@ state sync_sayings {
     on_rez(integer iParam) {
         if (g_bDebugOn) DebugOutput(5, ["sync_sayings", "on_rez", iParam]);
         state default;
-        state default;
     }
     
     state_entry() {
@@ -248,9 +262,10 @@ state sync_sayings {
     }
 
     link_message(integer iSender,integer iNum,string sStr,key kID) {
-        if (iNum == KB_COLLAR_VERSION) {
-            g_sCollarVersion = sStr;
-        } else if (iNum == KB_SEND_SAYINGS) {
+        if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
+        else if (iNum == KB_SEND_SAYINGS) {
             integer iSayingsIdx = 0;
             integer iSayingsLen = llGetListLength(g_lSayings);
             integer iMsgCount = 0;

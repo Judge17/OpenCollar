@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a922";
+string  KB_DEVSTAGE          = "1a101";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -135,6 +135,7 @@ integer CLEAR_SAYING1			   = -75337;
 integer SAYING1_CLEARED			   = -75337;
 */
 integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
 /*
 //added for attachment auth (garvin)
 integer AUTH_REQUEST = 600;
@@ -220,6 +221,7 @@ DeleteListen() {
 
 
 InitVariables() {
+    g_kWearer == llGetOwner();
     g_iDebugCounter = 0;
     g_iPingCounter = 0;
     g_lCollarSettings = [];
@@ -343,19 +345,31 @@ MergeMandatorySettings(string sSource) {
     if (g_bDebugOn) { list lTmp = ["MergeMandatorySettings-6"] + [g_bMergeInProgress]; DebugOutput(0, lTmp); }
 }
 */
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
+
 default {
-    on_rez(integer iParam){
-        // if (g_bDebugOn) DebugOutput(5, ["default", "on_rez", iParam]);
-        if(llGetOwner()!=g_kWearer) llResetScript();
-        state init_version;
+    on_rez(integer iNum){
+        llResetScript();
     }
-    state_entry()
-    {
-        // if (g_bDebugOn) DebugOutput(5, ["default", "state_entry", llGetFreeMemory(), "bytes free"]);
-        if(llGetStartParameter()!=0)state inUpdate;
-        g_kWearer = llGetOwner();
-        state init_version;
+
+    state_entry(){
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
     }
+    
+    link_message(integer iSender, integer iNum, string sStr, key kID) {
+        if(iNum == REBOOT) {
+            if(sStr == "reboot") {
+                llResetScript();
+            }
+        } else if(iNum == READY) {
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP) {
+            state init_version;
+        }
+    }
+
     state_exit()
     {
         // if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
@@ -368,7 +382,6 @@ state init_version {
 //
     on_rez(integer iParam){
         // if (g_bDebugOn) DebugOutput(5, ["init_version", "on_rez", iParam]);
-        if(llGetOwner()!=g_kWearer) llResetScript();
         state default;
     }
     
@@ -531,12 +544,14 @@ state gather_settings {
         g_lCollarSettings = [];
         g_bGatherStarted = FALSE;
         g_fStartDelay = 60.0;
+        llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", g_kWearer);
         llSetTimerEvent(g_fStartDelay);
     }
     
     link_message(integer iSender,integer iNum,string sStr,key kID){
         if (iNum == LM_SETTING_RESPONSE) {
             // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_response", iSender, iNum, sStr, kID]);
+            g_bGatherStarted = TRUE;
             if (sStr == "settings=sent" && g_bGatherStarted) {
                 // if (g_bDebugOn) { list lTmp = ["gather_settings", "link_message", "gathered settings"] + g_lCollarSettings; DebugOutput(5, lTmp); }
                 llSetTimerEvent(0.0);
@@ -550,7 +565,8 @@ state gather_settings {
             // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_empty", iSender, iNum, sStr, kID]);
             string sTok = sStr;
             g_lCollarSettings = SetSetting(sTok, "null");            
-        }
+        } else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
     }
     
     timer() {
@@ -560,7 +576,7 @@ state gather_settings {
             state sync_settings;
         }
         llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", g_kWearer);
-        g_bGatherStarted = TRUE;
+//        g_bGatherStarted = TRUE;
     }
 
     state_exit()
@@ -675,7 +691,8 @@ state monitor_settings {
                     llSetTimerEvent(4.0);
                 }
             }
-        }
+        } else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
     }
 
 

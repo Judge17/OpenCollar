@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a101";
+string  KB_DEVSTAGE          = "a102";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -105,6 +105,7 @@ integer KB_LOG_REPORT_STATUS       = -34721;
 integer KB_COLLAR_VERSION           = -34847;
 integer LINK_KB_VERS_REQ = -75301;
 integer LINK_KB_VERS_RESP = -75302;
+integer KB_REQUEST_VERSION         = -34591;
 string UPMENU = "BACK";
 //integer g_iCaptureIsActive=FALSE; // If this flag is set, then auth will deny access to it's menus
 //integer g_iOpenAccess; // 0: disabled, 1: openaccess
@@ -234,7 +235,7 @@ StatMenu(key kAv, integer iAuth) {
 
     list lButtons = []; // ["KickStart"];
 //    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", "Kickstart", Checkbox(g_iSWActive, "Safeword")];
-    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["KBarTitle", "SlaveName", "SlaveMessage", Checkbox(g_iSWActive, "Safeword")];
+    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["KBarTitle", "SlaveName", "SlaveMessage", "KBVersions", Checkbox(g_iSWActive, "Safeword")];
 
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat");
 }
@@ -266,6 +267,10 @@ HandleMenus(string sStr, key kID) {
                 else if (llToLower(sMessage) == "slavename") Dialog(kAv, "What is the slave's name?", [], [], 0, iAuth, "Textbox~Name");
                 else if (llToLower(sMessage) == "slavemessage") Dialog(kAv, "What message at login?", [], [], 0, iAuth, "Textbox~Msg");
                 else if (llToLower(sMessage) == "kbartitle") Dialog(kAv, "What is the KBar Title?", [], [], 0, iAuth, "Textbox~KBTitle");
+                else if (llToLower(sMessage) == "kbversions") {
+                    llMessageLinked(LINK_SET, KB_REQUEST_VERSION, "", kAv);
+                    StatMenu(kAv, iAuth);
+                }
             }
         } else if (sMenu == "Debug") {
             SetDebugLevel(sMessage);
@@ -405,6 +410,8 @@ state active
         }
         else if (iNum == REBOOT && sStr == "reboot") llResetScript();
         else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+"Collar version " + g_sCollarVersion + "\n" + llGetScriptName() + " version " + formatVersion(),kID);
         else if (iNum == LINK_CMD_DEBUG) {
             integer onlyver=0;
             if(sStr == "ver")onlyver=1;
