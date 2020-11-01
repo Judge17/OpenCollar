@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a101";
+string  KB_DEVSTAGE          = "1a102";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -691,7 +691,8 @@ state monitor_settings {
                     llSetTimerEvent(4.0);
                 }
             }
-        } else if (iNum == KB_REQUEST_VERSION)
+        } else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
             llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
     }
 
@@ -719,16 +720,5 @@ state monitor_settings {
 
 
 }
-
-state inUpdate {
-    link_message(integer iSender, integer iNum, string sStr, key kID) {
-        if(iNum == REBOOT)llResetScript();
-    }
-    
-    on_rez(integer iNum) {
-        llResetScript();
-    }
-}
-
 
 // kb_sync00

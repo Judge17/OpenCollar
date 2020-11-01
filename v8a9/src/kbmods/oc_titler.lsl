@@ -19,17 +19,21 @@ https://github.com/OpenCollarTeam/OpenCollar
 
 string g_sParentMenu = "Apps";
 string g_sSubMenu = "Titler";
-string g_sVersion = "7.5"; // leave unmodified if not changed at all after release, otherwise change to next version number
+string g_sVersion = "8.0"; // leave unmodified if not changed at all after release, otherwise change to next version number
 //
 //    Start of KBar Mod
 //
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a901";
+string  KB_DEVSTAGE          = "a101";
 
 string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
 }
+string g_sCollarVersion = "not set";
+
+integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
 //
 //    End of KBar Mod
 //
@@ -47,7 +51,7 @@ integer LINK_CMD_DEBUG=1999;
 //    KBar Mod
 //
 //integer g_iNoB64=FALSE; // Use base64 by default
-integer g_iNoB64=TRUE; // Use base64 by default
+integer g_iNoB64=TRUE; // Don't use base64 by default
 //
 //    End of KBar Mod
 //
@@ -62,6 +66,10 @@ integer CMD_WEARER = 503;
 //integer CMD_RLV_RELAY = 507;
 //integer CMD_SAFEWORD = 510;
 //integer CMD_RELAY_SAFEWORD = 511;
+
+integer TIMEOUT_READY = 30497;
+integer TIMEOUT_REGISTER = 30498;
+integer TIMEOUT_FIRED = 30499;
 
 integer NOTIFY = 1002;
 integer REBOOT = -1000;
@@ -97,7 +105,6 @@ list g_lCheckboxes=["⬜","⬛"];
 string Checkbox(integer iValue, string sLabel) {
     return llList2String(g_lCheckboxes, bool(iValue))+" "+sLabel;
 }
-
 Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth, string sName) {
     key kMenuID = llGenerateKey();
     llMessageLinked(LINK_SET, DIALOG, (string)kID + "|" + sPrompt + "|" + (string)iPage + "|" + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kMenuID);
@@ -106,9 +113,9 @@ Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPa
     if (~iIndex) g_lMenuIDs = llListReplaceList(g_lMenuIDs, [kID, kMenuID, sName], iIndex, iIndex + g_iMenuStride - 1);
     else g_lMenuIDs += [kID, kMenuID, sName];
 }
-
+//
 // KBar Mod
-
+//
 string BuildTitle(string sFront, string sBack) {
     if (sFront == "") return sBack;
     else return sFront + "\n" + sBack;
@@ -117,9 +124,9 @@ string BuildTitle(string sFront, string sBack) {
 string  g_sText = "";
 string  g_sSlaveName = "";
 string  g_sKbarTitle = "";
-
+//
 // KBar Mod end
-
+//
 Menu(key kID, integer iAuth) {
 // KBar Mod
 //    string sPrompt = "\n[Titler]";
@@ -267,18 +274,42 @@ NukeOtherText(){
         llSetLinkPrimitiveParamsFast(i,[PRIM_TEXT, "", ZERO_VECTOR,0]);
     }
 }
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
 default
 {
+    on_rez(integer iNum){
+        llResetScript();
+    }
+    state_entry(){
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
+    link_message(integer iSender, integer iNum, string sStr, key kID){
+        if(iNum == REBOOT){
+            if(sStr == "reboot"){
+                llResetScript();
+            }
+        } else if(iNum == READY){
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP){
+            state active;
+        }
+    }
+}
+state active
+{
     on_rez(integer t){
-        if(llGetOwner()!=g_kWearer) llResetScript();
+        llResetScript();
     }
     state_entry()
     {
-        if(llGetStartParameter()!=0)state inUpdate;
-        llSetMemoryLimit(35000);
+        if(llGetStartParameter()!=0)llResetScript();
+        llSetMemoryLimit(40000);
         g_kWearer = llGetOwner();
         
         NukeOtherText();
+        //llOwnerSay((string)llGetUsedMemory());
     }
     timer(){
         // calculate offset
@@ -424,7 +455,6 @@ default
                     g_lCheckboxes = llCSV2List(llList2String(lSettings,2));
                 }
             } else if(llList2String(lSettings,0) == "titler"){
-                llOwnerSay("oc_titler link_message LM_SETTINGS_RESPONSE " + sStr);
                 integer curPrim=g_iTextPrim;
                 ScanFloatText();
                 
@@ -457,16 +487,26 @@ default
 
                 } else if(llList2String(lSettings,1)=="color"){
                     g_vColor=(vector)llList2String(lSettings,2);
+//
 // KBar Mod
+//
                 } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
                     g_sSlaveName = llList2String(lSettings,2); 
                 } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
                     g_sKbarTitle = llList2String(lSettings,2); 
+//
 // KBar Mod end
+//
                 } else if(llList2String(lSettings,1) == "on"){
                     // this was definitely a upgrade. Re-request!
                     g_iWasUpgraded=TRUE;
+//
+// KBar Mod
+//
 //                    llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
+//
+// KBar Mod end
+//
                     
                     llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_auth", "");
                     llMessageLinked(LINK_SET, LM_SETTING_DELETE, "titler_on", "");
@@ -476,27 +516,40 @@ default
                     llMessageLinked(LINK_SET, LM_SETTING_SAVE, "titler_show="+(string)g_iShow, "");
                 } else if(llList2String(lSettings,1) == "plain"){
                     g_iNoB64 = TRUE;
+//
 // KBar Mod
+//
 //                llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
+//
 // KBar Mod end
+//
                 }
                 Titler();
             }
+        
+        }else if(iNum == LM_SETTING_EMPTY){
+            
+            //integer ind = llListFindList(g_lSettingsReqs, [sStr]);
+            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+            
         } else if(iNum == LM_SETTING_DELETE){
             // This is recieved back from settings when a setting is deleted
             list lSettings = llParseString2List(sStr, ["_"],[]);
             if(llList2String(lSettings,0)=="global") {
                 if(llList2String(lSettings,1) == "locked") { 
                     g_iLocked=FALSE;
+//
 // KBar Mod
+//
                 } else if(llToLower(llList2String(lSettings,1)) == "slavename") {
                     g_sSlaveName = ""; 
                 } else if(llToLower(llList2String(lSettings,1)) == "kbartitle") { 
                     g_sKbarTitle = ""; 
                 }
             }
+//
 // KBar Mod end
-
+//
         } else if(iNum == LINK_CMD_DEBUG){
             // send data
             if(sStr == "ver"){
@@ -511,16 +564,15 @@ default
             DebugOutput(kID, ["OFFSET:",g_iOffset]);
             DebugOutput(kID, ["FLOATTEXT:",g_iTextPrim]);
         } else if(iNum == REBOOT && sStr == "reboot")  llResetScript();
+//
+// KBar Mod
+//
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
+//
+// KBar Mod end
+//
         //llOwnerSay(llDumpList2String([iSender,iNum,sStr,kID],"^"));
-    }
-}
-
-state inUpdate
-{
-    link_message(integer iSender, integer iNum, string sStr, key kID){
-        if(iNum == REBOOT)llResetScript();
-    }
-    on_rez(integer iNum){
-        llResetScript();
     }
 }

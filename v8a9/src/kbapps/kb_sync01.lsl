@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a101";
+string  KB_DEVSTAGE          = "1a102";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -290,16 +290,5 @@ state sync_sayings {
         if (g_bDebugOn) DebugOutput(5, ["sync_sayings", "state_exit", llGetFreeMemory(), "bytes free", "Sayings"] + g_lSayings);
     }
 }
-
-state inUpdate {
-    link_message(integer iSender, integer iNum, string sStr, key kID) {
-        if(iNum == REBOOT)llResetScript();
-    }
-    
-    on_rez(integer iNum) {
-        llResetScript();
-    }
-}
-
 
 // kb_sync01

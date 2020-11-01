@@ -25,7 +25,7 @@ DebugOutput(key kID, list ITEMS){
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a901";
+string  KB_DEVSTAGE          = "a101";
 
 string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
@@ -33,6 +33,7 @@ string formatVersion() {
 string g_sCollarVersion = "not set";
 
 integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
 //
 // KBar Mod End
 //
@@ -107,7 +108,7 @@ integer TIMEOUT_READY = 30497;
 integer TIMEOUT_REGISTER = 30498;
 integer TIMEOUT_FIRED = 30499;
 
-list g_lSettingsReqs = [];
+
 
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
@@ -418,9 +419,33 @@ PrintDestinations(key kID) {  // On inventory change, re-read our ~destinations 
     llMessageLinked(LINK_SET,NOTIFY,"0"+sMsg,kID);
 }
 
-default {
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
+default
+{
+    on_rez(integer iNum){
+        llResetScript();
+    }
+    state_entry(){
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
+    link_message(integer iSender, integer iNum, string sStr, key kID){
+        if(iNum == REBOOT){
+            if(sStr == "reboot"){
+                llResetScript();
+            }
+        } else if(iNum == READY){
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP){
+            state active;
+        }
+    }
+}
+state active 
+{
     on_rez(integer iStart) {
-        ReadDestinations();
+        llResetScript();
     }
 
     state_entry() {
@@ -506,8 +531,8 @@ default {
             list lParams = llParseString2List(sStr, ["="], []);
             string sToken = llList2String(lParams, 0);
             
-            integer ind = llListFindList(g_lSettingsReqs, [sToken]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+            //integer ind = llListFindList(g_lSettingsReqs, [sToken]);
+            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
             string sValue = llList2String(lParams, 1);
             integer i = llSubStringIndex(sToken, "_");
@@ -520,13 +545,13 @@ default {
             }
         } else if(iNum == LM_SETTING_EMPTY){
             
-            integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+            //integer ind = llListFindList(g_lSettingsReqs, [sStr]);
+            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
         } else if(iNum == LM_SETTING_DELETE){
             
-            integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
+            //integer ind = llListFindList(g_lSettingsReqs, [sStr]);
+            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
         } else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER && iNum != CMD_GROUP) UserCommand(iNum, sStr, kID); // This is intentionally not available to public access.
         else if(iNum == DIALOG_RESPONSE) {
@@ -588,6 +613,8 @@ default {
 // KBar Mod
 //
         else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+                llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
 //
 // KBar Mod End
 //

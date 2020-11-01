@@ -31,6 +31,7 @@ integer g_iChannel=1;
 string g_sPrefix;
 
 integer g_iNotifyInfo=FALSE;
+
 string MajorMinor(){
     list lTmp = llParseString2List(COLLAR_VERSION,["."],[]);
     return llList2String(lTmp,0)+"."+llList2String(lTmp,1);
@@ -41,7 +42,17 @@ string g_sSafeword="RED";
 //
 //    KBar Mod
 //
+string  KB_VERSIONMAJOR      = "8";
+string  KB_VERSIONMINOR      = "0";
+string  KB_DEVSTAGE          = "a101";
 integer g_bSafeword = TRUE;
+string  g_sCollarVersion = "not set";
+
+string formatVersion() {
+    return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
+integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
 //
 //    KBar Mod End
 //
@@ -81,7 +92,7 @@ integer RLV_ON = 6101; // send to inform plugins that RLV is enabled now, no mes
 integer TIMEOUT_READY = 30497;
 integer TIMEOUT_REGISTER = 30498;
 integer TIMEOUT_FIRED = 30499;
-list g_lSettingsReqs = [];
+
 
 
 integer DIALOG = -9000;
@@ -666,7 +677,7 @@ state active
                     g_sSafeword = sVal;
 //
 //    KBar Mod                        
-//        Due lines below commented out                        
+//        Two lines below commented out because the KBar keeps a separate indicator as to safeword availability, g_bSafeword                   
 //
 //                    if(g_sSafeword == "0"){
 //                        llMessageLinked(LINK_SET, CMD_OWNER, "safeword-disabled","");
@@ -746,7 +757,7 @@ state active
                     g_sSafeword = "RED";
 //
 //    KBar Mod
-//        Line below commented out
+//        Line below commented out, see KBar Mod comment above
 //
 //                    llMessageLinked(LINK_SET, CMD_OWNER, "safeword-enable","");
                 } else if(sVar == "prefix"){
@@ -800,7 +811,17 @@ state active
             }
         }else if(iNum == -99999){
             if(sStr == "update_active")llResetScript();
-        }
+        } 
+//
+// KBar Mod
+//
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
+//
+// KBar Mod End
+//
+
         //llOwnerSay(llDumpList2String([iSender,iNum,sStr,kID],"^"));
     }
     http_response(key kRequest, integer iStatus, list lMeta, string sBody){

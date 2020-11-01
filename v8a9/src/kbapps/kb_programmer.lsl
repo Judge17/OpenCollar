@@ -1,9 +1,9 @@
 
-//K-Bar Version 20191224 1415 1800 kb_programmer
+//K-Bar programmer
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a905";
+string  KB_DEVSTAGE          = "1a104";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -59,6 +59,8 @@ integer LINK_KB_VERS_RESP 	= -75302;
 integer KB_READY_SAYINGS	= -34848;
 integer KB_SEND_SAYINGS		= -34849;
 integer KB_SET_SAYING		= -34850;
+integer KB_COLLAR_VERSION	= -34847;
+integer KB_REQUEST_VERSION  = -34591;
 
 string g_sWearer;
 key    g_kIndexLookup;
@@ -100,12 +102,7 @@ string SHORT_PROGTIMER = "autooff";
 //list g_lOptions = [ PROGRUN_SETTING, PROGLOOP_SETTING ];
 //list g_lSettings = [ PROGRUN_SETTING, "n", PROGLOOP_SETTING, "n" ];
 
-//integer LINK_AUTH           = LINK_SET; // = 2;
-//integer LINK_SET         = LINK_SET; // = 3;
-//integer LINK_RLV            = LINK_SET; // = 4;
-//integer LINK_SET           = LINK_SET; // = 5;
-//integer LINK_ANIM           = LINK_SET; // = 6;
-//integer LINK_UPDATE         = -10;
+integer REBOOT              = -1000;
 
 integer CMD_OWNER           = 500;
 integer CMD_WEARER          = 503;
@@ -283,6 +280,7 @@ setTimer() {
 		llSetTimerEvent(0.0);
 		g_iMsgDelay = randIntBetween(1, 600) + 1;
 		llSetTimerEvent((float) g_iMsgDelay);
+		if (g_bDebugOn) {DebugOutput(0, ["Timer delay", g_iMsgDelay]); }
 }
 
 unsetTimer() {
@@ -319,7 +317,7 @@ UserCommand(integer iNum, string sStr, key kID)
 		string sValue = llToLower(llList2String(lParams, 1));
 		string sMenuName = llToLower(g_sSubMenu);
 		integer iChange = FALSE;
-		if (g_bDebugOn) DebugOutput(3, ["UserCommand", iNum, sStr, kID, sCommand, sButton, sValue, sMenuName]);    
+		if (g_bDebugOn) DebugOutput(3, ["UserCommand", iNum, sStr, kID, sCommand, sButton, sValue, Checkbox(TRUE, "Active"), sMenuName]);    
 		if (sCommand == "programsmenu" 
 		|| (sCommand == "menu" && sValue =="programs")
 		|| (sCommand == "menu" && sValue =="Programs")) {
@@ -334,10 +332,10 @@ UserCommand(integer iNum, string sStr, key kID)
 				llMessageLinked(LINK_SET, iNum, "menu " + g_sParentMenu, kID);
 			} else llResetScript();
 		}
-		else if (sStr == Checkbox(TRUE, "Active")) { 
+		else if (sStr == Checkbox(FALSE, "Active")) { // I get it, seems backards, but there you are; it does work
 			if (iNum == CMD_OWNER) {
 				g_iProgramming = TRUE; 
-				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGRUN_SETTING + "=y", "");
+				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + "_" + PROGRUN_SETTING + "=y", "");
 				setTimer();
 				llMessageLinked(LINK_SET,NOTIFY,"0"+"Programming active",kID);
 			} else {
@@ -345,10 +343,10 @@ UserCommand(integer iNum, string sStr, key kID)
 			}
 			DoMenu(kID, iNum);
 		}
-		else if (sStr == Checkbox(FALSE, "Active")) { 
+		else if (sStr == Checkbox(TRUE, "Active")) { // I get it, seems backards, but there you are; it does work
 			if (iNum == CMD_OWNER) {
 				g_iProgramming = FALSE; 
-				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGRUN_SETTING + "=n", "");
+				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + "_" + PROGRUN_SETTING + "=n", "");
 				unsetTimer();
 				llMessageLinked(LINK_SET,NOTIFY,"0"+"Programming inactive",kID);
 			} else {
@@ -356,22 +354,22 @@ UserCommand(integer iNum, string sStr, key kID)
 			}
 			DoMenu(kID, iNum);
 		} 
-		else if ((sButton == PROGRAM_CONSTANT) || (sStr == Checkbox(TRUE, "Endless"))) {
+		else if ((sButton == PROGRAM_CONSTANT) || (sStr == Checkbox(FALSE, "Endless"))) { // I get it, seems backards, but there you are; it does work
 			if (iNum == CMD_OWNER) {
 				g_iAutoLoop = TRUE; 
 				g_iAutoCount = 0;
-				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGLOOP_SETTING + "=y", "");
+				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + "_" + PROGLOOP_SETTING + "=y", "");
 				llMessageLinked(LINK_SET,NOTIFY,"0"+"No time limit",kID);
 			} else {
 				llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change timer",kID);
 			}
 			DoMenu(kID, iNum);
 		} 
-		else if ((sButton == PROGRAM_TIMER) || (sStr == Checkbox(FALSE, "Endless"))) {
+		else if ((sButton == PROGRAM_TIMER) || (sStr == Checkbox(TRUE, "Endless"))) { // I get it, seems backards, but there you are; it does work
 			if (iNum == CMD_OWNER) {
 				g_iAutoLoop = FALSE; 
 				g_iAutoCount = 0;
-				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + PROGLOOP_SETTING + "=n", "");
+				llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sProgToken + "_" + PROGLOOP_SETTING + "=n", "");
 				llMessageLinked(LINK_SET,NOTIFY,"0"+"Auto off enabled",kID);
 			} else {
 				llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS%"+" to change timer",kID);
@@ -548,9 +546,39 @@ InternalLoad(string sMessage) {
 //  llMessageLinked(LINK_SET, MENUNAME_REMOVE , g_sParentMenu + "|" + g_sSubMenu, "");
 //  g_iKBarOptions = 0;
 //}
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
 
-default
-{
+default {
+	on_rez(integer iNum){
+		llResetScript();
+	}
+
+	state_entry(){
+		llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+	}
+	
+	link_message(integer iSender, integer iNum, string sStr, key kID) {
+		if(iNum == REBOOT) {
+			if(sStr == "reboot") {
+				llResetScript();
+			}
+		} else if(iNum == READY) {
+			llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+		} else if(iNum == STARTUP) {
+			state active;
+		}
+	}
+
+	state_exit()
+	{
+		// if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
+	}
+}
+
+state active {
+
 	state_entry() {
 		g_kWearer = llGetOwner();
 		g_sWearer = llKey2Name(g_kWearer);
@@ -560,17 +588,10 @@ default
 	}
 
 	on_rez(integer iParam) {
-		if (llGetOwner()!=g_kWearer) {
-		// Reset if wearer changed
-			llResetScript();
-		}
-		if (g_iProgramming) {
-			setTimer();
-		}
+		llResetScript();
 	}
 
-	link_message(integer iSender, integer iNum, string sStr, key kID)
-	{
+	link_message(integer iSender, integer iNum, string sStr, key kID) {
 		if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
 			llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
 		else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER)
@@ -585,20 +606,19 @@ default
 			if (iMenuIndex != -1) {
 				g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
 			}
-		} else if (iNum == LM_SETTING_RESPONSE) {
-			HandleSettings(sStr);
-		} else if (iNum == LM_SETTING_DELETE) {
-			HandleDeletes(sStr);
-		} else if (iNum == KB_READY_SAYINGS) {
+		} else if (iNum == LM_SETTING_RESPONSE) HandleSettings(sStr);
+		else if (iNum == LM_SETTING_DELETE) HandleDeletes(sStr);
+		else if (iNum == KB_READY_SAYINGS) {
 			g_lSayings = [];
 			llMessageLinked(LINK_SET, KB_SEND_SAYINGS, "", "");
-		} else if (iNum == KB_SET_SAYING) {
-			AddLine(sStr);
-		}
+		} else if (iNum == KB_SET_SAYING) AddLine(sStr);
+		else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+		else if (iNum == KB_REQUEST_VERSION)
+			llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
 	}
 		
-	timer()
-	{
+	timer() {
+		if (g_bDebugOn) {DebugOutput(0, ["Timer fired"]); }
 		unsetTimer();
 		integer iIdx = g_iCount;
 		while (iIdx > g_iCount-1) { iIdx = selectOne(0, g_iCount - 1); }
@@ -618,8 +638,7 @@ default
 		}
 	}
 		
-	dataserver(key kQueryId, string sData) 
-	{
+	dataserver(key kQueryId, string sData) {
 		if (kQueryId == g_kQuery) 
 		{
 			if ((sData != EOF) && (sData != "")) {
@@ -631,8 +650,7 @@ default
 		}
 	}
 
-	changed(integer iChg) 
-	{
+	changed(integer iChg) {
 		if (iChg & CHANGED_INVENTORY ) 
 		{
 			llResetScript();
