@@ -8,15 +8,30 @@ integer ALARM_ID = 2;
 integer ALARM_TYPE = 1;
 integer ALARM_TIME = 0;
 
-string  KB_VERSIONMAJOR      = "7";
-string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "15";
+string  KB_VERSIONMAJOR      = "8";
+string  KB_VERSIONMINOR      = "0";
+string  KB_DEVSTAGE          = "1a102";
+string  g_sCollarVersion = "not set";
 
 integer NOTIFY              = 1002;
 
 //integer LINK_CMD_DEBUG=1999;
+
+integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved
+//str must be in form of "token=value"
+integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
+integer LM_SETTING_RESPONSE = 2002;//the settings script sends responses on this channel
+integer LM_SETTING_DELETE = 2003;//delete token from settings
+integer LM_SETTING_EMPTY = 2004;//sent when a token has no value
+
 integer KB_DEBUG_CLOCK_ON		   = -36001;
 integer KB_DEBUG_CLOCK_OFF		   = -36002;
+integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
+integer REBOOT                     = -1000;
+
+string g_sMajor = "kbclock";
+string g_sMinor = "alarm";
 
 string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
@@ -210,6 +225,10 @@ setAlarm(string sStr) {
     string sAlarmID = xJSONstring(sStr, "alarm_id");
     string sAlarmType = xJSONstring(sStr, "alarm_type");
     integer iAlarmTime = xJSONint(sStr, "alarm_time");
+    setAlarmNoJSon(sAlarmID, sAlarmType, iAlarmTime);
+}
+
+setAlarmNoJSon(string sAlarmID, string sAlarmType, integer iAlarmTime) {
     integer iInterruptIndex = llListFindList(g_lInterrupts, [sAlarmID])  - ALARM_ID; // adjust to start of entry
     if (g_bDebugOn) { DebugOutput(["setAlarm", sAlarmID, sAlarmType, formatDate(Unix2DateTime(iAlarmTime)), iInterruptIndex, llGetListLength(g_lInterrupts)]); }
     if (iInterruptIndex >= 0) {
@@ -217,6 +236,9 @@ setAlarm(string sStr) {
     } else {
         g_lInterrupts += [iAlarmTime, sAlarmType, sAlarmID];
     }
+    
+//    llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_ALARM, "alarm_type", "**", "alarm_time", iAlarm])
+
 //
 //    Or: list llListSort( list src, integer stride, integer ascending );
 //        llListSort([1, "C", 3, "A", 2, "B"], 2, TRUE) // returns [1, "C", 2, "B", 3, "A"]
@@ -227,6 +249,26 @@ setAlarm(string sStr) {
     checkAlarms();
 }
 
+saveAlarms() {
+    string sToken = g_sMajor + "_" + g_sMinor;
+    integer iLen = llGetListLength(g_lInterrupts);
+    if (iLen == 0) {
+        llMessageLinked(LINK_SET, LM_SETTING_DELETE, sToken, "");
+        return;        
+    }
+    integer iIdx = 0;
+    string sAlarms = "";
+    while (iIdx < iLen) {
+        if (sAlarms != "") sAlarms += ",";
+        string sAlarm_Id = llList2String(g_lInterrupts, (iIdx * INTERRUPTSTRIDE) + ALARM_ID);
+        string sAlarm_Type = llList2String(g_lInterrupts, (iIdx * INTERRUPTSTRIDE) + ALARM_TYPE);
+        integer iAlarm = llList2Integer(g_lInterrupts, (iIdx * INTERRUPTSTRIDE) + ALARM_TIME);
+        string sAlarmJson = llList2Json(JSON_OBJECT, ["alarm_id", sAlarm_Id, "alarm_type", sAlarm_Type, "alarm_time", iAlarm]);
+        sAlarms += sAlarmJson;
+        iIdx += INTERRUPTSTRIDE;
+    }
+    llMessageLinked(LINK_SET, LM_SETTING_SAVE, sToken + "=" + sAlarms, "");
+}
 setTimer(integer iNow) {
     llSetTimerEvent(0.0);  // disable timers to start
     if (g_bDebugOn) { DebugOutput(["setTimer-1", llGetListLength(g_lInterrupts)]); }
@@ -286,24 +328,59 @@ integer checkAlarm(integer iTime) {
 //    }
 //    setTimer();
 }
+
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
+
+// TODO: Persistent storage of alarms
+
+default {
+    on_rez(integer iNum){
+        llResetScript();
+    }
+
+    state_entry(){
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
     
-default  {
+    link_message(integer iSender, integer iNum, string sStr, key kID) {
+        if(iNum == REBOOT) {
+            if(sStr == "reboot") {
+                llResetScript();
+            }
+        } else if(iNum == READY) {
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP) {
+            state active;
+        }
+    }
+
+    state_exit()
+    {
+        // if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
+    }
+}
+   
+state active  {
     changed(integer iChange) {
-        if(iChange & CHANGED_OWNER) { llResetScript(); }
+        if(iChange & CHANGED_OWNER) { 
+            llMessageLinked(LINK_SET, LM_SETTING_DELETE, g_sMajor + "_" + g_sMinor, "");
+        }
     }
 
     state_entry() {
+        if (g_bDebugOn) { DebugOutput(["state_entry", formatVersion(), llGetListLength(g_lInterrupts)]); }
         g_kWearer = llGetOwner();
         llOwnerSay("kb_clock " + formatVersion() + " starting");
+        llMessageLinked(LINK_SET, LM_SETTING_REQUEST, g_sMajor + "_" + g_sMinor, "");
+        llSetTimerEvent(60.0); // on startup, wait for this setting request, then check alarms, in case startup timing caused us to miss it first time around
         checkAlarms();
     }
 
     on_rez(integer iParam) {
         if (g_bDebugOn) { DebugOutput(["on_rez ", formatVersion(), "wearer ",  g_kWearer]); }
-        if(llGetOwner() != g_kWearer) {
-            llResetScript();
-        }
-        checkAlarms();
+        llResetScript();
     }
 
     link_message(integer iSender, integer iNum, string sStr, key kID) {
@@ -313,6 +390,29 @@ default  {
         } 
         else if (iNum == KB_DEBUG_CLOCK_ON) SetDebugOn();
         else if (iNum == KB_DEBUG_CLOCK_OFF) SetDebugOff();
+        else if (iNum == LM_SETTING_RESPONSE) {
+            // if (g_bDebugOn) DebugOutput(5, ["link_message", "setting_response", iSender, iNum, sStr, kID]);
+            // KBCLOCK_ALARM=alarm,alarm,...,alarm
+            list lTmp = llParseString2List(sStr, ["="], []);
+            string sTok = llList2String(lTmp, 0);
+            string sVal = llList2String(lTmp, 1);
+            list lMajMin = llParseString2List(sTok, ["="], []);
+            string sMajor = llToLower(llList2String(lMajMin, 0));
+            string sMinor = llToLower(llList2String(lMajMin, 1));
+            if (sMajor == g_sMajor) {
+                if (sMinor == g_sMinor) {
+                    list lAlarms = llParseString2List(sVal, [","], []);
+                    integer iLen = llGetListLength(lAlarms);
+                    integer iIdx = 0;
+                    while (iIdx < iLen) {
+                        setAlarm(llList2String(lAlarms, iIdx));
+                        ++iIdx;
+                    }
+                }
+            }
+        } else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
     }
     
     timer() {

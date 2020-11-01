@@ -10,9 +10,10 @@ string  g_sParentMenu        = "Apps";     // name of the menu, where the menu p
 string  g_sChatCommand       = "tplim";    // every menu should have a chat command
 string  BUTTON_PARENTMENU    = g_sParentMenu;
 key     g_kWebLookup;
-string  KB_VERSIONMAJOR      = "7";
-string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "2";
+string  KB_VERSIONMAJOR      = "8";
+string  KB_VERSIONMINOR      = "0";
+string  KB_DEVSTAGE          = "1a101";
+string  g_sCollarVersion = "not set";
 string  g_sScriptVersion = "";
 integer LINK_CMD_DEBUG=1999;
 
@@ -86,15 +87,17 @@ integer DIALOG_TIMEOUT = -9002;
 
 integer RLV_OFF      = 6100;
 integer RLV_ON       = 6101;
+integer REBOOT                     = -1000;
 
 integer KB_NOTICE_LEASHED          = -34691;
 integer KB_NOTICE_UNLEASHED        = -34692;
 integer KB_SET_REGION_NAME         = -34693;
 integer KB_REM_REGION_NAME         = -34694;
-integer KB_REQUEST_VERSION         = -34591;
 integer	KB_CURFEW_NOTICE		   = -34852;
 integer KB_CURFEW_ACTIVE		   = -34845;
 integer KB_CURFEW_INACTIVE		   = -34846;
+integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
 
 string UPMENU = "BACK";
 
@@ -659,7 +662,38 @@ integer SetTime(string sMsg) {
 	return iTime;
 }
 */
-default  {
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
+
+default {
+    on_rez(integer iNum){
+        llResetScript();
+    }
+
+    state_entry(){
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
+    
+    link_message(integer iSender, integer iNum, string sStr, key kID) {
+        if(iNum == REBOOT) {
+            if(sStr == "reboot") {
+                llResetScript();
+            }
+        } else if(iNum == READY) {
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP) {
+            state active;
+        }
+    }
+
+    state_exit()
+    {
+        // if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
+    }
+}
+
+state active  {
     changed(integer iChange) {
         if(iChange & CHANGED_OWNER) { llResetScript(); }
 
@@ -684,40 +718,20 @@ default  {
 
     on_rez(integer iParam) {
         if (g_bDebugOn) { DebugOutput(["on_rez ", "wearer ",  g_kWearer]); }
-        if(llGetOwner() != g_kWearer) {
-        // Reset if wearer changed
-            llResetScript();
-        }
-        checkMemory(FALSE);
+        llResetScript();
     }
 
     // listen for linked messages from OC scripts
     link_message(integer iSender, integer iNum, string sStr, key kID) {
-        if(iNum == MENUNAME_REQUEST && sStr == g_sParentMenu) {
-            llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        }
-        else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER) {
-            UserCommand(iNum, sStr, kID);
-        }
-        else if(iNum == RLV_OFF) { // rlvoff -> we have to turn the menu off too
-            g_iRLVOn = FALSE;
-        }
-        else if(iNum == RLV_ON) { // rlvon -> we have to turn the menu on again
-            g_iRLVOn = TRUE;
-        }
-        else if(iNum == LM_SETTING_RESPONSE) {
-            parseSettings(iSender, iNum, sStr, kID);
-        }
-        else if(iNum == LM_SETTING_DELETE) {
-            parseSettings(iSender, iNum, sStr, kID);
-        }
+        if(iNum == MENUNAME_REQUEST && sStr == g_sParentMenu) llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
+        else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER) UserCommand(iNum, sStr, kID);
+        else if(iNum == RLV_OFF) g_iRLVOn = FALSE;
+        else if(iNum == RLV_ON) g_iRLVOn = TRUE;
+        else if(iNum == LM_SETTING_RESPONSE) parseSettings(iSender, iNum, sStr, kID);
+        else if(iNum == LM_SETTING_DELETE) parseSettings(iSender, iNum, sStr, kID);
         else if ((iNum == KB_NOTICE_LEASHED) || iNum == (KB_SET_REGION_NAME)
-              || (iNum == KB_NOTICE_UNLEASHED) || iNum == (KB_REM_REGION_NAME)) {
-            parseSettings(iSender, iNum, sStr, kID);
-        }
-        else if(iNum == DIALOG_RESPONSE) {
-            HandleMenus(kID, sStr, iNum);
-        }
+              || (iNum == KB_NOTICE_UNLEASHED) || iNum == (KB_REM_REGION_NAME)) parseSettings(iSender, iNum, sStr, kID);
+        else if(iNum == DIALOG_RESPONSE) HandleMenus(kID, sStr, iNum);
         else if(iNum == KB_CURFEW_INACTIVE) {
             if (g_bDebugOn) { DebugOutput(["link_message KB_CURFEW_INACTIVE", iNum, sStr, kID]); }
             g_iCurfewRemovalActive = FALSE;
@@ -729,7 +743,11 @@ default  {
         else if (iNum == DIALOG_TIMEOUT) {
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-        }
+        } 
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
+
     }
     
     timer() {

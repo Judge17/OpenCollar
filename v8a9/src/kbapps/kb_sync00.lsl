@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a102";
+string  KB_DEVSTAGE          = "1a103";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -565,7 +565,8 @@ state gather_settings {
             // if (g_bDebugOn) DebugOutput(5, ["gather_settings", "link_message", "setting_empty", iSender, iNum, sStr, kID]);
             string sTok = sStr;
             g_lCollarSettings = SetSetting(sTok, "null");            
-        } else if (iNum == KB_REQUEST_VERSION)
+        } else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
             llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
     }
     
