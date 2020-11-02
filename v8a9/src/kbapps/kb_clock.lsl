@@ -3,14 +3,14 @@
 
 string  g_sModule = "clock";
 list    g_lInterrupts;
-integer INTERRUPTSTRIDE = 3;
+integer INTERRUPTSTRIDE = 4;
 integer ALARM_ID = 2;
 integer ALARM_TYPE = 1;
 integer ALARM_TIME = 0;
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a102";
+string  KB_DEVSTAGE          = "1a103";
 string  g_sCollarVersion = "not set";
 
 integer NOTIFY              = 1002;
@@ -246,12 +246,14 @@ setAlarmNoJSon(string sAlarmID, string sAlarmType, integer iAlarmTime) {
     if (llGetListLength(g_lInterrupts) > INTERRUPTSTRIDE)
         g_lInterrupts = llListSort(g_lInterrupts, INTERRUPTSTRIDE, TRUE);
 //
+    saveAlarms();
     checkAlarms();
 }
 
 saveAlarms() {
     string sToken = g_sMajor + "_" + g_sMinor;
     integer iLen = llGetListLength(g_lInterrupts);
+    if (g_bDebugOn) { DebugOutput(["saveAlarms-1", sToken, iLen]); }
     if (iLen == 0) {
         llMessageLinked(LINK_SET, LM_SETTING_DELETE, sToken, "");
         return;        
@@ -266,8 +268,10 @@ saveAlarms() {
         string sAlarmJson = llList2Json(JSON_OBJECT, ["alarm_id", sAlarm_Id, "alarm_type", sAlarm_Type, "alarm_time", iAlarm]);
         sAlarms += sAlarmJson;
         iIdx += INTERRUPTSTRIDE;
+        if (g_bDebugOn) { DebugOutput(["saveAlarms-2", sAlarmJson, sAlarms, iIdx, iLen]); }
     }
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, sToken + "=" + sAlarms, "");
+    if (g_bDebugOn) { DebugOutput(["saveAlarms-3", sToken + "=" + sAlarms]); }
 }
 setTimer(integer iNow) {
     llSetTimerEvent(0.0);  // disable timers to start

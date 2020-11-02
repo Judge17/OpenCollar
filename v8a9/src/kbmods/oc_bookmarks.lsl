@@ -1,6 +1,8 @@
 
 //K-Bar Version 8.0
 
+// TODO: from 'bookmarks=home~Builders Resource(117,147,23)' to 'bookmarks_places={"name":"home","lm":"Builders Resource(117,147,23)"} ...
+
 // This file is part of OpenCollar.
 // Copyright (c) 2008 - 2017 Satomi Ahn, Nandana Singh, Wendy Starfall,  
 // Sumi Perl, Master Starship, littlemousy, mewtwo064, ml132,       
