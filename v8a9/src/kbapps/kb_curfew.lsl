@@ -32,9 +32,10 @@
 //
 
 string  g_sModule = "curfew";
-string  KB_VERSIONMAJOR      = "7";
-string  KB_VERSIONMINOR      = "5";
-string  KB_DEVSTAGE          = "14";
+string  KB_VERSIONMAJOR      = "8";
+string  KB_VERSIONMINOR      = "0";
+string  KB_DEVSTAGE          = "1a101";
+string  g_sCollarVersion = "not set";
 string  g_sScriptVersion = "";
 
 string formatVersion() {
@@ -87,8 +88,13 @@ integer LM_SETTING_REQUEST  = 2001;
 integer LM_SETTING_RESPONSE = 2002;
 integer LM_SETTING_DELETE   = 2003;
 
+integer REBOOT                     = -1000;
+
 integer RLV_OFF      = 6100;
 integer RLV_ON       = 6101;
+
+integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
 
 integer KB_CLOCK_SET			   = -34843;
 integer KB_CLOCK_ALARM			   = -34844;
@@ -569,10 +575,42 @@ StartHome() {
         llSetTimerEvent(5.0);
     }
 }
+integer ALIVE = -55;
+integer READY = -56;
+integer STARTUP = -57;
 
-default  {
+default {
+    on_rez(integer iNum){
+        if (g_bDebugOn) DebugOutput(["default", "on_rez", llGetFreeMemory(), "bytes free"]);
+        llResetScript();
+    }
+
+    state_entry(){
+        if (g_bDebugOn) DebugOutput(["default", "state_entry", llGetFreeMemory(), "bytes free"]);
+        llMessageLinked(LINK_SET, ALIVE, llGetScriptName(),"");
+    }
+    
+    link_message(integer iSender, integer iNum, string sStr, key kID) {
+        if(iNum == REBOOT) {
+            if(sStr == "reboot") {
+                llResetScript();
+            }
+        } else if(iNum == READY) {
+            llMessageLinked(LINK_SET, ALIVE, llGetScriptName(), "");
+        } else if(iNum == STARTUP) {
+            state active;
+        }
+    }
+
+    state_exit()
+    {
+         if (g_bDebugOn) DebugOutput(["default", "state_exit", llGetFreeMemory(), "bytes free"]);
+    }
+}
+
+state active  {
     changed(integer iChange) {
-        if (g_bDebugOn) { DebugOutput(["changed", iChange]); }
+        if (g_bDebugOn) DebugOutput(["active", "changed", iChange]);
 
         if(iChange & CHANGED_OWNER) { llResetScript(); }
         
@@ -585,7 +623,7 @@ default  {
     }
 
     state_entry() {
-        if (g_bDebugOn) { DebugOutput(["state_entry"]); }
+        if (g_bDebugOn) DebugOutput(["active", "state_entry", llGetFreeMemory(), "bytes free"]);
         llOwnerSay("kb_curfew version " + formatVersion() + " active");
         g_sScript = llStringTrim(llList2String(llParseString2List(llGetScriptName(), ["-"], []), 1), STRING_TRIM) + "_";
         g_sScriptVersion = KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
@@ -600,34 +638,22 @@ default  {
     }
 
     on_rez(integer iParam) {
-        if (g_bDebugOn) { DebugOutput(["on_rez ", iParam, "wearer ",  g_kWearer]); }
-        if(llGetOwner() != g_kWearer) {
-        // Reset if wearer changed
-            llResetScript();
-        }
-        g_iSecondsBeforeBoot = 0;
-        g_bRemovalInProgress = FALSE;
-        if (g_bDebugOn) { DebugOutput(["on_rez ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
-        llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "bookmarks", "");
-        integer iCheckTime = timeNow() + 20;
-        
-        llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_SETUP, "alarm_type", KB_CLOCK_NODUP, "alarm_time", iCheckTime]), "");
+        if (g_bDebugOn) { DebugOutput(["active", "on_rez ", iParam, "wearer ",  g_kWearer]); }
+        llResetScript();
     }
 
     // listen for linked messages from OC scripts
     link_message(integer iSender, integer iNum, string sStr, key kID) {
-        if(iNum == RLV_OFF) { // rlvoff -> we have to turn the menu off too
-            g_iRLVOn = FALSE;
-        }
-        else if(iNum == RLV_ON) { // rlvon -> we have to turn the menu on again
-            g_iRLVOn = TRUE;
-        }
+        if(iNum == RLV_OFF) g_iRLVOn = FALSE;
+        else if(iNum == RLV_ON) g_iRLVOn = TRUE;
         else if(iNum == LM_SETTING_RESPONSE) parseSettings(iSender, iNum, sStr, kID);
         else if(iNum == LM_SETTING_DELETE) parseSettings(iSender, iNum, sStr, kID);
         else if(iNum == KB_CLOCK_ALARM) alarmFired(iSender, iNum, sStr, kID);
         else if (iNum == KB_DEBUG_CURFEW_ON) SetDebugOn();
         else if (iNum == KB_DEBUG_CURFEW_OFF) SetDebugOff();
-
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
     }
     
     timer() {
