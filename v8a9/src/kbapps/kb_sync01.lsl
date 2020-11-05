@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a102";
+string  KB_DEVSTAGE          = "1a103";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -33,8 +33,8 @@ SetDebugOff() {
     g_iDebugLevel = 10;
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 integer g_iPingCounter = 0;

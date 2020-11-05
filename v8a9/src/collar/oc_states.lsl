@@ -184,19 +184,13 @@ default
         llMessageLinked(LINK_SET, REBOOT,"reboot", "");
         llSleep(5);
         //llMessageLinked(LINK_SET, 0, "initialize", "");
+        llOwnerSay("Collar is preparing to startup, please be patient.");
     }
     
     
     on_rez(integer iRez){
         llSleep(10);
         llResetScript();
-    }
-    
-    
-    changed(integer iChange){
-        if(iChange&CHANGED_INVENTORY){
-            llResetScript();
-        }
     }
     
     timer(){
@@ -273,19 +267,19 @@ default
     
     
     link_message(integer iSender, integer iNum, string sStr, key kID){
-        if(sStr == "fix" || iNum == REBOOT){
-            if(iNum == REBOOT){
-                //llSay(0, "REBOOT RECIEVE.");
-                if(sStr == "reboot --f"){
-                    //llWhisper(0, "Forced reboot");
-                    llResetScript();
-                }
-            } else {
-                llResetScript();
-            }
-        }
+        if(iNum == REBOOT && sStr == "reboot --f")llResetScript();
         
         if(iNum>=CMD_OWNER && iNum <= CMD_EVERYONE){
+            if(sStr == "fix"){
+                g_iExpectAlive=1;
+                llResetTime();
+                g_iPasses=0;
+                g_lAlive=[];
+                g_iLoading=FALSE;
+                g_lSettings=[];
+                
+                llMessageLinked(LINK_SET, LM_SETTING_REQUEST, "ALL", "");
+            }
             if(llToLower(sStr)=="settings edit"){
                 g_lSettings=[];
                 g_iLoading=TRUE;
@@ -395,7 +389,7 @@ default
             }
             list lSettings = llParseString2List(sStr, ["_","="],[]);
             
-            if(g_iLoading)g_lSettings+=[llList2String(lSettings,0), llList2String(lSettings,1), llList2String(lSettings,2)];
+            if(g_iLoading && llListFindList(g_lSettings, [llList2String(lSettings,0), llList2String(lSettings,1), llList2String(lSettings,2)]) == -1 )g_lSettings+=[llList2String(lSettings,0), llList2String(lSettings,1), llList2String(lSettings,2)];
             
         } else if(iNum == 0){
             if(sStr == "initialize"){

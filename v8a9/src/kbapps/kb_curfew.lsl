@@ -34,7 +34,7 @@
 string  g_sModule = "curfew";
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a102";
+string  KB_DEVSTAGE          = "1a108";
 string  g_sCollarVersion = "not set";
 string  g_sScriptVersion = "";
 
@@ -65,8 +65,8 @@ SetDebugOff() {
     g_iDebugLevel = 10;
 }
 
-integer g_bDebugOn = FALSE;
-integer g_iDebugLevel = 10;
+integer g_bDebugOn = TRUE;
+integer g_iDebugLevel = 0;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
@@ -394,31 +394,44 @@ InitCalcs(integer iTimeNow) {
     if (g_bDebugOn) { DebugOutput(["InitCalcs", "stopping timer events-1", formatDateTime(Unix2DateTime(iTimeNow))]); }
     llSetTimerEvent(0.0);
     list lTimeNow = Unix2DateTime(iTimeNow);
-    if (g_bDebugOn) { list lTemp = ["InitCalcs 0"] + lTimeNow; DebugOutput(lTemp); }
+    if (g_bDebugOn) { list lTemp = ["InitCalcs 0 Now"] + lTimeNow + [formatDateTime(Unix2DateTime(iTimeNow))]; DebugOutput(lTemp); }
     
     list lStart = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
         llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0];
     list lStop = [llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
         llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0];
         
-    if (g_bDebugOn) { list lTemp = ["InitCalcs 1"] + lStart; DebugOutput(lTemp); }
-    if (g_bDebugOn) { list lTemp = ["InitCalcs 2"] + lStop; DebugOutput(lTemp); }
+    if (g_bDebugOn) { list lTemp = ["InitCalcs 1 Start"] + lStart + ["InitCalcs 2 Stop"] + lStop; DebugOutput(lTemp); }
     
     integer iCurfewStart = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
         llList2Integer(g_lCurfew, 0), llList2Integer(g_lCurfew, 1) ,0);
     integer iCurfewStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
         llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0);
         
+// SECONDS_PER_DAY
+        
     if (g_bDebugOn) { DebugOutput(["InitCalcs 3", iCurfewStart, iTimeNow, iCurfewStop, formatDateTime(Unix2DateTime(iCurfewStart)), formatDateTime(Unix2DateTime(iTimeNow)), formatDateTime(Unix2DateTime(iCurfewStop))]); }
     
     g_lCurfewPeriods = [];
     
-    if (iCurfewStart < iCurfewStop) g_lCurfewPeriods = [iCurfewStart, iCurfewStop];    // Curfew times already in SL time
-    else {
+//
+//    If the curfew start time is less than the curfew stop time, assume they are both on the same day and set up only one pair
+//
+//    If the stop time is less than the start time, assume the stop time is tomorrow and set up two periods, from 0 to today's stop time
+//        and the second from today's start time through tomorrow's stop time
+//
+    
+    if (iCurfewStart < iCurfewStop) {
+        g_lCurfewPeriods = [iCurfewStart, iCurfewStop];    // Curfew times already in SL time
+        if (g_bDebugOn) { list lTemp = ["InitCalcs 4a"] + g_lCurfewPeriods + formatDateTime(Unix2DateTime(iCurfewStart)) + formatDateTime(Unix2DateTime(iCurfewStop)) + ["End"]; DebugOutput(lTemp); }
+    } else { // stop is less than start, so actual stop isn't until tomorrow
         integer iStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
-            23, 59, 59);
-        g_lCurfewPeriods = [0, iCurfewStop, iCurfewStop, iStop];
+            23, 59, 59); // end of first period
+        g_lCurfewPeriods = [0, iCurfewStop, iCurfewStart, iCurfewStop + SECONDS_PER_DAY];
+        if (g_bDebugOn) { list lTemp = ["InitCalcs 4b"] + g_lCurfewPeriods + formatDateTime(Unix2DateTime(iCurfewStop)) + formatDateTime(Unix2DateTime(iCurfewStart)) + formatDateTime(Unix2DateTime(iCurfewStop + SECONDS_PER_DAY)) + ["End"]; DebugOutput(lTemp); }
     }
+    
+    if (g_bDebugOn) { list lTemp = ["InitCalcs 5"] + g_lCurfewPeriods + ["End"]; DebugOutput(lTemp); }
     
     integer iAlarm = 0;
 //    if length = stride -> only one entry and (0) is the next start time
@@ -429,15 +442,22 @@ InitCalcs(integer iTimeNow) {
     llMessageLinked(LINK_SET, KB_CURFEW_INACTIVE, "", "");
     llMessageLinked(LINK_SET, KB_CLOCK_SET, llList2Json(JSON_OBJECT, ["alarm_id", CURFEW_ALARM, "alarm_type", "**", "alarm_time", iAlarm]), "");
 }
-
+//
+//    inCurfewNow returns TRUE if iTimeNow is in a period such that curfew is enforced
+//
 integer inCurfewNow(integer iTimeNow) {
     integer iIndex = 0;
     while (iIndex < llGetListLength(g_lCurfewPeriods)) {
         integer iCurfewStart = llList2Integer(g_lCurfewPeriods, iIndex + CURFEW_START);
         integer iCurfewStop = llList2Integer(g_lCurfewPeriods, iIndex + CURFEW_STOP);
-        if (iCurfewStart < iTimeNow && iTimeNow < iCurfewStop) return TRUE;
+        if (g_bDebugOn) { DebugOutput(["inCurfewNow, Start", iCurfewStart, formatDateTime(Unix2DateTime(iCurfewStart)), "Stop", iCurfewStop, formatDateTime(Unix2DateTime(iCurfewStop)), "Now", iTimeNow, formatDateTime(Unix2DateTime(iTimeNow))]); }
+        if (iCurfewStart < iTimeNow && iTimeNow < iCurfewStop) {
+            if (g_bDebugOn) DebugOutput(["inCurfewNow - TRUE"]);
+            return TRUE;
+        }
         iIndex += CURFEW_STRIDE;
     }
+    if (g_bDebugOn) DebugOutput(["inCurfewNow - FALSE"]);
     return FALSE;
 }
 

@@ -49,8 +49,8 @@ DebugOutput(list ITEMS) {
     if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
 }
 
-integer g_bDebugOn = FALSE;
-integer g_iDebugLevel = 10;
+integer g_bDebugOn = TRUE;
+integer g_iDebugLevel = 0;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
@@ -268,7 +268,7 @@ saveAlarms() {
         string sAlarmJson = llList2Json(JSON_OBJECT, ["alarm_id", sAlarm_Id, "alarm_type", sAlarm_Type, "alarm_time", iAlarm]);
         sAlarms += sAlarmJson;
         iIdx += INTERRUPTSTRIDE;
-        if (g_bDebugOn) { DebugOutput(["saveAlarms-2", sAlarmJson, sAlarms, iIdx, iLen]); }
+        if (g_bDebugOn) { DebugOutput(["saveAlarms-2", sAlarmJson, formatDate(Unix2DateTime(iAlarm)), sAlarms, iIdx, iLen]); }
     }
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, sToken + "=" + sAlarms, "");
     if (g_bDebugOn) { DebugOutput(["saveAlarms-3", sToken + "=" + sAlarms]); }
