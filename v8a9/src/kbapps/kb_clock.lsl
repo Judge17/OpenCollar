@@ -10,7 +10,7 @@ integer ALARM_TIME = 0;
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a103";
+string  KB_DEVSTAGE          = "1a104";
 string  g_sCollarVersion = "not set";
 
 integer NOTIFY              = 1002;
@@ -287,7 +287,7 @@ setTimer(integer iNow) {
 //        iIndex += INTERRUPTSTRIDE;
 //    }
 //    integer iNow = Unix2PST_PDT(llGetUnixTime());
-    if (g_bDebugOn) { DebugOutput(["setTimer-3 lowest, now, delay", iLowest, iNow, iLowest - iNow]); }
+    if (g_bDebugOn) { DebugOutput(["setTimer-3 lowest, now, delay", iLowest, iNow, iLowest - iNow, formatDate(Unix2DateTime(iLowest)), formatDate(Unix2DateTime(iNow))]); }
     integer iDelay = iLowest - iNow;
     if (iDelay > 0) {
         float fDelay = (float) iDelay;

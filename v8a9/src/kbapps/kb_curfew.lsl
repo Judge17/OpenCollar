@@ -34,7 +34,7 @@
 string  g_sModule = "curfew";
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a101";
+string  KB_DEVSTAGE          = "1a102";
 string  g_sCollarVersion = "not set";
 string  g_sScriptVersion = "";
 
@@ -312,6 +312,16 @@ integer Convert(integer insecs)
 // End Unix2DateTimev1.0.lsl
 //////////////////////////////////////////////
 
+string formatDateTime(list lInput) {
+    string sReturn = llList2String(lInput, 0) + "-";
+    sReturn += llList2String(lInput, 1) + "-";
+    sReturn += llList2String(lInput, 2) + " ";
+    sReturn += llList2String(lInput, 3) + ":";
+    sReturn += llList2String(lInput, 4) + ":";
+    sReturn += llList2String(lInput, 5);
+    return sReturn;    
+}
+
 addOccurrence(string sName, string sRegion) {
     if (g_bDebugOn) { DebugOutput(["addOccurrence ", sName, sRegion]); }
     string sWork = llToLower(sName);
@@ -381,7 +391,7 @@ alarmFired(integer iSender, integer iNum, string sStr, key kID) {
 //        InitCalcs will set a CURFEW_ALARM alarm to trigger curfew checks at the start of the next curfew period.
 //
 InitCalcs(integer iTimeNow) {
-    if (g_bDebugOn) { DebugOutput(["InitCalcs", "stopping timer events-1"]); }
+    if (g_bDebugOn) { DebugOutput(["InitCalcs", "stopping timer events-1", formatDateTime(Unix2DateTime(iTimeNow))]); }
     llSetTimerEvent(0.0);
     list lTimeNow = Unix2DateTime(iTimeNow);
     if (g_bDebugOn) { list lTemp = ["InitCalcs 0"] + lTimeNow; DebugOutput(lTemp); }
@@ -399,7 +409,7 @@ InitCalcs(integer iTimeNow) {
     integer iCurfewStop = DateTime2Unix(llList2Integer(lTimeNow, 0), llList2Integer(lTimeNow, 1), llList2Integer(lTimeNow, 2), 
         llList2Integer(g_lCurfew, 2), llList2Integer(g_lCurfew, 3) ,0);
         
-    if (g_bDebugOn) { DebugOutput(["InitCalcs 3", iCurfewStart, iTimeNow, iCurfewStop]); }
+    if (g_bDebugOn) { DebugOutput(["InitCalcs 3", iCurfewStart, iTimeNow, iCurfewStop, formatDateTime(Unix2DateTime(iCurfewStart)), formatDateTime(Unix2DateTime(iTimeNow)), formatDateTime(Unix2DateTime(iCurfewStop))]); }
     
     g_lCurfewPeriods = [];
     
