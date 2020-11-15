@@ -10,7 +10,7 @@ integer ALARM_TIME = 0;
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a104";
+string  KB_DEVSTAGE          = "1a105";
 string  g_sCollarVersion = "not set";
 
 integer NOTIFY              = 1002;
@@ -49,8 +49,8 @@ DebugOutput(list ITEMS) {
     if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 

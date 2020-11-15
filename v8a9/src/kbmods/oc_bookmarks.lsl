@@ -616,7 +616,7 @@ state active
 //
         else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
         else if (iNum == KB_REQUEST_VERSION)
-                llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
 //
 // KBar Mod End
 //
