@@ -1,10 +1,5 @@
 
 //K-Bar Settings Host00
-
-//TODO - high level control routine that cycles through the avatar requests
-//	Convert "StartWork" into step one of two
-//	More or less duplicate it for the sayings
-//	Figure out g_kActiveKey timing issue
 	
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
@@ -40,8 +35,8 @@ SetDebugOff() {
 	g_iDebugLevel = 10;
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 
@@ -144,15 +139,6 @@ string SplitToken(string sIn, integer iSlot) {
 	if (!iSlot) return llGetSubString(sIn, 0, i - 1);
 	return llGetSubString(sIn, i + 1, -1);
 }
-/*
-string SuffixTrans(integer iIn) {
-	if (iIn == 0) return "00";
-	if (iIn == 1) return "01";
-	if (iIn == 2) return "02";
-	if (iIn == 3) return "03";
-	return "99";
-}
-*/
 //
 //	Get the collar owner's name, smush it to all lowercase, eliminate spaces, append "00" for basic settings
 //
@@ -276,56 +262,7 @@ SendValues() {
 	if (g_bDebugOn) DebugOutput(["SendValues Exit", llGetListLength(g_lRequests), g_kActiveKey]);
 	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
 }
-/*
-SendSayings() {
-	//	if (g_bDebugOn) DebugOutput(["SendValues Start", llGetListLength(g_lRequests), g_kActiveKey]);
-	//	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
-		integer iLineCount = 1;
-		integer iDx = 0;
-		integer iLimit = llGetListLength(g_lMsgPackage);
-		if (g_sPing == "ping801") {
-			if (iLimit == 0) {
-				g_sMsgPackage = "kbnosayings";
-				if (g_bDebugOn) DebugOutput(["SendSayings sending", g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage]);
-				llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage);
-				return;
-			}
-		}
-	//	if (g_iProcessingPhase == 0)
-		string sEndFlag = "kbsayings1action=done";
-		g_sMsgPackage = "kbsayings1line=" + (string) iLineCount;
-		for (iDx = 0; iDx < iLimit; ++iDx) {
-			string sWork = llList2String(g_lMsgPackage, iDx);
-			integer iCalcLength = llStringLength(g_sMsgPackage) + llStringLength("%%") + llStringLength(sWork);
-//			iCalcLength += llStringLength("%%");
-//			iCalcLength += llStringLength(sEndFlag);
-			if (iCalcLength < 1024) {
-				g_sMsgPackage += "%%";
-				g_sMsgPackage += sWork;
-			} else {
-				if (g_bDebugOn) DebugOutput(["SendSayings sending", g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage]);
-				llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage);
-				g_sMsgPackage = "kbsayings1line=" + (string) iLineCount;
-				++iLineCount;
-				g_sMsgPackage += sWork;
-			}
-		}
-//		g_sMsgPackage += "%%";
-//		g_sMsgPackage += sEndFlag;
-		if (llStringLength(g_sMsgPackage) > 0) {
-			if (g_bDebugOn) DebugOutput(["SendSayings sending", g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage]);
-			llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, g_sMsgPackage);
-		}
 
-	//	DeleteKey(g_kActiveKey);
-	//	g_kActiveKey = NULL_KEY;
-		g_sMsgPackage = "";
-		g_lMsgPackage = [];
-		if (g_bDebugOn) DebugOutput(["SendSayings Exit", llGetListLength(g_lRequests), g_kActiveKey]);
-		if (g_bDebugOn) DebugOutput(g_lMsgPackage);
-		llRegionSayTo(g_kActiveKey, KB_HAIL_CHANNEL, sEndFlag);
-}
-*/
 InitListen() {
 	if (g_bDebugOn) DebugOutput(["InitListen Entry", g_iListenHandle]);
 	if (g_iListenHandle != 0) { 
@@ -343,17 +280,6 @@ default {
 		g_lRequests = [];
 		g_kActiveKey = NULL_KEY;
 		InitListen();
-//		g_sVersion = g_sScriptVersion;
-//		g_sVersion += g_sDevStage;
-// if (g_kWearer == NULL_KEY) {
-// g_kWearer = llGetOwner();
-// g_sWearer = (string) g_kWearer;
-// g_sTargetName = llToLower(llKey2Name(g_kWearer));
-// list lName = llParseString2List(g_sTargetName, [" "], [""]);
-// g_sTargetName = llList2String(lName, 0) + llList2String(lName, 1);
-// } else {
-// if (g_kWearer != llGetOwner()) llResetScript();
-// }
 		g_kOwner = llGetOwner();
 		if (g_bDebugOn) DebugOutput(["state_entry", g_kOwner, g_iListenHandle]);
 	}
@@ -392,16 +318,11 @@ default {
 		if (kID == g_kSettingsID) {
 			if (sData != EOF) {
 				LoadSetting(sData,++g_iLineNr);
-//				else LoadSaying(sData,++g_iLineNr);
 				g_kSettingsID = llGetNotecardLine(g_sTargetCard, g_iLineNr);
 			} else {
 				LoadSetting(sData,g_iLineNr);
 				SendValues();
 				EndRun();
-//				else LoadSaying(sData,g_iLineNr);
-//				llSetTimerEvent(1.0);
-//				if (g_iProcessingPhase == 1) SendValues();
-//				else (SendSayings());
 			}
 		}
 	}

@@ -33,8 +33,8 @@ SetDebugOff() {
     g_iDebugLevel = 10;
 }
 
-integer g_bDebugOn = TRUE;
-integer g_iDebugLevel = 0;
+integer g_bDebugOn = FALSE;
+integer g_iDebugLevel = 10;
 integer KB_DEBUG_CHANNEL           = -617783;
 integer g_iDebugCounter = 0;
 integer g_iPingCounter = 0;
