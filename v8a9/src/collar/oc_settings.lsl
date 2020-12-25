@@ -211,6 +211,11 @@ integer AuthCheck(integer iMask){
 Error(key kID, string sCmd){
     llMessageLinked(LINK_SET,NOTIFY,"0%NOACCESS% to command: "+sCmd, kID);
 }
+
+key g_kLoadURL;
+string g_sLoadURL;
+key g_kLoadURLBy;
+integer g_iLoadURLConsented;
 UserCommand(integer iNum, string sStr, key kID) {
     string sLower=  llToLower(sStr);
     if(sLower == "print settings" || sLower == "debug settings"){
@@ -247,6 +252,12 @@ UserCommand(integer iNum, string sStr, key kID) {
         // TODO: not yet implemented?
         if(AuthCheck(iNum)){
             // load stuff
+            list lTmp = llParseString2List(sStr, [" "],[]);
+            string actualURL = llDumpList2String(llList2List(lTmp,2,-1)," ");
+            g_sLoadURL = actualURL;
+            g_kLoadURLBy = kID;
+            g_kLoadURL = llHTTPRequest(actualURL, [],"");
+            llMessageLinked(LINK_SET, NOTIFY, "1Loading settings from URL.. Please wait a moment..", kID);
         } else Error(kID,sStr);
     } else if(sLower == "fix"){
         if(AuthCheck(iNum)){
@@ -330,7 +341,7 @@ FindLeashpointOrLock()
     g_iWeldStorage=-99;
     integer i=0;
     integer end = llGetNumberOfPrims();
-    for(i=0;i<end;i++){
+    for(i=0;i<=end;i++){
         if(llToLower(llGetLinkName(i))=="lock"){
             g_iWeldStorage = i;
             return;
@@ -338,8 +349,6 @@ FindLeashpointOrLock()
             g_iWeldStorage = i; // keep going incase we find the lock prim
         }
     }
-    if(g_iWeldStorage!=-99)return;
-    g_iWeldStorage=-99;
 }
 
 CheckForAndSaveWeld(){
@@ -413,6 +422,19 @@ DeleteWeldFlag()
     llSetLinkPrimitiveParams(g_iWeldStorage, [PRIM_DESC, llDumpList2String(lPara,"~")]);
 }
 integer g_iBootup;
+
+integer CheckModifyPerm(string sSetting, key kStr)
+{
+    sSetting = llToLower(sSetting);
+    list lTmp = llParseString2List(sSetting,["_", "="],[]);
+    if(llList2String(lTmp,0)=="auth") // Protect the auth settings against manual editing via load url or via the settings editor
+    {
+        if(kStr == "origin")return TRUE;
+        else return FALSE;
+    }
+    if(kStr == "url" && llList2String(lTmp,0) == "intern")return FALSE;
+    return TRUE;
+}
 default
 {
     on_rez(integer t){
@@ -496,6 +518,16 @@ default
                         g_iRebootConfirmed=TRUE;
                         llMessageLinked(LINK_SET, iAuth, "reboot", kAv);
                     }
+                } else if(sMenu == "Consent~LoadURL")
+                {
+                    if(sMsg == "DECLINE"){
+                        llMessageLinked(LINK_SET, NOTIFY, "0%NOACCESS% to loading auth or intern settings", g_kLoadURLBy);
+                    } else if(sMsg == "ACCEPT")
+                    {
+                        llMessageLinked(LINK_SET, NOTIFY, "1Consented. Reloading URL", g_kLoadURLBy);
+                        g_iLoadURLConsented=TRUE;
+                        g_kLoadURL = llHTTPRequest(g_sLoadURL, [], "");
+                    }
                 }
                 
             }
@@ -506,6 +538,7 @@ default
             if(sStr == "check_weld")CheckForAndSaveWeld();
         } else if(iNum == LM_SETTING_DELETE){
             // This is recieved back from settings when a setting is deleted
+            if(!CheckModifyPerm(sStr, kID))return;
             DelSetting(sStr);
             llMessageLinked(LINK_SET, LM_SETTING_REQUEST, sStr,""); // trigger the empty signal to be dispatched
         } else if(iNum == LM_SETTING_RESPONSE){
@@ -520,11 +553,19 @@ default
                 }
             }
         } else if(iNum == LM_SETTING_SAVE){
+            if(!CheckModifyPerm(sStr, kID))return;
             list lTmp = llParseString2List(sStr,["="],[]);
             string sTok = llList2String(lTmp,0);
             string sVal = llList2String(lTmp,1);
             
             if(sTok == "intern_weld" || sTok == "intern_weldby") llMessageLinked(LINK_SET,TIMEOUT_REGISTER, "10", "check_weld");
+            
+            if(sTok == "intern_weld") {
+                if(kID) { //arrow code because X && KiD throws error
+                    g_lSettings = SetSetting("intern_weldby", (string)kID); //Setting the welder so CheckForAndSaveWeld() can set the WeldStorage desc
+                    llMessageLinked(LINK_SET, LM_SETTING_RESPONSE, "intern_weldby=" + (string)kID, ""); //We need to tell oc_core who is the welder
+                }
+            }
             
             g_lSettings = SetSetting(sTok,sVal);
             
@@ -545,5 +586,40 @@ default
             }
         }
         //llOwnerSay(llDumpList2String([iSender,iNum,sStr,kID],"^"));
+    }
+    
+    http_response(key kID, integer iStatus, list lMeta, string sBody)
+    {
+        if(kID == g_kLoadURL)
+        {
+            g_kLoadURL = NULL_KEY;
+            
+            list lSettings = llParseString2List(sBody, ["\n"],[]);
+            integer i=0;
+            integer iErrorLevel=0;
+            if(lSettings){
+                do{
+                    if(CheckModifyPerm(llList2String(lSettings,0), "url") || g_iLoadURLConsented) {
+                        // permissions to modify this setting passed the security policy.
+                        ProcessSettingLine(llList2String(lSettings,0));
+                    } else
+                        iErrorLevel++;
+                    
+                    lSettings = llDeleteSubList(lSettings,0,0);
+                    i=llGetListLength(lSettings);
+                } while(i);
+            }else llMessageLinked(LINK_SET, NOTIFY, "0Empty URL loaded. No settings changes have been made", g_kLoadURLBy);
+            
+            if(g_iLoadURLConsented)g_iLoadURLConsented=FALSE;
+            if(iErrorLevel > 0){
+                llMessageLinked(LINK_SET, NOTIFY, "1Some settings were not loaded due to the security policy. The wearer has been asked to review the URL and give consent", g_kLoadURLBy);
+                // Ask wearer for consent
+                Dialog(g_kWearer, "[Settings URL Loader]\n\n"+(string)iErrorLevel+" settings were not loaded from "+g_sLoadURL+".\nReason: Security Policy\n\nLoaded by: secondlife:///app/agent/"+(string)g_kLoadURLBy+"/about\n\nPlease review the url before consenting", ["ACCEPT", "DECLINE"], [], 0, CMD_WEARER, "Consent~LoadURL");
+            }
+            g_iCurrentIndex=0;
+            llSetTimerEvent(2);
+            
+            llMessageLinked(LINK_SET, NOTIFY, "1Settings have been loaded", g_kLoadURLBy);
+        }
     }
 }

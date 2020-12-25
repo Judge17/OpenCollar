@@ -22,7 +22,7 @@ integer NOTIFY_OWNERS=1003;
 
 string g_sParentMenu = ""; 
 string g_sSubMenu = "Main";
-string COLLAR_VERSION = "8.0.0020"; // Provide enough room
+string COLLAR_VERSION = "8.0.0100"; // Provide enough room
 // LEGEND: Major.Minor.Build RC Beta Alpha
 integer UPDATE_AVAILABLE=FALSE;
 string NEW_VERSION = "";
@@ -37,14 +37,14 @@ string MajorMinor(){
     return llList2String(lTmp,0)+"."+llList2String(lTmp,1);
 }
 
-
 string g_sSafeword="RED";
 //
 //    KBar Mod
 //
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a101";
+string  KB_DEVSTAGE          = "010001";
+// LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 integer g_bSafeword = TRUE;
 string  g_sCollarVersion = "not set";
 
@@ -93,7 +93,8 @@ integer TIMEOUT_READY = 30497;
 integer TIMEOUT_REGISTER = 30498;
 integer TIMEOUT_FIRED = 30499;
 
-
+integer AUTH_REQUEST = 600;
+integer AUTH_REPLY=601;
 
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
@@ -148,7 +149,7 @@ Menu(key kID, integer iAuth) {
     
     
     list lUtility;
-    if(g_iAmNewer)lUtility += ["FEEDBACK", "BUG"];
+    //if(g_iAmNewer)lUtility += ["FEEDBACK", "BUG"];
     
     Dialog(kID, sPrompt, lButtons, lUtility, 0, iAuth, "Menu~Main");
 }
@@ -203,9 +204,9 @@ string g_sWearerName;
 UserCommand(integer iNum, string sStr, key kID) {
     // Serenity  -   Remove line that prevented anyone but owner, wearer or trusted from executing commands here. That made it so that even if public or group was enabled it would block functionality. Additionally - the link message block already checks auth level
     if (iNum == CMD_OWNER && sStr == "runaway") {
-        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_owner","");
-        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_trust","");
-        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_block","");
+        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_owner","origin");
+        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_trust","origin");
+        llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_block","origin");
         return;
     }
     if (sStr==g_sSubMenu || sStr == "menu "+g_sSubMenu || sStr == "menu") Menu(kID, iNum);
@@ -497,6 +498,7 @@ state active
                         }
                     } else if(sMsg == "Weld"){
                         UserCommand(iAuth, "weld", kAv);
+                        iRespring=FALSE;
                     } else if(sMsg == "FEEDBACK"){
                         Dialog(kAv, "Please submit your feedback for this alpha/beta/rc", [],[],0,iAuth,"Main~Feedback");
                         iRespring=FALSE;
@@ -517,11 +519,8 @@ state active
                     } else {
                         // do weld
                         llMessageLinked(LINK_SET, NOTIFY, "1Please wait...", g_kWelder);
-                        llMessageLinked(LINK_SET, NOTIFY_OWNERS, "%WEARERNAME%'s collar has been welded", g_kWelder);
                         llMessageLinked(LINK_SET, LM_SETTING_SAVE, "intern_weld=1", g_kWelder);
                         g_iWelded=TRUE;
-                        
-                        llMessageLinked(LINK_SET, NOTIFY, "1Weld completed", g_kWelder);
                     }
                 } else if(sMenu=="Menu~Auth"){
                     if(sMsg == UPMENU){
@@ -545,10 +544,10 @@ state active
                         if(iAuth >=CMD_OWNER && iAuth <= CMD_TRUSTED){
                             if(g_kGroup!=""){
                                 g_kGroup="";
-                                llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_group", "");
+                                llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_group", "origin");
                             }else{
                                 g_kGroup = llList2Key(llGetObjectDetails(llGetKey(), [OBJECT_GROUP]),0);
-                                llMessageLinked(LINK_SET, LM_SETTING_SAVE, "auth_group="+(string)g_kGroup, "");
+                                llMessageLinked(LINK_SET, LM_SETTING_SAVE, "auth_group="+(string)g_kGroup, "origin");
                             }
                         } else {
                             llMessageLinked(LINK_SET, NOTIFY, "0%NOACCESS% to changing group access", kAv);
@@ -558,8 +557,8 @@ state active
                             
                             g_iPublic=1-g_iPublic;
                             
-                            if(g_iPublic)llMessageLinked(LINK_SET, LM_SETTING_SAVE, "auth_public=1", "");
-                            else llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_public","");
+                            if(g_iPublic)llMessageLinked(LINK_SET, LM_SETTING_SAVE, "auth_public=1", "origin");
+                            else llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_public","origin");
                             
                         } else {
                             llMessageLinked(LINK_SET, NOTIFY, "0%NOACCESS% to changing public", kAv);
@@ -568,8 +567,8 @@ state active
                         if(iAuth >=CMD_OWNER && iAuth <= CMD_TRUSTED){
                             g_iLimitRange=1-g_iLimitRange;
                         
-                            if(!g_iLimitRange)llMessageLinked(LINK_SET, LM_SETTING_SAVE, "auth_limitrange=0","");
-                            else llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_limitrange", "");
+                            if(!g_iLimitRange)llMessageLinked(LINK_SET, LM_SETTING_SAVE, "auth_limitrange=0","origin");
+                            else llMessageLinked(LINK_SET, LM_SETTING_DELETE, "auth_limitrange", "origin");
                         } else {
                             llMessageLinked(LINK_SET, NOTIFY, "0%NOACCESS% to changing range limit", kAv);
                         }
@@ -794,6 +793,18 @@ state active
                     llMessageLinked(LINK_SET, REBOOT,"reboot","");
                 }
             }
+        } else if(iNum == TIMEOUT_FIRED){
+            if(sStr == "check_weld") { //Wearer accepted weld. Now recheck auth for menu pop
+                llMessageLinked(LINK_SET, AUTH_REQUEST , "welder_auth_check", g_kWeldBy);
+            }
+        } else if(iNum == AUTH_REPLY){
+            if(kID == "welder_auth_check"){ //pop menu for welder
+                list lParameters = llParseString2List(sStr, ["|"],[]);
+                Menu(g_kWeldBy,llList2Integer(lParameters,2));
+                llMessageLinked(LINK_SET, NOTIFY_OWNERS, "%WEARERNAME%'s collar has been welded", g_kWelder);
+                llMessageLinked(LINK_SET, NOTIFY, "1Weld completed", g_kWearer); //We shouldn't have to send this to the welder. Welder should always be an owner.
+            }
+        
         } else if(iNum == REBOOT){
             if(sStr=="reboot"){
                 llResetScript();

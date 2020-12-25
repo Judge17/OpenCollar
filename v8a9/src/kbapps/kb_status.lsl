@@ -2,7 +2,8 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a102";
+string  KB_DEVSTAGE          = "010001";
+// LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -106,6 +107,8 @@ integer KB_COLLAR_VERSION           = -34847;
 integer LINK_KB_VERS_REQ = -75301;
 integer LINK_KB_VERS_RESP = -75302;
 integer KB_REQUEST_VERSION         = -34591;
+integer KB_REQUEST_MANDATORY_LIST  = -34728;
+
 string UPMENU = "BACK";
 //integer g_iCaptureIsActive=FALSE; // If this flag is set, then auth will deny access to it's menus
 //integer g_iOpenAccess; // 0: disabled, 1: openaccess
@@ -216,7 +219,7 @@ HandleDeletes(string sStr) {
 
 LogLevelMenu(key kAv, integer iAuth) {
     string sPrompt = "\n[Logging Level]";
-    sPrompt += "\nSelect a log leve between 0 and 9.";
+    sPrompt += "\nSelect a log level between 0 and 9.";
     sPrompt += "\n0 means minimum logging, 9 means maximum, other numbers somewhere in between";
     list lButtons = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "LogLevel");
@@ -235,7 +238,7 @@ StatMenu(key kAv, integer iAuth) {
 
     list lButtons = []; // ["KickStart"];
 //    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", "Kickstart", Checkbox(g_iSWActive, "Safeword")];
-    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["KBarTitle", "SlaveName", "SlaveMessage", "KBVersions", Checkbox(g_iSWActive, "Safeword")];
+    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["KBarTitle", "SlaveName", "SlaveMessage", "KBVersions", "KBMand", Checkbox(g_iSWActive, "Safeword")];
 
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat");
 }
@@ -269,6 +272,10 @@ HandleMenus(string sStr, key kID) {
                 else if (llToLower(sMessage) == "kbartitle") Dialog(kAv, "What is the KBar Title?", [], [], 0, iAuth, "Textbox~KBTitle");
                 else if (llToLower(sMessage) == "kbversions") {
                     llMessageLinked(LINK_SET, KB_REQUEST_VERSION, "", kAv);
+                    StatMenu(kAv, iAuth);
+                }
+                else if (llToLower(sMessage) == "kbmand") {
+                    llMessageLinked(LINK_SET, KB_REQUEST_MANDATORY_LIST, "", kAv);
                     StatMenu(kAv, iAuth);
                 }
             }

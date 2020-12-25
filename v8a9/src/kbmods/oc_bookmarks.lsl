@@ -27,7 +27,8 @@ DebugOutput(key kID, list ITEMS){
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "a101";
+string  KB_DEVSTAGE          = "010001";
+// LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 
 string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
