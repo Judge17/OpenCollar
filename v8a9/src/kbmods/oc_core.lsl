@@ -20,9 +20,9 @@ https://github.com/OpenCollarTeam/OpenCollar
 
 integer NOTIFY_OWNERS=1003;
 
-string g_sParentMenu = ""; 
+//string g_sParentMenu = ""; 
 string g_sSubMenu = "Main";
-string COLLAR_VERSION = "8.0.0100"; // Provide enough room
+string COLLAR_VERSION = "8.0.0300"; // Provide enough room
 // LEGEND: Major.Minor.Build RC Beta Alpha
 integer UPDATE_AVAILABLE=FALSE;
 string NEW_VERSION = "";
@@ -43,7 +43,7 @@ string g_sSafeword="RED";
 //
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "010001";
+string  KB_DEVSTAGE          = "030001";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 integer g_bSafeword = TRUE;
 string  g_sCollarVersion = "not set";
@@ -64,17 +64,17 @@ integer CMD_TRUSTED = 501;
 //integer CMD_GROUP = 502;
 integer CMD_WEARER = 503;
 integer CMD_EVERYONE = 504;
-integer CMD_RLV_RELAY = 507;
+//integer CMD_RLV_RELAY = 507;
 //integer CMD_SAFEWORD = 510;
-integer CMD_RELAY_SAFEWORD = 511;
-integer CMD_NOACCESS=599;
+//integer CMD_RELAY_SAFEWORD = 511;
+//integer CMD_NOACCESS=599;
 
 integer NOTIFY = 1002;
 integer REBOOT = -1000;
 
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved
 //str must be in form of "token=value"
-integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
+//integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
 integer LM_SETTING_RESPONSE = 2002;//the settings script sends responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from settings
 integer LM_SETTING_EMPTY = 2004;//sent when a token has no value
@@ -83,14 +83,14 @@ integer MENUNAME_REQUEST = 3000;
 integer MENUNAME_RESPONSE = 3001;
 integer MENUNAME_REMOVE = 3003;
 
-integer RLV_CMD = 6000;
+//integer RLV_CMD = 6000;
 integer RLV_REFRESH = 6001;//RLV plugins should reinstate their restrictions upon receiving this message.
 
-integer RLV_OFF = 6100; // send to inform plugins that RLV is disabled now, no message or key needed
-integer RLV_ON = 6101; // send to inform plugins that RLV is enabled now, no message or key needed
+//integer RLV_OFF = 6100; // send to inform plugins that RLV is disabled now, no message or key needed
+//integer RLV_ON = 6101; // send to inform plugins that RLV is enabled now, no message or key needed
 
-integer TIMEOUT_READY = 30497;
-integer TIMEOUT_REGISTER = 30498;
+//integer TIMEOUT_READY = 30497;
+//integer TIMEOUT_REGISTER = 30498;
 integer TIMEOUT_FIRED = 30499;
 
 integer AUTH_REQUEST = 600;
@@ -100,8 +100,10 @@ integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
 integer DIALOG_TIMEOUT = -9002;
 string UPMENU = "BACK";
-string ALL = "ALL";
+//string ALL = "ALL";
 
+string g_sLockSound="dec9fb53-0fef-29ae-a21d-b3047525d312";
+string g_sUnlockSound="82fa6d06-b494-f97c-2908-84009380c8d1";
 
 key g_kWeldBy;
 list g_lMainMenu=["Apps", "Addons", "Access", "Settings", "Help/About"];
@@ -117,17 +119,25 @@ Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPa
 integer g_iHide=FALSE;
 integer g_iAllowHide=TRUE;
 Settings(key kID, integer iAuth){
-    string sPrompt = "OpenCollar\n\n[Settings]";
+    string sPrompt = "OpenCollar\n\n[Settings]\n\nEditor - Interactive Settings Editor";
     list lButtons = ["Print", "Load", "Fix Menus"];
     if (llGetInventoryType("oc_resizer") == INVENTORY_SCRIPT) lButtons += ["Resize"];
     else lButtons += ["-"];
-    lButtons += [Checkbox(g_iHide, "Hide"), "EDITOR", Checkbox(g_iAllowHide, "AllowHiding")];
+    lButtons += [Checkbox(g_iHide, "Hide"), "EDITOR", Checkbox(g_iAllowHide, "AllowHiding"), "Addon.."];
     Dialog(kID, sPrompt, lButtons, [UPMENU],0,iAuth, "Menu~Settings");
 }
 
-integer g_iWelded=FALSE;
-// The original idea in #356, was to make this as a app, but i fail to see why we must use an extra app just to create the weld, the extra app or possibly an addon could be made to unweld should the wearer desire it.
+AddonSettings(key kID, integer iAuth)
+{
+    string sPrompt = "OpenCollar\n\n[Addon Settings\n\nWearerAddons - Allow/Disallow use of wearer owned addons\nAddonLimited - Limit whether wearer owned addons can modify the owners list or weld state (default enabled)";
+    list lButtons = [Checkbox(g_iWearerAddons, "WearerAddons"), Checkbox(g_iWearerAddonLimited, "AddonLimited"), Checkbox(g_iAddons, "Addons")];
+    Dialog(kID, sPrompt, lButtons, [UPMENU], 0, iAuth, "Menu~SAddons");
+}
 
+integer g_iWelded=FALSE;
+integer g_iWearerAddons=TRUE;
+// The original idea in #356, was to make this as a app, but i fail to see why we must use an extra app just to create the weld, the extra app or possibly an addon could be made to unweld should the wearer desire it.
+integer g_iAddons=TRUE;
 list g_lApps;
 AppsMenu(key kID, integer iAuth){
     string sPrompt = "\n[Apps]\nYou have "+(string)llGetListLength(g_lApps)+" apps installed";
@@ -197,8 +207,8 @@ string Checkbox(integer iValue, string sLabel) {
     return llList2String(g_lCheckboxes, bool(iValue))+" "+sLabel;
 }
 integer g_iUpdatePin = 0;
-string g_sDeviceName;
-string g_sWearerName;
+//string g_sDeviceName;
+//string g_sWearerName;
 
 
 UserCommand(integer iNum, string sStr, key kID) {
@@ -212,11 +222,11 @@ UserCommand(integer iNum, string sStr, key kID) {
     if (sStr==g_sSubMenu || sStr == "menu "+g_sSubMenu || sStr == "menu") Menu(kID, iNum);
     //else if (iNum!=CMD_OWNER && iNum!=CMD_TRUSTED && kID!=g_kWearer) RelayNotify(kID,"Access denied!",0);
     else {
-        integer iWSuccess = 0; 
+        //integer iWSuccess = 0; 
         list lParameters = llParseString2List(sStr, [" "], []);
         string sChangetype = llList2String(lParameters,0);
         string sChangevalue = llList2String(lParameters,1);
-        string sText;
+        //string sText;
         
         if(sChangetype=="fix"){
             g_lMainMenu=["Apps", "Addons", "Access", "Settings", "Help/About"];
@@ -323,8 +333,10 @@ UserCommand(integer iNum, string sStr, key kID) {
             g_iLocked=TRUE;
             llMessageLinked(LINK_SET, LM_SETTING_SAVE, "global_locked="+(string)g_iLocked,"");
             llMessageLinked(LINK_SET, NOTIFY, "1%WEARERNAME%'s collar has been locked", kID);
+            llPlaySound(g_sLockSound,1);
         } else if(llToLower(sChangetype) == "unlock" && (iNum == CMD_OWNER || iNum == CMD_TRUSTED) && !g_iWelded){
             g_iLocked=FALSE;
+            llPlaySound(g_sUnlockSound,1);
             llMessageLinked(LINK_SET, LM_SETTING_DELETE, "global_locked","");
             llMessageLinked(LINK_SET, NOTIFY, "1%WEARERNAME%'s collar has been unlocked", kID);
         } else {
@@ -336,7 +348,7 @@ UserCommand(integer iNum, string sStr, key kID) {
         }
     }
 }
-
+integer g_iWearerAddonLimited=TRUE;
 integer g_iUpdateListener;
 key g_kUpdater;
 integer g_iDiscoveredUpdaters;
@@ -406,7 +418,7 @@ StartUpdate(){
     llRegionSayTo(g_kUpdater, g_iUpdateChan, "ready|"+(string)g_iUpdatePin);
 }
 
-
+integer g_iInterfaceChannel;
 integer g_iTouchNotify=FALSE;
 integer ALIVE = -55;
 integer READY = -56;
@@ -441,7 +453,14 @@ state active
         g_kWearer = llGetOwner();
         
         llMessageLinked(LINK_SET, 0, "initialize", llGetKey());
+        
     }
+    attach(key kID){
+        if(kID==NULL_KEY){
+            llRegionSayTo(g_kWearer, g_iInterfaceChannel, "OpenCollar=No");
+        }
+    }
+    
     touch_start(integer iNum){
         if(g_iTouchNotify) llMessageLinked(LINK_SET, NOTIFY, "0secondlife:///app/agent/"+(string)llDetectedKey(0)+"/about has touched your collar!", g_kWearer);
 
@@ -614,11 +633,40 @@ state active
                     } else if(sMsg == "EDITOR"){
                         llMessageLinked(LINK_SET, 0, "settings edit", kAv);
                         iRespring=FALSE;
+                    } else if(sMsg == "Addon.."){
+                        iRespring=FALSE;
+                        AddonSettings(kAv,iAuth);
+                    }
+                    
+                    if(iRespring)Settings(kAv,iAuth);
+                }else if(sMenu == "Menu~SAddons"){
+                    if(sMsg == Checkbox(g_iWearerAddons, "WearerAddons")){
+                        if(iAuth == CMD_OWNER || iAuth == CMD_TRUSTED){
+                            g_iWearerAddons=1-g_iWearerAddons;
+                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "global_weareraddon="+(string)g_iWearerAddons,"");
+                            
+                            if(!g_iWearerAddons){
+                                llMessageLinked(LINK_SET, 500, "kick_all_wearer_addons", kAv);
+                            }
+                        }else llMessageLinked(LINK_SET, NOTIFY, "0%NOACCESS% to toggling wearer addons", kAv);
+                    } else if(sMsg == Checkbox(g_iWearerAddonLimited, "AddonLimited")){
+                        if(iAuth == CMD_OWNER || iAuth == CMD_TRUSTED){
+                            g_iWearerAddonLimited=1-g_iWearerAddonLimited;
+                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "global_addonlimit="+(string)g_iWearerAddonLimited,"");
+                        }else llMessageLinked(LINK_SET, NOTIFY, "0%NOACCESS% to toggling wearer addon limitations", kAv);
+                    } else if(sMsg == Checkbox(g_iAddons, "Addons")){
+                        if(iAuth == CMD_OWNER){
+                            g_iAddons=1-g_iAddons;
+                            llMessageLinked(LINK_SET, LM_SETTING_SAVE, "global_addons="+(string)g_iAddons, "");
+                        }else llMessageLinked(LINK_SET, NOTIFY, "0%NOACCESS% to toggling all addons", kAv);
+                    }else if(sMsg == UPMENU){
+                        iRespring=FALSE;
+                        Settings(kAv,iAuth);
                     }
                     
                     
                     
-                    if(iRespring)Settings(kAv,iAuth);
+                    if(iRespring)AddonSettings(kAv,iAuth);
                 } else if(sMenu == "Menu~Help"){
                     if(sMsg == UPMENU){
                         iRespring=FALSE;
@@ -708,6 +756,12 @@ state active
                     g_lCheckboxes = llCSV2List(sVal);
                 } else if(sVar == "hide"){
                     g_iHide=(integer)sVal;
+                } else if(sVar == "weareraddon"){
+                    g_iWearerAddons=(integer)sVal;
+                } else if(sVar == "addonlimit"){
+                    g_iWearerAddonLimited=(integer)sVal;
+                } else if(sVar == "addons"){
+                    g_iAddons = (integer)sVal;
                 }
             } else if(sToken == "auth"){
                 if(sVar == "group"){
@@ -768,7 +822,7 @@ state active
                 } else if(sVar == "prefix"){
                     // revert to default calculation
                     g_sPrefix = llGetSubString(llKey2Name(g_kWearer),0,1);
-                } else if(sVar = "channel"){
+                } else if(sVar == "channel"){
                     g_iChannel = 1;
 //
 //    KBar Mod
@@ -779,7 +833,11 @@ state active
 //
 //    KBar Mod End
 //
-               }
+                } else if(sVar == "weareraddon"){
+                    g_iWearerAddons=TRUE;
+                } else if(sVar=="addonlimit"){
+                    g_iWearerAddonLimited=TRUE;
+                }
             } else if(sToken == "auth"){
                 if(sVar == "group"){
                     g_kGroup="";
@@ -818,6 +876,13 @@ state active
                 
                 DoCheckUpdate();
                 
+                if(llGetAttached()){
+                    
+                    g_iInterfaceChannel = (integer)("0x" + llGetSubString(g_kWearer,30,-1));
+                    if (g_iInterfaceChannel > 0) g_iInterfaceChannel = -g_iInterfaceChannel;
+                    if(g_iInterfaceChannel!=0)
+                        llRegionSayTo(llGetOwner(), g_iInterfaceChannel, "OpenCollar=Yes");
+                }
                 llListenRemove(g_iUpdateListener);
             }
         } else if(iNum == RLV_REFRESH){
@@ -908,7 +973,7 @@ state active
                 } else {
                     // this updater is older, dont install it
                     llMessageLinked(LINK_SET, NOTIFY, "0The version you are trying to install is older than the currently installed scripts, or it is the same version. To install anyway, trigger the install a second time", g_kUpdateUser);
-                    llSay(0, "Current version is newer or the same as the updater. Trigger update a second time to confirm you want to actually do this");
+                    //llSay(0, "Current version is newer or the same as the updater. Trigger update a second time to confirm you want to actually do this");
                     g_iDoTriggerUpdate=TRUE;
                 }
             }

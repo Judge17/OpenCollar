@@ -8,6 +8,9 @@ Aria (Tashia Redrose)
     *May 2020       -       Created new Integrated relay
     *July 2020      -       Finish integrated relay. Fix bug where the wearer could lock themselves out of the relay options
     
+Felkami (Caraway Ohmai)
+    *Dec 2020       -       Fixed #461, Modified runaway language to not assume relay on at runaway
+    
 et al.
 
 Licensed under the GPLv2. See LICENSE for full details.
@@ -17,6 +20,25 @@ https://github.com/OpenCollarTeam/OpenCollar
 
 string g_sParentMenu = "RLV";
 string g_sSubMenu = "Relay";
+
+//
+//    Start of KBar Mod
+//
+string  KB_VERSIONMAJOR      = "8";
+string  KB_VERSIONMINOR      = "0";
+string  KB_DEVSTAGE          = "030001";
+// LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
+
+string formatVersion() {
+    return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
+}
+string g_sCollarVersion = "not set";
+
+integer KB_COLLAR_VERSION		   = -34847;
+integer KB_REQUEST_VERSION         = -34591;
+//
+//    End of KBar Mod
+//
 
 key forcesitter;
 key sitid;
@@ -49,13 +71,13 @@ Release(){
         
 //MESSAGE MAP
 integer RLV_CLEAR=6002;
-//integer CMD_ZERO = 0;
+integer CMD_ZERO = 0;
 integer CMD_OWNER = 500;
 integer CMD_TRUSTED = 501;
 //integer CMD_GROUP = 502;
 integer CMD_WEARER = 503;
-//integer CMD_EVERYONE = 504;
-integer CMD_RLV_RELAY = 507;
+integer CMD_EVERYONE = 504;
+//integer CMD_RLV_RELAY = 507;
 integer CMD_SAFEWORD = 510;
 integer CMD_RELAY_SAFEWORD = 51200;
 
@@ -67,27 +89,27 @@ integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have s
 integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
 integer LM_SETTING_RESPONSE = 2002;//the settings script sends responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from settings
-integer LM_SETTING_EMPTY = 2004;//sent when a token has no value
+//integer LM_SETTING_EMPTY = 2004;//sent when a token has no value
 
 integer MENUNAME_REQUEST = 3000;
 integer MENUNAME_RESPONSE = 3001;
-integer MENUNAME_REMOVE = 3003;
+//integer MENUNAME_REMOVE = 3003;
 
 integer AUTH_REQUEST = 600;
 integer AUTH_REPLY=601;
 
-integer RLV_CMD = 6000;
-integer RLV_REFRESH = 6001;//RLV plugins should reinstate their restrictions upon receiving this message.
+//integer RLV_CMD = 6000;
+//integer RLV_REFRESH = 6001;//RLV plugins should reinstate their restrictions upon receiving this message.
 integer DO_RLV_REFRESH = 26001;//RLV plugins should reinstate their restrictions upon receiving this message.
 
-integer RLV_OFF = 6100; // send to inform plugins that RLV is disabled now, no message or key needed
-integer RLV_ON = 6101; // send to inform plugins that RLV is enabled now, no message or key needed
+//integer RLV_OFF = 6100; // send to inform plugins that RLV is disabled now, no message or key needed
+//integer RLV_ON = 6101; // send to inform plugins that RLV is enabled now, no message or key needed
 
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
 integer DIALOG_TIMEOUT = -9002;
 string UPMENU = "BACK";
-string ALL = "ALL";
+//string ALL = "ALL";
 integer g_iMode = 0;
 
 integer MODE_ASK=1;
@@ -122,7 +144,14 @@ Menu(key kID, integer iAuth) {
         g_iWearer=TRUE;
         HelplessChecks();
     }
-    string sPrompt = "\n[Relay App]\n\nNote: Wearer checkbox will allow or disallow wearer changes to relay\n\n";
+
+// KBar Mod
+//    string sPrompt = "\n[Titler]";
+    string sPrompt = "\n[Titler]\tKBar Ranch Version " + formatVersion();
+    sPrompt += "\n\tAvailable memory " + (string) llGetFreeMemory();
+    sPrompt += "\n\t[Relay App]\n\nNote: Wearer checkbox will allow or disallow wearer changes to relay\n\n";
+// KBar Mod end
+    
     list lButtons = [Checkbox(bool((g_iMode==0)), "OFF"), Checkbox(bool((g_iMode==MODE_ASK)),"Ask"), Checkbox(bool((g_iMode==MODE_AUTO)),"Auto"), Checkbox(g_iWearer, "Wearer")];
     if(Source){
         sPrompt += "Source: "+llKey2Name(Source);
@@ -153,10 +182,10 @@ UserCommand(integer iNum, string sStr, key kID) {
     if (sStr==llToLower(g_sSubMenu) || sStr == "menu "+llToLower(g_sSubMenu)) Menu(kID, iNum);
     //else if (iNum!=CMD_OWNER && iNum!=CMD_TRUSTED && kID!=g_kWearer) RelayNotify(kID,"Access denied!",0);
     else {
-        integer iWSuccess = 0; 
+        //integer iWSuccess = 0; 
         string sChangetype = llToLower(llList2String(llParseString2List(sStr, [" "], []),1));
-        string sChangevalue = llList2String(llParseString2List(sStr, [" "], []),2);
-        string sText;
+        //string sChangevalue = llList2String(llParseString2List(sStr, [" "], []),2);
+        //string sText;
         if(sChangetype == "refuse" && !g_iWearer && iNum==CMD_WEARER && !g_iHelplessMode){
             llMessageLinked(LINK_SET, CMD_RELAY_SAFEWORD, "","");
             string sReply = "Relay ";
@@ -222,9 +251,9 @@ list g_lTrust;
 list g_lBlock;
 integer g_iLocked=FALSE;
 
-integer TIMEOUT_READY = 30497;
-integer TIMEOUT_REGISTER = 30498;
-integer TIMEOUT_FIRED = 30499;
+//integer TIMEOUT_READY = 30497;
+//integer TIMEOUT_REGISTER = 30498;
+//integer TIMEOUT_FIRED = 30499;
 
 
 
@@ -381,9 +410,17 @@ state active
     }
     link_message(integer iSender,integer iNum,string sStr,key kID){
         if(iNum >= CMD_OWNER && iNum <= CMD_WEARER) UserCommand(iNum, sStr, kID);
-        else if(iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
+        else if(iNum == CMD_EVERYONE && (llToLower(sStr)==llToLower(g_sSubMenu) || llToLower(sStr) == "menu "+llToLower(g_sSubMenu)) ){
+            //Test if this is a denied auth
+            llMessageLinked(LINK_SET,NOTIFY, "0%NOACCESS% to relay options", kID);
+        }else if(iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
             llMessageLinked(iSender, MENUNAME_RESPONSE, g_sParentMenu+"|"+ g_sSubMenu,"");
         else if(iNum == DIALOG_RESPONSE){
+        
+            //Test to see if this is a denied auth. If we're here and its denied, we respring. A CMD_* call is already sent out which will produce the NOTIFY
+            //We're hard coding page 0 because new menu calls should always be page 0
+            if(llSubStringIndex(sStr, g_sSubMenu + "|0|" + (string)CMD_EVERYONE) != -1) llMessageLinked(LINK_SET, CMD_ZERO, "menu "+g_sParentMenu, llGetSubString(sStr, 0, 35));
+            
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             if(iMenuIndex!=-1){
                 string sMenu = llList2String(g_lMenuIDs, iMenuIndex+1);
@@ -488,16 +525,10 @@ state active
                     }
                 }
             }
-        }else if(iNum == LM_SETTING_EMPTY){
-            
-            //integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
-            
-        } else if(iNum == LM_SETTING_DELETE){
-            
-            //integer ind = llListFindList(g_lSettingsReqs, [sStr]);
-            //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
-            
+        
+        } else if (iNum == DIALOG_TIMEOUT) {
+            integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
+            g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex +3);  //remove stride from g_lMenuIDs
         } else if(iNum == LM_SETTING_RESPONSE){
             // Detect here the Settings
             list lSettings = llParseString2List(sStr, ["_","="],[]);
@@ -513,7 +544,7 @@ state active
 //
 //  KBar Mod
 //
-                else if(llList2String(lSettings,1) == "checkboxes"){
+                } else if(llList2String(lSettings,1) == "checkboxes"){
                     g_lCheckboxes = llCSV2List(llList2String(lSettings,2));
 //
 //  KBar Mod End
@@ -525,7 +556,6 @@ state active
                     
                     if(g_iMode==0){
                         llListenRemove(RELAY_LISTENER);
-                        Release();
                     } else {
                         RELAY_LISTENER = llListen(RLV_RELAY_CHANNEL, "", NULL_KEY, "");
                     }
@@ -581,14 +611,23 @@ state active
             integer iOldMode=g_iMode;
             g_iMode=0;
             if(!g_iLocked)llOwnerSay("@detach=y");
-            llMessageLinked(LINK_SET, NOTIFY,"0Relay temporarily disabled due to safeword or clear all. The relay will reactivate in 30 seconds", g_kWearer);
+            llMessageLinked(LINK_SET, NOTIFY,"0Relay temporarily suppressed for 30 seconds due to safeword or clear all.", g_kWearer);
             llSleep(30);
             g_iMode=iOldMode;
-            llMessageLinked(LINK_SET,NOTIFY, "0Relay has been reactivated",g_kWearer);
+            llMessageLinked(LINK_SET,NOTIFY, "0 Relay settings have been restored.",g_kWearer);
         } else if(iNum == REBOOT){
-            if(Source=="" || Source==NULL_KEY)
+            if((Source=="" || Source==NULL_KEY) || sStr=="reboot --f") 
                 llResetScript();
         }
+//
+// KBar Mod
+//
+        else if (iNum == KB_COLLAR_VERSION) g_sCollarVersion = sStr;
+        else if (iNum == KB_REQUEST_VERSION)
+            llMessageLinked(LINK_SET,NOTIFY,"0"+llGetScriptName() + " version " + formatVersion(),kID);
+//
+// KBar Mod end
+//
         //llOwnerSay(llDumpList2String([iSender,iNum,sStr,kID],"^"));
     }
     
@@ -615,4 +654,3 @@ state active
         Process(msg,id, iWillPrompt); // Prompt is moved inside of PROCESS
     }
 }
-    

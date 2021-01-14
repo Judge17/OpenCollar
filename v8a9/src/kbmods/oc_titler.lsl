@@ -25,7 +25,7 @@ string g_sVersion = "8.0"; // leave unmodified if not changed at all after relea
 //
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "010001";
+string  KB_DEVSTAGE          = "030001";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 
 string formatVersion() {
@@ -68,9 +68,11 @@ integer CMD_WEARER = 503;
 //integer CMD_SAFEWORD = 510;
 //integer CMD_RELAY_SAFEWORD = 511;
 
-integer TIMEOUT_READY = 30497;
-integer TIMEOUT_REGISTER = 30498;
-integer TIMEOUT_FIRED = 30499;
+//integer TIMEOUT_READY = 30497;
+//integer TIMEOUT_REGISTER = 30498;
+//integer TIMEOUT_FIRED = 30499;
+
+
 
 integer NOTIFY = 1002;
 integer REBOOT = -1000;

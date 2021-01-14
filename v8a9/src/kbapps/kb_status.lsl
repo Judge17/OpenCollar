@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "010001";
+string  KB_DEVSTAGE          = "030001";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
@@ -170,7 +170,6 @@ SetDebugLevel(string sLevel) {
 }
 
 HandleSettings(string sStr) {
-
     integer iDx = llListFindList(g_lCollarSettings, [sStr]);
     if (iDx < 0) {
         g_lCollarSettings += [sStr];

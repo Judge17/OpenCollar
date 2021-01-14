@@ -3,7 +3,8 @@
 	
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a905";
+string  KB_DEVSTAGE          = "010001";
+// LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 string  g_sScriptVersion = "";
 
 string formatVersion() {
@@ -19,7 +20,7 @@ DebugOutput(list ITEMS) {
 	for(i=0;i<end;i++){
 		final+=llList2String(ITEMS,i)+" ";
 	}
-//	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
+	llSay(KB_DEBUG_CHANNEL, llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
 	llOwnerSay(llGetScriptName() + " " + formatVersion() + " " + (string) g_iDebugCounter + " " + final);
 	if (g_iDebugCounter > 9999) SetDebugOff(); // safety check
 }
@@ -78,7 +79,7 @@ LoadSetting(string sData, integer iLine) {
 	string sToken;
 	string sValue;
 	integer i;
-//	if (g_bDebugOn) DebugOutput(["LoadSetting entry sData ", sData, iLine]);
+	if (g_bDebugOn) DebugOutput(["LoadSetting entry sData ", sData, iLine]);
 	if (iLine == 0 && g_sSplitLine != "" ) {
 		sData = g_sSplitLine ;
 		g_sSplitLine = "" ;
@@ -86,7 +87,7 @@ LoadSetting(string sData, integer iLine) {
 	if (iLine) {
 		// first we can filter out & skip blank lines & remarks
 		sData = llStringTrim(sData, STRING_TRIM_HEAD);
-//		if (g_bDebugOn) DebugOutput(["LoadSetting sData trimmed " + sData]);
+		if (g_bDebugOn) DebugOutput(["LoadSetting sData trimmed " + sData]);
 		if (sData == "" || llGetSubString(sData, 0, 0) == "#") return;
 		// check for "continued" line pieces
 		if (llStringLength(g_sSplitLine)) {
@@ -110,13 +111,13 @@ LoadSetting(string sData, integer iLine) {
 			if (sValue) g_lSettings = SetSetting(g_lSettings, sID + sToken, sValue);
 		}
 	}
-//	if (g_bDebugOn) DebugOutput(["LoadSetting exit sData ", sData, iLine]);
+	if (g_bDebugOn) DebugOutput(["LoadSetting exit sData ", sData, iLine]);
 }
 
 list SetSetting(list lCache, string sToken, string sValue) {
 	 g_lMsgPackage += [sToken, sValue];
-//	if (g_bDebugOn) DebugOutput(["SetSetting", sToken, sValue]);
-//	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
+	if (g_bDebugOn) DebugOutput(["SetSetting", sToken, sValue]);
+	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
 	integer idx = llListFindList(lCache, [sToken]);
 	if (~idx) return llListReplaceList(lCache, [sValue], idx + 1, idx + 1);
 	idx = GroupIndex(lCache, sToken);
@@ -218,8 +219,8 @@ DeleteKey(key kTarget) {
 }
 
 SendValues() {
-//	if (g_bDebugOn) DebugOutput(["SendValues Start", llGetListLength(g_lRequests), g_kActiveKey]);
-//	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
+	if (g_bDebugOn) DebugOutput(["SendValues Start", llGetListLength(g_lRequests), g_kActiveKey]);
+	if (g_bDebugOn) DebugOutput(g_lMsgPackage);
 	integer iLineCount = 1;
 	integer iDx = 0;
 	integer iLimit = llGetListLength(g_lMsgPackage);

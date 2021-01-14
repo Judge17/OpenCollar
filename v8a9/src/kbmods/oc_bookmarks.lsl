@@ -7,7 +7,9 @@
 // Copyright (c) 2008 - 2017 Satomi Ahn, Nandana Singh, Wendy Starfall,  
 // Sumi Perl, Master Starship, littlemousy, mewtwo064, ml132,       
 // Romka Swallowtail, Garvin Twine et al.                 
-// Licensed under the GPLv2.  See LICENSE for full details. 
+// Licensed under the GPLv2.  See LICENSE for full details.
+
+
 string g_sScriptVersion = "8.0";
 integer LINK_CMD_DEBUG=1999;
 //
@@ -27,7 +29,7 @@ DebugOutput(key kID, list ITEMS){
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "010001";
+string  KB_DEVSTAGE          = "030001";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 
 string formatVersion() {
@@ -78,21 +80,21 @@ list    PLUGIN_BUTTONS              = ["SAVE", "PRINT", "REMOVE"];
 //MESSAGE MAP
 //integer CMD_ZERO = 0;
 integer CMD_OWNER = 500;
-integer CMD_TRUSTED = 501;
+//integer CMD_TRUSTED = 501;
 integer CMD_GROUP = 502;
 integer CMD_WEARER = 503;
 integer CMD_EVERYONE = 504;
-integer CMD_RLV_RELAY = 507;
-integer CMD_SAFEWORD = 510;
-integer CMD_RELAY_SAFEWORD = 511;
-integer CMD_NOACCESS=599;
+//integer CMD_RLV_RELAY = 507;
+//integer CMD_SAFEWORD = 510;
+//integer CMD_RELAY_SAFEWORD = 511;
+//integer CMD_NOACCESS=599;
 
 integer NOTIFY = 1002;
 integer REBOOT = -1000;
 
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved
 //str must be in form of "token=value"
-integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
+//integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
 integer LM_SETTING_RESPONSE = 2002;//the settings script sends responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from settings
 integer LM_SETTING_EMPTY = 2004;//sent when a token has no value
@@ -102,14 +104,14 @@ integer MENUNAME_RESPONSE = 3001;
 integer MENUNAME_REMOVE = 3003;
 
 integer RLV_CMD = 6000;
-integer RLV_REFRESH = 6001;//RLV plugins should reinstate their restrictions upon receiving this message.
+//integer RLV_REFRESH = 6001;//RLV plugins should reinstate their restrictions upon receiving this message.
 
 integer RLV_OFF = 6100; // send to inform plugins that RLV is disabled now, no message or key needed
 integer RLV_ON = 6101; // send to inform plugins that RLV is enabled now, no message or key needed
 
-integer TIMEOUT_READY = 30497;
-integer TIMEOUT_REGISTER = 30498;
-integer TIMEOUT_FIRED = 30499;
+//integer TIMEOUT_READY = 30497;
+//integer TIMEOUT_REGISTER = 30498;
+//integer TIMEOUT_FIRED = 30499;
 
 
 
@@ -557,7 +559,17 @@ state active
             //if(ind!=-1)g_lSettingsReqs = llDeleteSubList(g_lSettingsReqs, ind,ind);
             
         } else if (iNum >= CMD_OWNER && iNum <= CMD_WEARER && iNum != CMD_GROUP) UserCommand(iNum, sStr, kID); // This is intentionally not available to public access.
-        else if(iNum == DIALOG_RESPONSE) {
+        else if( (iNum == CMD_EVERYONE || iNum == CMD_GROUP) && (llToLower(sStr)==llToLower(g_sSubMenu) || llToLower(sStr) == "menu "+llToLower(g_sSubMenu)) ){
+            //Test if this is a denied auth
+            llMessageLinked(LINK_SET,NOTIFY, "0%NOACCESS% to bookmarks", kID);
+        } else if(iNum == DIALOG_RESPONSE) {
+        
+            //Test to see if this is a denied auth. If we're here and its denied, we respring. A CMD_* call is already sent out which will produce the NOTIFY
+            //We're hard coding page 0 because new menu calls should always be page 0
+            if((llSubStringIndex(sStr, g_sSubMenu + "|0|" + (string)CMD_EVERYONE) != -1) || (llSubStringIndex(sStr, g_sSubMenu + "|0|" + (string)CMD_GROUP) != -1)){
+                llMessageLinked(LINK_SET, CMD_EVERYONE, "menu "+g_sParentMenu, llGetSubString(sStr, 0, 35));
+            }
+            
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             if (iMenuIndex != -1) {
                 list lMenuParams = llParseStringKeepNulls(sStr, ["|"], []);
