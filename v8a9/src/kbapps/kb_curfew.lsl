@@ -34,7 +34,8 @@
 string  g_sModule = "curfew";
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a109";
+string  KB_DEVSTAGE          = "030001";
+// LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 string  g_sCollarVersion = "not set";
 string  g_sScriptVersion = "";
 
