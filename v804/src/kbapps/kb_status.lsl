@@ -2,8 +2,9 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "030001";
+string  KB_DEVSTAGE          = "200001";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
+//string  g_sScriptVersion = "";
 string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
@@ -60,6 +61,7 @@ integer g_iLogLevel = 0; // minimal logging
 string  g_sSlaveMessage = "";
 string  g_sSlaveName = "";
 string  g_sKBarTitle = "";
+integer g_bSynchronize = FALSE;
 
 //MESSAGE MAP
 integer CMD_ZERO = 0;
@@ -123,6 +125,7 @@ integer g_iListenHandle = 0;
 string g_sSettingToken = "auth_";
 string g_sGlobalToken = "global_";
 string g_sTitlerToken = "titler_";
+string g_sSyncToken = "kbsync00_";
 
 key g_kLeashedTo = NULL_KEY; 
 integer g_iLeashedRank = 0;
@@ -146,11 +149,22 @@ Dialog(key kID, string sPrompt, list lChoices, list lUtilityButtons, integer iPa
     else g_lMenuIDs += [kID, kMenuID, sName];
 }
 
+SetSynchronize(integer iNew, integer iSave) {
+    if (g_bSynchronize == iNew) return; // no need to check for equality or inequality from this point forward
+    g_bSynchronize = iNew;
+    if (iSave) {
+        if (g_bSynchronize) SaveAndResend(g_sSyncToken + "synchronize", (string) g_bSynchronize);
+        else DeleteAndResend(g_sSyncToken + "synchronize");
+    }
+}
+
 SetSWActive(integer iNew, integer iSave) {
     if (g_iSWActive == iNew) return; // no need to check for equality or inequality from this point forward
     g_iSWActive = iNew;
-    if (g_iSWActive) SaveAndResend(g_sGlobalToken + "swactive", (string) g_iSWActive);
-    else DeleteAndResend(g_sGlobalToken + "swactive");
+    if (iSave) {
+        if (g_iSWActive) SaveAndResend(g_sGlobalToken + "swactive", (string) g_iSWActive);
+        else DeleteAndResend(g_sGlobalToken + "swactive");
+    }
 }
 
 SetLogLevel(integer iNew, integer iSave, key kID) {
@@ -196,6 +210,11 @@ HandleSettings(string sStr) {
         if (g_bDebugOn) DebugOutput(3, ["HandleSettings-4", sToken, sValue]);
         if (sToken == "slavename") g_sSlaveName = sValue;
         else if (sToken == "kbartitle") g_sKBarTitle = sValue;
+    } else if (llToLower(llGetSubString(sToken, 0, i)) == llToLower(g_sSyncToken)) { // if "major_" = "kbsync00_" 
+        sToken = llGetSubString(sToken, i + 1, -1);
+        if (g_bDebugOn) DebugOutput(3, ["HandleSettings-4", sToken, sValue]);
+        if (sToken == "synchronize") SetSynchronize((integer) sValue, FALSE);
+        else if (sToken == "kbartitle") g_sKBarTitle = sValue;
     }
 }
 
@@ -231,13 +250,14 @@ StatMenu(key kAv, integer iAuth) {
     sPrompt += "\nThis is a K-Bar plugin; for support, wire roan (Silkie Sabra), K-Bar Ranch.\n";
 
     if (g_iSWActive) sPrompt += "\nSafeword enabled"; else sPrompt += "\nSafeword disabled";
+    if (g_bSynchronize) sPrompt += " Synchronize enabled"; else sPrompt += " Synchronize disabled";
     sPrompt += "\nKBar Title: " + g_sKBarTitle;
     sPrompt += "\nSlave Name: " + g_sSlaveName;
     sPrompt += "\nLogin Message: " + g_sSlaveMessage; 
 
     list lButtons = []; // ["KickStart"];
 //    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["Debug", "LogLevel", "Kickstart", Checkbox(g_iSWActive, "Safeword")];
-    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["KBarTitle", "SlaveName", "SlaveMessage", "KBVersions", "KBMand", Checkbox(g_iSWActive, "Safeword")];
+    if ((iAuth == CMD_OWNER) || g_bDebugOn) lButtons += ["KBarTitle", "SlaveName", "SlaveMessage", "KBVersions", "KBMand", Checkbox(g_iSWActive, "Safeword"), Checkbox(g_bSynchronize, "Synchronize")];
 
     Dialog(kAv, sPrompt, lButtons, [UPMENU], 0, iAuth, "Stat");
 }
@@ -260,12 +280,14 @@ HandleMenus(string sStr, key kID) {
         g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
         //Debug(sMessage);
         if (sMenu == "Stat") {
-            if (sMessage == UPMENU)
+                if (sMessage == UPMENU)
                 llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
             else if (llToLower(sMessage) == "debug") DebugMenu(kAv, iAuth);
             else {
-                if (llToLower(sMessage) == llToLower(Checkbox(TRUE, "Safeword"))) UserCommand(iAuth, "safeword on", kAv, TRUE);
-                else if (llToLower(sMessage) == llToLower(Checkbox(FALSE, "Safeword"))) UserCommand(iAuth, "safeword off", kAv, TRUE);
+                if (llToLower(sMessage) == llToLower(Checkbox(FALSE, "Safeword"))) UserCommand(iAuth, "safeword on", kAv, TRUE);
+                else if (llToLower(sMessage) == llToLower(Checkbox(TRUE, "Safeword"))) UserCommand(iAuth, "safeword off", kAv, TRUE);
+                else if (llToLower(sMessage) == llToLower(Checkbox(FALSE, "Synchronize"))) UserCommand(iAuth, "synchronize on", kAv, TRUE);
+                else if (llToLower(sMessage) == llToLower(Checkbox(TRUE, "Synchronize"))) UserCommand(iAuth, "synchronize off", kAv, TRUE);
                 else if (llToLower(sMessage) == "slavename") Dialog(kAv, "What is the slave's name?", [], [], 0, iAuth, "Textbox~Name");
                 else if (llToLower(sMessage) == "slavemessage") Dialog(kAv, "What message at login?", [], [], 0, iAuth, "Textbox~Msg");
                 else if (llToLower(sMessage) == "kbartitle") Dialog(kAv, "What is the KBar Title?", [], [], 0, iAuth, "Textbox~KBTitle");
@@ -314,11 +336,24 @@ UserCommand(integer iNum, string sStr, key kID, integer iRemenu) { // here iNum:
                 llMessageLinked(LINK_SET,NOTIFY,"1"+"Your safeword has been enabled.",(key) g_sWearerID);
             } else {
                 SetSWActive(FALSE, TRUE);
-                    llMessageLinked(LINK_SET,NOTIFY,"1"+"Your safeword has been disabled.",(key) g_sWearerID);
+                llMessageLinked(LINK_SET,NOTIFY,"1"+"Your safeword has been disabled.",(key) g_sWearerID);
             }
         }
         else
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to safeword function",kID);
+        if (iRemenu) StatMenu(kID, iNum);
+    } else if (sCommand == "synchronize") {
+        if ((iNum == CMD_OWNER) || g_bDebugOn) {
+           if (sAction == "on") {
+                SetSynchronize(TRUE, TRUE);
+                llMessageLinked(LINK_SET,NOTIFY,"1"+"Mandatory settings enabled.",(key) g_sWearerID);
+            } else {
+                SetSynchronize(FALSE, TRUE);
+                llMessageLinked(LINK_SET,NOTIFY,"1"+"Mandatory settings disabled.",(key) g_sWearerID);
+            }
+        }
+        else
+            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to synchronize function",kID);
         if (iRemenu) StatMenu(kID, iNum);
     } else if (sCommand == "loglevel") {
         if ((iNum == CMD_OWNER) || g_bDebugOn) {
