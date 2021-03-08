@@ -67,7 +67,9 @@ key     g_kWearer = NULL_KEY;       // key of the current wearer to reset only o
 string  g_sScript;                  // part of script name used for settings
 //integer g_iKBarOptions=0;
 //integer g_iGirlStatus=0; // 0=guest, 1=protected, 2=slave
-list    g_lPairs = [];
+//  list of regions (taken from bookmarks) with indicator if regions is allowed or not
+//  stride 3: 0 = nickname, 1 = region name, 2 = allowed?
+list    g_lAllowedRegions = [];
 
 integer CMD_OWNER = 500;
 integer CMD_TRUSTED = 501;
@@ -233,8 +235,8 @@ DoMenu(key keyID, integer iAuth) {
     lButtons += Checkbox(g_iActive, "Active");
     
     lButtons += Checkbox(g_iCurfewActive, "Curfew");
-	
-	if (g_iCurfewActive) lButtons += [SETSTART, SETSTOP];
+
+    if (g_iCurfewActive) lButtons += [SETSTART, SETSTOP];
     
     if ((keyID == KURT_KEY) || ((keyID == SILKIE_KEY) && (g_kWearer != keyID))) {
         lButtons += Checkbox(g_bDebugOn, "Debug");
@@ -317,7 +319,7 @@ UserCommand(integer iNum, string sStr, key kID) {
             llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to deactivate TP debug", kID);
             DoMenu(kID, iNum);
         }
-	}
+    }
 /*
     else if(llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + FORCERESET) - 1) == g_sChatCommand + " " + FORCERESET) {
         checkMemory(TRUE);
@@ -326,12 +328,12 @@ UserCommand(integer iNum, string sStr, key kID) {
 
 list dumpRegions() {
     integer iIdx = 0;
-    integer iLen = llGetListLength(g_lPairs);
+    integer iLen = llGetListLength(g_lAllowedRegions);
     list lRet = [];
-    for (iIdx = 0; iIdx < iLen; ++iIdx) {
-        string sEntry = llList2String(g_lPairs, iIdx);
-        list lEntry = llParseString2List(sEntry, ["~"], []);
-        string sEntryName = llList2String(lEntry, 1);
+    for (iIdx = 0; iIdx < iLen; iIdx += 3) {
+//        string sEntry = llList2String(g_lAllowedRegions, iIdx);
+//        list lEntry = llParseString2List(sEntry, ["~"], []);
+        string sEntryName = llList2String(g_lAllowedRegions, iIdx + 1);
         if (llListFindList(lRet, [sEntryName]) < 0) {
             lRet += [sEntryName];
         }
@@ -341,49 +343,61 @@ list dumpRegions() {
 
 addOccurrence(string sName, string sRegion) {
     if (g_bDebugOn) { DebugOutput(["addOccurrence ", sName, sRegion]); }
-    string sEntry = sName + "~" + sRegion;
-    integer iIdx = llListFindList(g_lPairs, [sEntry]);
+//    string sEntry = sName + "~" + sRegion;
+    integer iIdx = llListFindList(g_lAllowedRegions, [sName]);
     if (iIdx < 0) {
-        g_lPairs += [sEntry];
+        if ((llToLower(sName) == "home") || (llToLower(sName) == "defaulthome")) g_lAllowedRegions += [sName, sRegion, TRUE];
+        g_lAllowedRegions += [sName, sRegion, FALSE];
     }
 }
 
 deleteOccurence(string sName) {
     integer iIdx = findOccurrence(sName);
     if (iIdx >= 0) {
-        g_lPairs = llDeleteSubList(g_lPairs, iIdx, iIdx);
+        g_lAllowedRegions = llDeleteSubList(g_lAllowedRegions, iIdx, iIdx + 2);
     }
+}
+
+string findHome() {
+    if (findOccurrence("Home") >= 0) return "Home";
+    if (findOccurrence("home") >= 0) return "home";
+    if (findOccurrence("DefaultHome") >= 0) return "DefaultHome";
+    if (findOccurrence("defaulthome") >= 0) return "defaulthome";
+    return "";
 }
 
 integer findOccurrence(string sName) {
     if (g_bDebugOn) { DebugOutput(["findOccurrence ", sName]); }
-    integer iIdx = 0;
-    integer iLen = llGetListLength(g_lPairs);
-    for (iIdx = 0; iIdx < iLen; ++iIdx) {
-        string sEntry = llList2String(g_lPairs, iIdx);
-        if (g_bDebugOn) { DebugOutput(["findOccurrence entry ", sEntry]); }
-        list lEntry = llParseString2List(sEntry, ["~"], []);
-        string sEntryName = llList2String(lEntry, 0);
-        if (sEntryName == sName) {
-            if (g_bDebugOn) { DebugOutput(["findOccurrence returned ", iIdx]); }
-            return iIdx;
-        }
-    }
-    if (g_bDebugOn) { DebugOutput(["findOccurrence returned -1"]); }
-    return -1;
+    return(llListFindList(g_lAllowedRegions, [sName]));
+//    integer iIdx = 0;
+//    integer iLen = llGetListLength(g_lAllowedRegions);
+//    for (iIdx = 0; iIdx < iLen; ++iIdx) {
+//        string sEntry = llList2String(g_lAllowedRegions, iIdx);
+//        if (g_bDebugOn) { DebugOutput(["findOccurrence entry ", sEntry]); }
+//        list lEntry = llParseString2List(sEntry, ["~"], []);
+//        string sEntryName = llList2String(lEntry, 0);
+//        if (sEntryName == sName) {
+//            if (g_bDebugOn) { DebugOutput(["findOccurrence returned ", iIdx]); }
+//            return iIdx;
+//        }
+//    }
+//    if (g_bDebugOn) { DebugOutput(["findOccurrence returned -1"]); }
+//    return -1;
 }
 
 integer findRegion(string sName) {
-    integer iIdx = 0;
-    integer iLen = llGetListLength(g_lPairs);
-    for (iIdx = 0; iIdx < iLen; ++iIdx) {
-        string sEntry = llList2String(g_lPairs, iIdx);
-        list lEntry = llParseString2List(sEntry, ["~"], []);
-        string sEntryName = llList2String(lEntry, 1);
-        if (sEntryName == sName) { if (g_bDebugOn) { DebugOutput(["findRegion returning TRUE"]); } return TRUE; }
-    }
-    if (g_bDebugOn) { DebugOutput(["findRegion returning FALSE"]); }
-    return FALSE;
+    integer iIdx = llListFindList(g_lAllowedRegions, [sName]);
+    if (iIdx < 0) return FALSE;
+    return llList2Integer(g_lAllowedRegions, iIdx + 1);
+//    integer iLen = llGetListLength(g_lAllowedRegions);
+//    for (iIdx = 0; iIdx < iLen; ++iIdx) {
+//        string sEntry = llList2String(g_lAllowedRegions, iIdx);
+//        list lEntry = llParseString2List(sEntry, ["~"], []);
+//        string sEntryName = llList2String(lEntry, 1);
+//        if (sEntryName == sName) { if (g_bDebugOn) { DebugOutput(["findRegion returning TRUE"]); } return TRUE; }
+//    }
+//    if (g_bDebugOn) { DebugOutput(["findRegion returning FALSE"]); }
+//    return FALSE;
 }
 
 parseSettings(integer iSender, integer iNum, string sStr, key kID) {
@@ -511,10 +525,7 @@ integer checkOK(integer bFirstTime, string sRegion) {
     if (!g_iActive) return TRUE;
     if (LeashOK()) return TRUE;
     if (RegOK(sRegion)) return TRUE;
-    if ((findOccurrence("Home") >= 0) ||
-        (findOccurrence("home") >= 0) ||
-        (findOccurrence("DefaultHome") >= 0) ||
-        (findOccurrence("defaulthome") >= 0)) {
+    if (findHome() != "") {
             if (g_bDebugOn) { 
                 DebugOutput(["checkOK ", 
                 "g_iSecondsBeforeBoot " + (string) g_iSecondsBeforeBoot,
@@ -528,7 +539,7 @@ integer checkOK(integer bFirstTime, string sRegion) {
         llMessageLinked(LINK_SET,NOTIFY,"0"+"DefaultHome and Home bookmarks both missing.", g_kWearer);
     }
     return FALSE;
-/*    
+/*
     llMessageLinked(LINK_SET,NOTIFY,"0"+"you are not allowed in this region unless you are leashed.", g_kWearer);
     if (findOccurrence("Home") >= 0) {
         llMessageLinked(LINK_THIS, CMD_OWNER, "tp Home", g_kWearer);
@@ -767,19 +778,13 @@ state active  {
                 llSetTimerEvent(5.0);
             } else {
                 llSetTimerEvent(0.0);
-                 if (findOccurrence("Home") >= 0) {
-                    llMessageLinked(LINK_THIS, CMD_OWNER, "tp Home", g_kWearer);
-                } else if (findOccurrence("home") >= 0) {
-                    llMessageLinked(LINK_THIS, CMD_OWNER, "tp home", g_kWearer);
-                } else if (findOccurrence("DefaultHome") >= 0) {
-                    llMessageLinked(LINK_THIS, CMD_OWNER, "tp DefaultHome", g_kWearer);
-                } else if (findOccurrence("defaulthome") >= 0) {
-                    llMessageLinked(LINK_THIS, CMD_OWNER, "tp defaulthome", g_kWearer);
-                } else { llMessageLinked(LINK_SET,NOTIFY,"0"+"TP home failed.", g_kWearer);
-                }
+                string sHome = findHome();
+                if (sHome != "") llMessageLinked(LINK_THIS, CMD_OWNER, "tp " + sHome, g_kWearer);
+                else llMessageLinked(LINK_SET,NOTIFY,"0"+"TP home failed.", g_kWearer);
             }
         }
     }
 }
 
 // kb_tplim
+    

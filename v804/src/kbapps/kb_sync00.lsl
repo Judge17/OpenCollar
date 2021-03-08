@@ -2,7 +2,7 @@
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "400029";
+string  KB_DEVSTAGE          = "400030";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 string  g_sCollarVersion = "not set";
 
@@ -251,7 +251,7 @@ integer MergeInputSettingsToMandatory(list lInput) {
 }
 
 string BuildRequestString(integer iRequest) {
-    string sReturn = "ping803<>" + (string) iRequest;
+    string sReturn = "ping804<>" + (string) iRequest;
     return sReturn;
 }
 

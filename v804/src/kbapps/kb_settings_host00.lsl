@@ -3,7 +3,7 @@
     
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "200026";
+string  KB_DEVSTAGE          = "200027";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 string  g_sScriptVersion = "";
 
@@ -465,7 +465,7 @@ state init_version {
         llOwnerSay(formatVersion() + " " + sName + " " + sMessage);
         list lMessage = llParseString2List(sMessage, ["<>"], [""]);
         string sParm1 = llList2String(lMessage, 0);
-        if (sParm1 == "ping803") {  // only look at new style requests
+        if (sParm1 == "ping804") {  // only look at new style requests
             if (llGetListLength(lMessage) > 1) {    // only look at properly formated requests (must have ping803<>something)
                 llSetTimerEvent(0.0);
                 llSetTimerEvent(60.0); // failsafe to reset if incoming traffic freezes
