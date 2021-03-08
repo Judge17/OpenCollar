@@ -398,12 +398,12 @@ integer AddRequest(key kId) {
 default {
     state_entry() {
         g_kOwner = llGetOwner();
-        if (g_bDebugOn) DebugOutput(5, ["state_entry", g_kOwner]);
+        //  if (g_bDebugOn) DebugOutput(5, ["state_entry", g_kOwner]);
         Kickoff();
     }
 
     on_rez(integer iParam) {
-        if (g_bDebugOn) DebugOutput(5, ["on_rez"]);
+        //  if (g_bDebugOn) DebugOutput(5, ["on_rez"]);
         if (g_kOwner != llGetOwner()) llResetScript();
         Kickoff();
     }
@@ -461,7 +461,8 @@ state init_version {
 //        Add it to the request list for processing in due time
 //
     listen(integer iChannel, string sName, key kId, string sMessage) {
-        if (g_bDebugOn) DebugOutput(6, ["init_version", "listen-1", iChannel, sName, kId, sMessage]);
+        //  if (g_bDebugOn) DebugOutput(6, ["init_version", "listen-1", iChannel, sName, kId, sMessage]);
+        llOwnerSay(formatVersion() + " " + sName + " " + sMessage);
         list lMessage = llParseString2List(sMessage, ["<>"], [""]);
         string sParm1 = llList2String(lMessage, 0);
         if (sParm1 == "ping803") {  // only look at new style requests
@@ -486,7 +487,7 @@ state init_version {
                 } else {
                     if (SendBatch(iParm2, kId)) {
                         EndRun();
-                        if (g_bDebugOn) DebugOutput(6, ["init_version", "listen-2", "Final Request"]);
+                        //  if (g_bDebugOn) DebugOutput(6, ["init_version", "listen-2", "Final Request"]);
                     }
                 }
             }
@@ -494,7 +495,7 @@ state init_version {
     }
     
     timer() {
-        if (g_bDebugOn) DebugOutput(9, ["init_version", "timer", llGetFreeMemory()]);
+        //  if (g_bDebugOn) DebugOutput(9, ["init_version", "timer", llGetFreeMemory()]);
         llSetTimerEvent(0.0);
         if (g_bRequestInProgress) {
             EndRun();
@@ -504,13 +505,13 @@ state init_version {
 
     state_entry() {
         g_kOwner = llGetOwner();
-        if (g_bDebugOn) DebugOutput(9, ["init_version", "state_entry", llGetFreeMemory(), g_kOwner]);
+        //  if (g_bDebugOn) DebugOutput(9, ["init_version", "state_entry", llGetFreeMemory(), g_kOwner]);
         g_bRequestInProgress = FALSE;
         InitListen();
     }
         
     on_rez(integer iParam) {
-        if (g_bDebugOn) DebugOutput(5, ["init_version", "on_rez"]);
+        //  if (g_bDebugOn) DebugOutput(5, ["init_version", "on_rez"]);
         if (g_kOwner != llGetOwner()) llResetScript();
         llResetScript();
     }
@@ -520,7 +521,7 @@ state init_version {
     }
 
     state_exit() {
-        if (g_bDebugOn) DebugOutput(5, ["init_version", "state_exit", g_kOwner]);
+        //  if (g_bDebugOn) DebugOutput(5, ["init_version", "state_exit", g_kOwner]);
         CloseListen();
     }
 }

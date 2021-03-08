@@ -26,7 +26,7 @@ string g_sSubMenu = "Relay";
 //
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "030001";
+string  KB_DEVSTAGE          = "400001";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 
 string formatVersion() {
@@ -146,8 +146,8 @@ Menu(key kID, integer iAuth) {
     }
 
 // KBar Mod
-//    string sPrompt = "\n[Titler]";
-    string sPrompt = "\n[Titler]\tKBar Ranch Version " + formatVersion();
+//    string sPrompt = "\n[Relay]";
+    string sPrompt = "\n[Relay]\tKBar Ranch Version " + formatVersion();
     sPrompt += "\n\tAvailable memory " + (string) llGetFreeMemory();
     sPrompt += "\n\t[Relay App]\n\nNote: Wearer checkbox will allow or disallow wearer changes to relay\n\n";
 // KBar Mod end

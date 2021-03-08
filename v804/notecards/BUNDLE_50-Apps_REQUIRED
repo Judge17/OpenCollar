@@ -1,0 +1,8 @@
+SCRIPT|kb_sync00
+SCRIPT|kb_sync01
+SCRIPT|kb_tplimits
+SCRIPT|kb_clock
+SCRIPT|kb_curfew
+SCRIPT|kb_programmer
+SCRIPT|kb_status
+ITEM|.version

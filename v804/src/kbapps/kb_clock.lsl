@@ -10,7 +10,10 @@ integer ALARM_TIME = 0;
 
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "1a105";
+string  KB_DEVSTAGE          = "400001";
+// LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
+//string  g_sScriptVersion = "";
+string  g_sScriptVersion = "";
 string  g_sCollarVersion = "not set";
 
 integer NOTIFY              = 1002;
