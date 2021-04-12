@@ -12,7 +12,7 @@ string  BUTTON_PARENTMENU    = g_sParentMenu;
 key     g_kWebLookup;
 string  KB_VERSIONMAJOR      = "8";
 string  KB_VERSIONMINOR      = "0";
-string  KB_DEVSTAGE          = "400001";
+string  KB_DEVSTAGE          = "400002";
 // LEGEND: Major.Minor.ijklmm i=Build j=RC k=Beta l=Alpha mm=KBar Version
 //string  g_sScriptVersion = "";
 string  g_sScriptVersion = "";
@@ -28,9 +28,9 @@ string formatVersion() {
     return KB_VERSIONMAJOR + "." + KB_VERSIONMINOR + "." + KB_DEVSTAGE;
 }
 
-//DebugOutput(integer iLevel, list ITEMS) {
-//    if (g_iDebugLevel > iLevel) return;
-DebugOutput(list ITEMS) {
+DebugOutput(integer iLevel, list ITEMS) {
+    if (g_iDebugLevel > iLevel) return;
+//DebugOutput(list ITEMS) {
     ++g_iDebugCounter;
     integer i=0;
     integer end=llGetListLength(ITEMS);
@@ -140,7 +140,7 @@ string FormatCurfew(list lCurfew, integer bStart) {
     list lTemp = ["FormatCurfew", "***"];
     lTemp += lCurfew;
     lTemp += ["***", bStart];
-    if (g_bDebugOn) DebugOutput(lTemp);
+    if (g_bDebugOn) DebugOutput(5, lTemp);
     integer i = 0;
     if (!bStart) i = 2;
     string s1 = llList2String(g_lCurfew, i);
@@ -246,8 +246,8 @@ DoMenu(key keyID, integer iAuth) {
 }
 
 UserCommand(integer iNum, string sStr, key kID) {
-    if (g_bDebugOn) { DebugOutput(["UserCommand", iNum, sStr, kID]); }
-    if(!(iNum >= CMD_OWNER && iNum <= CMD_WEARER)) return;
+    if (g_bDebugOn) { DebugOutput(5, ["UserCommand", iNum, sStr, kID]); }
+    if(!(iNum >= CMD_OWNER && iNum <= CMD_TRUSTED)) return;
     // a validated command from a owner, secowner, groupmember or the wearer has been received
     list lParams = llParseString2List(sStr, [" "], []);
     //string sCommand = llToLower(llList2String(lParams, 0));
@@ -297,29 +297,29 @@ UserCommand(integer iNum, string sStr, key kID) {
         }
         DoMenu(kID, iNum);
     }
-    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGON) - 1) == g_sChatCommand + " " + DEBUGON) || (sStr == Checkbox(TRUE, "Debug"))) {
-        if ((kID == KURT_KEY) || ((kID == SILKIE_KEY) && (g_kWearer != kID))) {
-            SetDebugOn(kID);
-        } else {
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to activate TP debug",kID);
-        }
-        DoMenu(kID, iNum);
-    }
-    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGOFF) - 1) == g_sChatCommand + " " + DEBUGOFF) || (sStr == Checkbox(FALSE, "Debug"))) {
-        if ((kID == KURT_KEY) || ((kID == SILKIE_KEY) && (g_kWearer != kID))) {
-            SetDebugOff(kID);
-        } else {
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to deactivate TP debug", kID);
-        }
-        DoMenu(kID, iNum);
-    } else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + SETSTART) - 1) == g_sChatCommand + " " + SETSTART) || (sStr == SETSTART)) {
-        if (iNum == CMD_OWNER) {
-            DoCurfewMenu(kID, iNum, 1);
-        } else {
-            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to deactivate TP debug", kID);
-            DoMenu(kID, iNum);
-        }
-    }
+//    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGON) - 1) == g_sChatCommand + " " + DEBUGON) || (sStr == Checkbox(TRUE, "Debug"))) {
+//        if ((kID == KURT_KEY) || ((kID == SILKIE_KEY) && (g_kWearer != kID))) {
+//            SetDebugOn(kID);
+//        } else {
+//            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to activate TP debug",kID);
+//        }
+//        DoMenu(kID, iNum);
+//    }
+//    else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + DEBUGOFF) - 1) == g_sChatCommand + " " + DEBUGOFF) || (sStr == Checkbox(FALSE, "Debug"))) {
+//        if ((kID == KURT_KEY) || ((kID == SILKIE_KEY) && (g_kWearer != kID))) {
+//            SetDebugOff(kID);
+//        } else {
+//            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to deactivate TP debug", kID);
+//        }
+//        DoMenu(kID, iNum);
+//    } else if ((llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + SETSTART) - 1) == g_sChatCommand + " " + SETSTART) || (sStr == SETSTART)) {
+//        if (iNum == CMD_OWNER) {
+//            DoCurfewMenu(kID, iNum, 1);
+//        } else {
+//            llMessageLinked(LINK_SET,NOTIFY,"0"+"%NOACCESS% to deactivate TP debug", kID);
+//            DoMenu(kID, iNum);
+//        }
+//    }
 /*
     else if(llGetSubString(sStr, 0, llStringLength(g_sChatCommand + " " + FORCERESET) - 1) == g_sChatCommand + " " + FORCERESET) {
         checkMemory(TRUE);
@@ -342,7 +342,7 @@ list dumpRegions() {
 }
 
 addOccurrence(string sName, string sRegion) {
-    if (g_bDebugOn) { DebugOutput(["addOccurrence ", sName, sRegion]); }
+    if (g_bDebugOn) { DebugOutput(5, ["addOccurrence ", sName, sRegion]); }
 //    string sEntry = sName + "~" + sRegion;
     integer iIdx = llListFindList(g_lAllowedRegions, [sName]);
     if (iIdx < 0) {
@@ -367,21 +367,21 @@ string findHome() {
 }
 
 integer findOccurrence(string sName) {
-    if (g_bDebugOn) { DebugOutput(["findOccurrence ", sName]); }
+    if (g_bDebugOn) { DebugOutput(5, ["findOccurrence ", sName]); }
     return(llListFindList(g_lAllowedRegions, [sName]));
 //    integer iIdx = 0;
 //    integer iLen = llGetListLength(g_lAllowedRegions);
 //    for (iIdx = 0; iIdx < iLen; ++iIdx) {
 //        string sEntry = llList2String(g_lAllowedRegions, iIdx);
-//        if (g_bDebugOn) { DebugOutput(["findOccurrence entry ", sEntry]); }
+//        if (g_bDebugOn) { DebugOutput(5, ["findOccurrence entry ", sEntry]); }
 //        list lEntry = llParseString2List(sEntry, ["~"], []);
 //        string sEntryName = llList2String(lEntry, 0);
 //        if (sEntryName == sName) {
-//            if (g_bDebugOn) { DebugOutput(["findOccurrence returned ", iIdx]); }
+//            if (g_bDebugOn) { DebugOutput(5, ["findOccurrence returned ", iIdx]); }
 //            return iIdx;
 //        }
 //    }
-//    if (g_bDebugOn) { DebugOutput(["findOccurrence returned -1"]); }
+//    if (g_bDebugOn) { DebugOutput(5, ["findOccurrence returned -1"]); }
 //    return -1;
 }
 
@@ -394,9 +394,9 @@ integer findRegion(string sName) {
 //        string sEntry = llList2String(g_lAllowedRegions, iIdx);
 //        list lEntry = llParseString2List(sEntry, ["~"], []);
 //        string sEntryName = llList2String(lEntry, 1);
-//        if (sEntryName == sName) { if (g_bDebugOn) { DebugOutput(["findRegion returning TRUE"]); } return TRUE; }
+//        if (sEntryName == sName) { if (g_bDebugOn) { DebugOutput(5, ["findRegion returning TRUE"]); } return TRUE; }
 //    }
-//    if (g_bDebugOn) { DebugOutput(["findRegion returning FALSE"]); }
+//    if (g_bDebugOn) { DebugOutput(5, ["findRegion returning FALSE"]); }
 //    return FALSE;
 }
 
@@ -411,17 +411,17 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
     string sTokenMajor = llToLower(llGetSubString(sToken, 0, i - 1));  // now sTokenMajor = "major"
     string sTokenMinor = "";
     if (i > 0 ) sTokenMinor = llToLower(llGetSubString(sToken, i + 1, -1));  // now sTokenMinor = "minor"
-    if (g_bDebugOn) { DebugOutput(["parseSettings", iNum, sStr, sTokenMajor, sTokenMinor, sValue]); }
+    if (g_bDebugOn) { DebugOutput(5, ["parseSettings", iNum, sStr, sTokenMajor, sTokenMinor, sValue]); }
     if (iNum == LM_SETTING_RESPONSE) {
         if (sTokenMajor == "bookmarks") {
-            if (g_bDebugOn) { DebugOutput([sTokenMajor, " ", sValue]); }
+            if (g_bDebugOn) { DebugOutput(5, [sTokenMajor, " ", sValue]); }
             list lparts = llParseString2List(sValue, ["("], [""]);
             string sRegion = llStringTrim(llList2String(lparts, 0), STRING_TRIM);
             addOccurrence(sTokenMinor, sRegion);
         }
         else if(sTokenMajor == "kbtp") {
             if (sTokenMinor == "engaged")  {
-//                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
+//                if (g_bDebugOn) { DebugOutput(5, [sToken, " ", sValue]); }
                 if ((sValue == "y") || (sValue == "Y")) {
                     g_iActive = TRUE;
                     checkStatus(TRUE);
@@ -429,7 +429,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
                     g_iActive = FALSE;
                 }
             } else if (sTokenMinor == "curfew")  {
-//                if (g_bDebugOn) { DebugOutput([sToken, " ", sValue]); }
+//                if (g_bDebugOn) { DebugOutput(5, [sToken, " ", sValue]); }
                 if ((sValue == "y") || (sValue == "Y")) {
                     g_iCurfewActive = TRUE;
                 } else {
@@ -442,7 +442,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
         else if (sTokenMajor == "leash") {
             if (sTokenMinor = "leashedto") {
                 list lLeashed = llParseString2List(sValue, [","], []);
-                if (g_bDebugOn) { list lTemp = ["saving settings", sTokenMajor, sTokenMinor] + lLeashed; DebugOutput(lTemp); }
+                if (g_bDebugOn) { list lTemp = ["saving settings", sTokenMajor, sTokenMinor] + lLeashed; DebugOutput(5, lTemp); }
                 if (llList2Integer(lLeashed, 1) > 0) {
                     g_kLeashedTo = llList2Key(lLeashed, 0); 
                     g_iLeashedRank = llList2Integer(lLeashed, 1);
@@ -452,7 +452,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
         }
         else if (sTokenMajor == "global") {
             if (sTokenMinor == "checkboxes") {
-                if (g_bDebugOn) { DebugOutput([sTokenMajor, sTokenMinor, sValue]); }
+                if (g_bDebugOn) { DebugOutput(5, [sTokenMajor, sTokenMinor, sValue]); }
                 g_lCheckboxes = llCSV2List(sValue);
             }
         }
@@ -460,7 +460,7 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
     else if (iNum == LM_SETTING_DELETE) {
         if (sTokenMajor == "leash") {
             if (sTokenMinor = "leashedto") {
-            if (g_bDebugOn) { DebugOutput(["Delete ", sToken]); }
+            if (g_bDebugOn) { DebugOutput(5, ["Delete ", sToken]); }
                 g_kLeashedTo = NULL_KEY; 
                 g_iLeashedRank = 0; 
                 checkStatus(TRUE);
@@ -481,14 +481,14 @@ parseSettings(integer iSender, integer iNum, string sStr, key kID) {
         }
     }
     else if (iNum == KB_NOTICE_LEASHED) {
-        if (g_bDebugOn) { DebugOutput(["Notice:leashed"]); }
+        if (g_bDebugOn) { DebugOutput(5, ["Notice:leashed"]); }
         list lLeashed = llParseString2List(sStr, [","], []);
         g_kLeashedTo = llList2Key(lLeashed, 0); 
         g_iLeashedRank = llList2Integer(lLeashed, 1); 
         checkStatus(TRUE);
     }
     else if (iNum == KB_NOTICE_UNLEASHED) {
-        if (g_bDebugOn) { DebugOutput(["Notice:unleashed"]); }
+        if (g_bDebugOn) { DebugOutput(5, ["Notice:unleashed"]); }
         g_kLeashedTo = NULL_KEY; 
         g_iLeashedRank = 0; 
         checkStatus(TRUE);
@@ -505,9 +505,9 @@ integer RegOK(string sRegion) {
 }
 
 integer LeashOK() {
-    if (g_bDebugOn) { DebugOutput(["LeashOK ", "g_kLeashedTo " + (string) g_kLeashedTo]); }
+    if (g_bDebugOn) { DebugOutput(5, ["LeashOK ", "g_kLeashedTo " + (string) g_kLeashedTo]); }
     if (g_kLeashedTo != NULL_KEY) {
-        if (g_bDebugOn) { DebugOutput(["LeashOK ", "g_iLeashedRank " + (string) g_iLeashedRank]); }
+        if (g_bDebugOn) { DebugOutput(5, ["LeashOK ", "g_iLeashedRank " + (string) g_iLeashedRank]); }
         if ((g_iLeashedRank == CMD_OWNER) || (g_iLeashedRank == CMD_TRUSTED)) {  return TRUE; }
     }
     return FALSE;
@@ -521,13 +521,13 @@ integer checkOK(integer bFirstTime, string sRegion) {
 */
 
     llSetTimerEvent(0.0);
-    if (g_bDebugOn) { DebugOutput(["checkOK ", "g_iActive " + (string) g_iActive]); }
+    if (g_bDebugOn) { DebugOutput(5, ["checkOK ", "g_iActive " + (string) g_iActive]); }
     if (!g_iActive) return TRUE;
     if (LeashOK()) return TRUE;
     if (RegOK(sRegion)) return TRUE;
     if (findHome() != "") {
             if (g_bDebugOn) { 
-                DebugOutput(["checkOK ", 
+                DebugOutput(5, ["checkOK ", 
                 "g_iSecondsBeforeBoot " + (string) g_iSecondsBeforeBoot,
                 "bFirstTime " + (string) bFirstTime]); 
             }
@@ -580,10 +580,10 @@ integer checkStatus(integer bFirstTime) {
         llSetTimerEvent(0.0);
     }
     if (checkOK(bFirstTime, llGetRegionName())) {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning TRUE"]); }
+        if (g_bDebugOn) { DebugOutput(5, ["checkStatus returning TRUE"]); }
         return TRUE;
     } else {
-        if (g_bDebugOn) { DebugOutput(["checkStatus returning FALSE"]); }
+        if (g_bDebugOn) { DebugOutput(5, ["checkStatus returning FALSE"]); }
         return FALSE;
     }
 }
@@ -610,7 +610,7 @@ HandleMenus(key kID, string sStr, integer iNum) {
         list lParams =  llParseStringKeepNulls(sStr, ["|"], []);
         string sMenuType = llList2String(g_lMenuIDs, iMenuIndex + 1);
         g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-        if (g_bDebugOn) { DebugOutput(["HandleMenus", iNum, sStr, kID, kAv, sMessage, iPage, iAuth, sMenuType]); }
+        if (g_bDebugOn) { DebugOutput(5, ["HandleMenus", iNum, sStr, kID, kAv, sMessage, iPage, iAuth, sMenuType]); }
         if (sMenuType == "mainmenu") {
             if (sMessage == UPMENU)
                 llMessageLinked(LINK_ROOT, iAuth, "menu "+BUTTON_PARENTMENU, kAv);
@@ -620,18 +620,18 @@ HandleMenus(key kID, string sStr, integer iNum) {
                 UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
             } else if(sMessage == FORCERESET) {
                 UserCommand(iAuth, g_sChatCommand + " " + FORCERESET, kAv);
-            } else if(sMessage == DEBUGON) {
-                UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-            } else if(sMessage == DEBUGOFF) {
-                UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
+//            } else if(sMessage == DEBUGON) {
+//                UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
+//            } else if(sMessage == DEBUGOFF) {
+//                UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
             } else if(sMessage == Checkbox(FALSE,"Active")) {
                 UserCommand(iAuth, g_sChatCommand + " " + ACTIVATE, kAv);
             } else if(sMessage == Checkbox(TRUE,"Active")) {
                 UserCommand(iAuth, g_sChatCommand + " " + DEACTIVATE, kAv);
-            } else if(sMessage == Checkbox(FALSE,"Debug")) {
-                UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
-            } else if(sMessage == Checkbox(TRUE,"Debug")) {
-                UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
+//            } else if(sMessage == Checkbox(FALSE,"Debug")) {
+//                UserCommand(iAuth, g_sChatCommand + " " + DEBUGON, kAv);
+//            } else if(sMessage == Checkbox(TRUE,"Debug")) {
+//                UserCommand(iAuth, g_sChatCommand + " " + DEBUGOFF, kAv);
             } else if(sMessage == Checkbox(FALSE,"Curfew")) {
                 UserCommand(iAuth, g_sChatCommand + " " + CURFEWON, kAv);
             } else if(sMessage == Checkbox(TRUE,"Curfew")) {
@@ -646,7 +646,7 @@ HandleMenus(key kID, string sStr, integer iNum) {
             integer j = i / 100;
             integer k = i % 100;
             g_lCurfew = llListReplaceList(g_lCurfew, [j, k], 0, 1);
-            if (g_bDebugOn) { list lList = ["Textbox~Start", i, j, k, "***"] + g_lCurfew; DebugOutput(lList); }
+            if (g_bDebugOn) { list lList = ["Textbox~Start", i, j, k, "***"] + g_lCurfew; DebugOutput(5, lList); }
             llMessageLinked(LINK_SET, LM_SETTING_SAVE, "KBTP_curfewtimes=" + llList2CSV(g_lCurfew), "");
             DoCurfewMenu(kAv, iAuth, 2);
         } else if (sMenuType == "Textbox~Stop") {
@@ -654,7 +654,7 @@ HandleMenus(key kID, string sStr, integer iNum) {
             integer j = i / 100;
             integer k = i % 100;
             g_lCurfew = llListReplaceList(g_lCurfew, [j, k], 2, 3);
-            if (g_bDebugOn) { list lList = ["Textbox~Start", i, j, k, "***"] + g_lCurfew; DebugOutput(lList); }
+            if (g_bDebugOn) { list lList = ["Textbox~Start", i, j, k, "***"] + g_lCurfew; DebugOutput(5, lList); }
             llMessageLinked(LINK_SET, LM_SETTING_SAVE, "KBTP_curfewtimes=" + llList2CSV(g_lCurfew), "");
             DoMenu(kAv, iAuth);
         }
@@ -702,7 +702,7 @@ default {
 
     state_exit()
     {
-        // if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
+        if (g_bDebugOn) DebugOutput(5, ["default", "state_exit", llGetFreeMemory(), "bytes free"]);
     }
 }
 
@@ -730,7 +730,7 @@ state active  {
     }
 
     on_rez(integer iParam) {
-        if (g_bDebugOn) { DebugOutput(["on_rez ", "wearer ",  g_kWearer]); }
+        if (g_bDebugOn) { DebugOutput(5, ["on_rez ", "wearer ",  g_kWearer]); }
         llResetScript();
     }
 
@@ -746,11 +746,11 @@ state active  {
               || (iNum == KB_NOTICE_UNLEASHED) || iNum == (KB_REM_REGION_NAME)) parseSettings(iSender, iNum, sStr, kID);
         else if(iNum == DIALOG_RESPONSE) HandleMenus(kID, sStr, iNum);
         else if(iNum == KB_CURFEW_INACTIVE) {
-            if (g_bDebugOn) { DebugOutput(["link_message KB_CURFEW_INACTIVE", iNum, sStr, kID]); }
+            if (g_bDebugOn) { DebugOutput(5, ["link_message KB_CURFEW_INACTIVE", iNum, sStr, kID]); }
             g_iCurfewRemovalActive = FALSE;
         }
         else if(iNum == KB_CURFEW_ACTIVE) {
-            if (g_bDebugOn) { DebugOutput(["link_message KB_CURFEW_ACTIVE", iNum, sStr, kID]); }
+            if (g_bDebugOn) { DebugOutput(5, ["link_message KB_CURFEW_ACTIVE", iNum, sStr, kID]); }
             g_iCurfewRemovalActive = TRUE;
         } 
         else if (iNum == DIALOG_TIMEOUT) {
@@ -765,7 +765,7 @@ state active  {
     
     timer() {
         llSetTimerEvent(0.0);
-        if (g_bDebugOn) { DebugOutput(["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
+        if (g_bDebugOn) { DebugOutput(5, ["timer ", "seconds left " + (string) g_iSecondsBeforeBoot]); }
         string sMsg = "";
         if (checkStatus(FALSE) || g_iCurfewRemovalActive) {
             llMessageLinked(LINK_SET,NOTIFY,"0"+"tp limits removal stopped.", g_kWearer);
@@ -787,4 +787,3 @@ state active  {
 }
 
 // kb_tplim
-    
